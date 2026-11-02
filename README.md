@@ -23,7 +23,7 @@ Requiere JDK 17. Las apps Android requieren además el Android SDK.
 ./gradlew build
 
 # Solo core y servidor, sin Android SDK
-./gradlew -Pcarobd.android=false :core:test :server:test
+./gradlew -Pcarobd.android=false :core:jvmTest :server:test
 
 # APKs de depuración
 ./gradlew :screen:assembleDebug :mobile:assembleDebug
