@@ -1,4 +1,4 @@
-package com.carobd.mobile.ui
+package com.carobd.movil.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,10 +35,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.carobd.core.miles
+import com.carobd.core.model.DatosGaraje
+import com.carobd.core.model.Garaje
 import com.carobd.core.model.Mantenimiento
 import com.carobd.core.model.Pendiente
-import com.carobd.mobile.DatosGaraje
-import com.carobd.mobile.Garaje
+import com.carobd.core.model.texto
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 
@@ -67,7 +69,7 @@ fun MantenimientoScreen(datos: DatosGaraje, onCambio: (DatosGaraje) -> Unit) {
                         Text("${v.marca} ${v.modelo} ${v.anio}", style = MaterialTheme.typography.titleLarge)
                         Text("${v.motor ?: ""} · diésel · manual", style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(8.dp))
-                        Text("%,d km".format(datos.odometroKm), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                        Text("${miles(datos.odometroKm)} km", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text("Toca para corregir el odómetro", style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -77,7 +79,7 @@ fun MantenimientoScreen(datos: DatosGaraje, onCambio: (DatosGaraje) -> Unit) {
             if (datos.servicios.isNotEmpty()) {
                 item { Text("Historial", style = MaterialTheme.typography.titleMedium) }
                 items(datos.servicios, key = { it.id }) { s ->
-                    Text("${"%,d".format(s.km)} km · ${s.tipo}", style = MaterialTheme.typography.bodyMedium)
+                    Text("${miles(s.km)} km · ${s.tipo}", style = MaterialTheme.typography.bodyMedium)
                 }
             }
             item { Spacer(Modifier.height(72.dp)) }
@@ -87,7 +89,10 @@ fun MantenimientoScreen(datos: DatosGaraje, onCambio: (DatosGaraje) -> Unit) {
     if (editandoKm) {
         DialogoKm(
             actual = datos.odometroKm,
-            onListo = { km -> onCambio(datos.copy(odometroKm = maxOf(datos.odometroKm, km))); editandoKm = false },
+            onListo = { km ->
+                onCambio(Garaje.corregirOdometro(datos, km))
+                editandoKm = false
+            },
             onCancelar = { editandoKm = false },
         )
     }
@@ -95,7 +100,7 @@ fun MantenimientoScreen(datos: DatosGaraje, onCambio: (DatosGaraje) -> Unit) {
         DialogoServicio(
             datos = datos,
             onListo = { km, tipo, hechos ->
-                onCambio(Garaje.registrarServicio(datos, km, tipo, hechos))
+                onCambio(Garaje.registrarServicio(datos, km, tipo, hechos, Clock.System.now()))
                 nuevoServicio = false
             },
             onCancelar = { nuevoServicio = false },
@@ -113,12 +118,7 @@ private fun FilaPendiente(p: Pendiente) {
     Card(Modifier.fillMaxWidth(), colors = colores) {
         Column(Modifier.padding(14.dp)) {
             Text(p.item.nombre, style = MaterialTheme.typography.titleSmall)
-            val partes = buildList {
-                p.faltanKm?.let { add(if (it <= 0) "vencido por ${"%,d".format(-it)} km" else "faltan ${"%,d".format(it)} km") }
-                p.faltanDias?.let { add(if (it <= 0) "vencido hace ${-it} días" else "faltan $it días") }
-                if (p.item.ultimoKm == null && p.item.ultimaFecha == null) add("sin registro previo")
-            }
-            Text(partes.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+            Text(p.texto(), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -132,7 +132,7 @@ private fun DialogoKm(actual: Int, onListo: (Int) -> Unit, onCancelar: () -> Uni
         text = {
             OutlinedTextField(
                 value = texto,
-                onValueChange = { texto = it.filter(Char::isDigit) },
+                onValueChange = { nuevo -> texto = nuevo.filter { it.isDigit() } },
                 label = { Text("km") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
@@ -155,7 +155,7 @@ private fun DialogoServicio(datos: DatosGaraje, onListo: (Int, String, Set<Strin
             Column {
                 OutlinedTextField(
                     value = km,
-                    onValueChange = { km = it.filter(Char::isDigit) },
+                    onValueChange = { nuevo -> km = nuevo.filter { it.isDigit() } },
                     label = { Text("km") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
