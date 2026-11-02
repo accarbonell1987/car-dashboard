@@ -34,7 +34,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      # El runner de Ubuntu ya trae el Android SDK (ANDROID_HOME); AGP baja la plataforma 35 si falta.
       - uses: gradle/actions/setup-gradle@v4
       - name: Compilar APK de depuración
         run: ./gradlew :screen:assembleDebug :mobile:assembleDebug
