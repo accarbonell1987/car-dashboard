@@ -1,9 +1,9 @@
 name: CI
 
+# Solo manual (pestaña Actions > CI > Run workflow) para no gastar minutos.
+# Lo normal es verificar en local con scripts/verificar-local.sh, que corre lo mismo en Docker.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   core-y-servidor:

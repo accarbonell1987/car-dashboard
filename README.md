@@ -29,7 +29,18 @@ Requiere JDK 17. Las apps Android requieren además el Android SDK.
 ./gradlew :screen:assembleDebug :mobile:assembleDebug
 ```
 
-GitHub Actions corre las pruebas y deja los APK como artefactos de cada ejecución.
+### Verificar en local con Docker (lo normal)
+
+Todo se prueba primero en tu máquina. Solo necesitas Docker; el script usa una imagen con JDK 17 y el Android SDK.
+
+```bash
+scripts/verificar-local.sh            # pruebas + APKs de pantalla y móvil
+scripts/verificar-local.sh rapido     # solo pruebas de core y servidor
+scripts/verificar-local.sh servidor   # Postgres + API en http://localhost:8080
+scripts/verificar-local.sh parar      # baja el servidor local
+```
+
+La CI de GitHub Actions es **solo manual** (Actions > CI > Run workflow), para no gastar minutos.
 
 ## Sincronización
 
