@@ -1,9 +1,3 @@
-// El plugin de Android (AGP) solo se resuelve cuando se incluyen las apps,
-// así core y server compilan aunque no haya SDK de Android ni acceso al repo de Google.
-plugins {
-    alias(libs.plugins.kotlin.jvm) apply false
-    alias(libs.plugins.kotlin.android) apply false
-    alias(libs.plugins.kotlin.serialization) apply false
-    alias(libs.plugins.kotlin.compose) apply false
-    alias(libs.plugins.ksp) apply false
-}
+// Sin plugins en la raíz a propósito: cada módulo declara los suyos.
+// Si el plugin de Kotlin se cargara aquí y el de Android (AGP) solo en las apps, Kotlin no vería
+// las clases de AGP. Y declarar AGP aquí obligaría a bajarlo aunque solo se compile core y server.
