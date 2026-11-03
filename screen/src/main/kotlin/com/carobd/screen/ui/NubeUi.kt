@@ -3,6 +3,8 @@ package com.carobd.screen.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -14,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -41,7 +44,8 @@ fun DialogoNube(e: EstadoTablero, acciones: AccionesTablero, onCerrar: () -> Uni
         onDismissRequest = onCerrar,
         title = { Text("Datos y nube") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // En horizontal el teclado tapa la mitad de la pantalla: el contenido se desplaza para llegar al token.
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Odómetro: ${miles(floor(e.odometroKm).toInt())} km")
                 e.ultimoViajeKm?.let { Text("Último viaje: ${"%.1f".format(it)} km") }
                 Text(
@@ -59,7 +63,7 @@ fun DialogoNube(e: EstadoTablero, acciones: AccionesTablero, onCerrar: () -> Uni
                     onValueChange = { url = it },
                     label = { Text("Servidor (https://…)") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
