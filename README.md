@@ -62,6 +62,11 @@ La CI de GitHub Actions es **solo manual** (Actions > CI > Run workflow), para n
 
 Cada registro tiene un id UUID creado en el dispositivo, `updatedAt` y `deletedAt`. Los dispositivos guardan todo localmente y, cuando hay red, hacen `POST /sync` con sus cambios y la fecha de su última sincronización. Gana la edición más reciente, los borrados son lógicos, y para el odómetro gana la lectura más alta. Reenviar el mismo cambio no duplica nada.
 
+- **Pantalla:** guarda en `datos.json` (carpeta privada de la app, escritura atómica). Graba un viaje cada vez que el motor pasa de 400 rpm y lo cierra tras 60 s apagado o al desconectarse el vLinker; el modo demo no graba. Sincroniza al abrir, cada 15 minutos y al terminar cada viaje. El botón ☁ de la barra muestra cuántos cambios faltan subir y abre la configuración (URL del servidor y token).
+- **Móvil:** el mantenimiento, los servicios y el odómetro van a la misma base local (la versión anterior se importa sola al actualizar). Muestra los últimos viajes que subió la pantalla. Sincroniza al abrir, cada 5 minutos y después de cada cambio.
+- **Odómetro:** el último dato firme (inicial, corrección a mano o servicio) más los km de los viajes posteriores. Nunca baja.
+- **Probar contra el servidor local:** `scripts/verificar-local.sh servidor` y en la pantalla (emulador, build debug) poner `http://10.0.2.2:8080` con el token `local`.
+
 ## Desplegar el servidor en el VPS
 
 ```bash

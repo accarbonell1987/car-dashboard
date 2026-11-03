@@ -10,10 +10,13 @@ import kotlinx.coroutines.flow.Flow
  */
 interface FuenteDatos {
     val nombre: String
+    /** El modo demo no graba viajes: ensuciaría el odómetro y la historia del auto. */
+    val grabaViajes: Boolean get() = true
     fun lecturas(): Flow<Lectura>
 }
 
 class FuenteDemo : FuenteDatos {
     override val nombre = "Demo"
+    override val grabaViajes = false
     override fun lecturas(): Flow<Lectura> = SimuladorAccent().lecturas()
 }

@@ -41,9 +41,16 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(compose.preview)
+            implementation(libs.ktor.client.okhttp)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
         val desktopMain by getting {
-            dependencies { implementation(compose.desktop.currentOs) }
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.ktor.client.okhttp)
+            }
         }
     }
 }

@@ -67,6 +67,8 @@ interface AccionesTablero {
     fun quitar(id: String)
     fun agregar(senalId: String, tipo: TipoGauge): Boolean
     fun restaurar()
+    fun configurarNube(url: String, token: String)
+    fun sincronizarAhora()
 }
 
 /**
@@ -82,9 +84,10 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
     var eligiendo by remember { mutableStateOf<Celda?>(null) }
     var agregando by remember { mutableStateOf(false) }
     var lleno by remember { mutableStateOf(false) }
+    var viendoNube by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(p.fondo).padding(8.dp)) {
-        BarraSuperior(e, acciones, onAgregar = { agregando = true })
+        BarraSuperior(e, acciones, onAgregar = { agregando = true }, onNube = { viendoNube = true })
         if (!e.editando && e.alertas.isNotEmpty()) BannerAlerta(e.alertas.first())
         Spacer(Modifier.height(6.dp))
         GrillaTablero(e, acciones, onElegir = { eligiendo = it })
@@ -112,6 +115,7 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
             onCerrar = { agregando = false },
         )
     }
+    if (viendoNube) DialogoNube(e, acciones, onCerrar = { viendoNube = false })
     if (lleno) {
         AlertDialog(
             onDismissRequest = { lleno = false },
@@ -123,7 +127,7 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
 }
 
 @Composable
-private fun BarraSuperior(e: EstadoTablero, acciones: AccionesTablero, onAgregar: () -> Unit) {
+private fun BarraSuperior(e: EstadoTablero, acciones: AccionesTablero, onAgregar: () -> Unit, onNube: () -> Unit) {
     val p = LocalPaleta.current
     Row(
         Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 4.dp),
@@ -149,7 +153,9 @@ private fun BarraSuperior(e: EstadoTablero, acciones: AccionesTablero, onAgregar
             BotonTexto("+ Agregar", p.normal, onAgregar)
             BotonTexto("Restaurar", p.tenue) { acciones.restaurar() }
         } else {
+            e.viajeEnCursoKm?.let { Text("Viaje ${"%.1f".format(it)} km", color = p.normal, fontSize = 13.sp) }
             Text(e.fuente, color = p.tenue, fontSize = 13.sp)
+            BotonTexto(textoNube(e), if (e.nube.error != null) p.atencion else p.tenue, onNube)
             BotonTexto(if (e.esDeNoche) "☾ ${e.modoNoche.etiqueta}" else "☀ ${e.modoNoche.etiqueta}", p.tenue) { acciones.siguienteModoNoche() }
         }
         BotonTexto(if (e.editando) "Listo" else "Editar", p.normal) { acciones.alternarEdicion() }

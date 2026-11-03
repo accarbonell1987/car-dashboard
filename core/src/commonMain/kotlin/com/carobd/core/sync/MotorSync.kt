@@ -9,7 +9,10 @@ import com.carobd.core.model.Sincronizable
 import com.carobd.core.model.Tablero
 import com.carobd.core.model.Vehiculo
 import com.carobd.core.model.Viaje
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
 
 /**
  * Lo que cada app guarda localmente. La pantalla y el móvil lo implementan sobre su base de datos;
@@ -138,4 +141,72 @@ class AlmacenEnMemoria : AlmacenLocal {
     override suspend fun guardarUltimoSync(t: Instant) {
         ultimo = t
     }
+
+    /** Todo el contenido, para guardarlo en disco. */
+    fun foto(): FotoAlmacen = FotoAlmacen(
+        datos = PaqueteCambios(
+            vehiculos.values.toList(), viajes.values.toList(), lecturasOdometro.values.toList(), eventosFalla.values.toList(),
+            avisosSalud.values.toList(), servicios.values.toList(), itemsMantenimiento.values.toList(), tableros.values.toList(),
+        ),
+        pendientes = sucios.toSet(),
+        ultimoSync = ultimo,
+    )
+
+    companion object {
+        fun desde(foto: FotoAlmacen): AlmacenEnMemoria = AlmacenEnMemoria().apply {
+            val d = foto.datos
+            d.vehiculos.forEach { vehiculos[it.id] = it }
+            d.viajes.forEach { viajes[it.id] = it }
+            d.lecturasOdometro.forEach { lecturasOdometro[it.id] = it }
+            d.eventosFalla.forEach { eventosFalla[it.id] = it }
+            d.avisosSalud.forEach { avisosSalud[it.id] = it }
+            d.servicios.forEach { servicios[it.id] = it }
+            d.itemsMantenimiento.forEach { itemsMantenimiento[it.id] = it }
+            d.tableros.forEach { tableros[it.id] = it }
+            sucios += foto.pendientes
+            ultimo = foto.ultimoSync
+        }
+    }
+}
+
+@Serializable
+data class FotoAlmacen(
+    val datos: PaqueteCambios,
+    val pendientes: Set<String> = emptySet(),
+    val ultimoSync: Instant? = null,
+)
+
+/**
+ * Almacén que sobrevive a reinicios: guarda una foto en JSON después de cada cambio.
+ * `leer` y `escribir` los pone cada plataforma (SharedPreferences, NSUserDefaults, un archivo...).
+ * Para el volumen de un dueño (cientos de viajes al año) un JSON alcanza y evita migraciones de base de datos.
+ */
+class AlmacenPersistente(
+    leer: () -> String?,
+    private val escribir: (String) -> Unit,
+) : AlmacenLocal {
+    private val candado = Mutex()
+    private val mem: AlmacenEnMemoria = leer()
+        ?.let { runCatching { SyncJson.json.decodeFromString(FotoAlmacen.serializer(), it) }.getOrNull() }
+        ?.let { AlmacenEnMemoria.desde(it) }
+        ?: AlmacenEnMemoria()
+
+    private fun persistir() = escribir(SyncJson.json.encodeToString(FotoAlmacen.serializer(), mem.foto()))
+
+    /** Lectura del contenido actual (copia), para armar pantallas. */
+    suspend fun <R> leer(bloque: (AlmacenEnMemoria) -> R): R = candado.withLock { bloque(mem) }
+
+    /** Guarda cambios hechos en este dispositivo; quedan pendientes de subir. */
+    suspend fun guardar(vararg entidades: Sincronizable) = candado.withLock {
+        entidades.forEach { mem.guardar(it) }
+        persistir()
+    }
+
+    suspend fun cantidadPendientes(): Int = candado.withLock { mem.cantidadPendientes }
+
+    override suspend fun pendientes(): PaqueteCambios = candado.withLock { mem.pendientes() }
+    override suspend fun marcarEnviados(ids: Collection<String>) = candado.withLock { mem.marcarEnviados(ids); persistir() }
+    override suspend fun aplicarRemotos(cambios: PaqueteCambios) = candado.withLock { mem.aplicarRemotos(cambios); persistir() }
+    override suspend fun ultimoSync(): Instant? = candado.withLock { mem.ultimoSync() }
+    override suspend fun guardarUltimoSync(t: Instant) = candado.withLock { mem.guardarUltimoSync(t); persistir() }
 }
