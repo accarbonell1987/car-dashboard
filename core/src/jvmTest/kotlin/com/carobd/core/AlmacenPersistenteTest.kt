@@ -66,4 +66,14 @@ class NubeTest {
         assertEquals(0, nube.estado.value.pendientes)
         assertEquals(t0, nube.estado.value.ultimoSync)
     }
+
+    @Test
+    fun unErrorDeRedSeMuestraEnEspanol() = runTest {
+        val almacen = AlmacenPersistente({ null }, {})
+        val nube = com.carobd.core.sync.Nube(almacen, "pantalla", com.carobd.core.sync.ConfigNube("http://10.0.2.2:8080", "local")) {
+            com.carobd.core.sync.TransporteSync { throw java.net.ConnectException("Failed to connect to /10.0.2.2:8080") }
+        }
+        nube.sincronizar()
+        assertEquals("No se pudo conectar con el servidor", nube.estado.value.error)
+    }
 }

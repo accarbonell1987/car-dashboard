@@ -84,3 +84,19 @@ class BitacoraTest {
         assertEquals(OrigenOdometro.MANUAL, b.almacen.leer { it.lecturasOdometro.values.single().origen })
     }
 }
+
+class HistorialTest {
+    @Test
+    fun guardaUnaMuestraPorSegundoYSoloElUltimoMinuto() {
+        val h = com.carobd.core.sim.Historial(listOf("rpm"), segundos = 60)
+        var agregadas = 0
+        for (i in 0 until 1300) { // 130 s a 10 lecturas por segundo
+            if (h.agregar(com.carobd.core.sim.Lectura(i * 100L, mapOf("rpm" to i.toDouble())))) agregadas++
+        }
+        assertEquals(130, agregadas)
+        val s = h.serie("rpm")
+        assertEquals(60, s.size)
+        assertEquals(1290.0, s.last())
+        assertTrue(h.serie("velocidad").isEmpty())
+    }
+}

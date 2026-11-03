@@ -14,6 +14,10 @@ data class Paleta(
     val atencion: Color,
     val peligro: Color,
     val edicion: Color,
+    /** Todo bien: OBD conectado, sin alertas. */
+    val ok: Color,
+    /** Bordes finos entre barras y secciones. */
+    val linea: Color,
 ) {
     companion object {
         val dia = Paleta(
@@ -26,17 +30,22 @@ data class Paleta(
             atencion = Color(0xFFFFB020),
             peligro = Color(0xFFFF4D4F),
             edicion = Color(0xFFFFB020),
+            ok = Color(0xFF3CCB82),
+            linea = Color(0xFF1E232A),
         )
         val noche = Paleta(
             fondo = Color(0xFF000000),
             celda = Color(0xFF07080A),
             pista = Color(0xFF15181D),
             texto = Color(0xFF9AA1AD),
-            tenue = Color(0xFF555C68),
+            // Más claro que antes: con #555C68 las etiquetas chicas no se leían de noche.
+            tenue = Color(0xFF79808C),
             normal = Color(0xFF2B6CA8),
             atencion = Color(0xFFB37A12),
             peligro = Color(0xFFC23A3C),
             edicion = Color(0xFFB37A12),
+            ok = Color(0xFF2E9A66),
+            linea = Color(0xFF111419),
         )
     }
 }

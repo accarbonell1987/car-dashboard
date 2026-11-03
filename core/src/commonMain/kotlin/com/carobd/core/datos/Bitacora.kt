@@ -105,6 +105,22 @@ class Bitacora(
     }
 
     /**
+     * El garaje tal como llegó por la nube, sin crear nada. La pantalla lo usa para mostrar el plan:
+     * el plan lo crea el móvil; si la pantalla creara otro, al sincronizar habría ítems repetidos.
+     */
+    suspend fun garajeSinCrear(): DatosGaraje {
+        val v = vehiculo()
+        return almacen.leer { m ->
+            DatosGaraje(
+                vehiculo = v,
+                odometroKm = floor(odometro(m, v.id)).toInt(),
+                items = m.itemsMantenimiento.values.filter { it.vehiculoId == v.id && it.deletedAt == null }.sortedBy { it.nombre },
+                servicios = m.servicios.values.filter { it.vehiculoId == v.id && it.deletedAt == null }.sortedByDescending { it.fecha },
+            )
+        }
+    }
+
+    /**
      * Guarda lo que cambió entre dos versiones del garaje (lo que devuelven las reglas de [Garaje]).
      * Un odómetro corregido a mano se guarda como lectura MANUAL; el de un servicio ya va en el servicio.
      */
