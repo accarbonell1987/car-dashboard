@@ -170,7 +170,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Xcode no hereda JAVA_HOME: usa el JDK que trae Android Studio si no hay otro.\nif [ -z \"$JAVA_HOME\" ] && [ -d \"/Applications/Android Studio.app/Contents/jbr/Contents/Home\" ]; then\n  export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\"\nfi\ncd \"$SRCROOT/../..\"\n./gradlew :mobile:embedAndSignAppleFrameworkForXcode";
+			shellScript = "# Xcode no hereda JAVA_HOME. Gradle 8.13 / Kotlin 2.1 no corren sobre Java 25 (el JBR actual de Android Studio):\n# preferir un JDK 17 instalado y usar el de Android Studio solo como ultimo recurso.\nif [ -z \"$JAVA_HOME\" ]; then\n  JAVA_HOME=\"$(/usr/libexec/java_home -v 17 -a $(uname -m) 2>/dev/null)\" && export JAVA_HOME\nfi\nif [ -z \"$JAVA_HOME\" ] && [ -d \"/Applications/Android Studio.app/Contents/jbr/Contents/Home\" ]; then\n  export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\"\nfi\ncd \"$SRCROOT/../..\"\n./gradlew :mobile:embedAndSignAppleFrameworkForXcode";
 		};
 /* End PBXShellScriptBuildPhase section */
 
