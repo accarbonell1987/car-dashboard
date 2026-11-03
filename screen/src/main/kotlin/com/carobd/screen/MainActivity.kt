@@ -6,8 +6,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.carobd.screen.gauges.LocalPaleta
+import com.carobd.screen.gauges.Paleta
 import com.carobd.screen.ui.TableroScreen
 
 class MainActivity : ComponentActivity() {
@@ -16,16 +19,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val estado by vm.estado.collectAsStateWithLifecycle()
             MaterialTheme(colorScheme = darkColorScheme()) {
-                val estado by vm.estado.collectAsStateWithLifecycle()
-                TableroScreen(
-                    tablero = estado.tablero,
-                    valores = estado.valores,
-                    fuente = estado.fuente,
-                    editando = estado.editando,
-                    onEditar = vm::alternarEdicion,
-                    onCambiarCelda = vm::cambiarCelda,
-                )
+                CompositionLocalProvider(LocalPaleta provides if (estado.esDeNoche) Paleta.noche else Paleta.dia) {
+                    TableroScreen(estado, vm)
+                }
             }
         }
     }
