@@ -40,20 +40,37 @@ import com.carobd.core.model.DatosGaraje
 import com.carobd.core.model.Garaje
 import com.carobd.core.model.Mantenimiento
 import com.carobd.core.model.Pendiente
+import com.carobd.core.model.Viaje
 import com.carobd.core.model.texto
+import com.carobd.core.sync.ConfigNube
+import com.carobd.core.sync.EstadoNube
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MantenimientoScreen(datos: DatosGaraje, onCambio: (DatosGaraje) -> Unit) {
+fun MantenimientoScreen(
+    datos: DatosGaraje,
+    viajes: List<Viaje>,
+    nube: EstadoNube,
+    config: ConfigNube,
+    onCambio: (DatosGaraje) -> Unit,
+    onSincronizar: () -> Unit,
+    onConfigurar: (String, String) -> Unit,
+) {
     var editandoKm by remember { mutableStateOf(false) }
+    var viendoNube by remember { mutableStateOf(false) }
     var nuevoServicio by remember { mutableStateOf(false) }
     val pendientes = Mantenimiento.pendientes(datos.items, datos.odometroKm, Clock.System.now(), TimeZone.currentSystemDefault())
     val v = datos.vehiculo
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("CAROBD") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("CAROBD") },
+                actions = { TextButton(onClick = { viendoNube = true }) { Text(textoNube(nube)) } },
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = { nuevoServicio = true }) { Text("Registrar servicio") }
         },
@@ -76,6 +93,10 @@ fun MantenimientoScreen(datos: DatosGaraje, onCambio: (DatosGaraje) -> Unit) {
             }
             item { Text("Plan de mantenimiento", style = MaterialTheme.typography.titleMedium) }
             items(pendientes, key = { it.item.id }) { p -> FilaPendiente(p) }
+            if (viajes.isNotEmpty()) {
+                item { Text("Últimos viajes", style = MaterialTheme.typography.titleMedium) }
+                items(viajes, key = { it.id }) { FilaViaje(it) }
+            }
             if (datos.servicios.isNotEmpty()) {
                 item { Text("Historial", style = MaterialTheme.typography.titleMedium) }
                 items(datos.servicios, key = { it.id }) { s ->
@@ -94,6 +115,17 @@ fun MantenimientoScreen(datos: DatosGaraje, onCambio: (DatosGaraje) -> Unit) {
                 editandoKm = false
             },
             onCancelar = { editandoKm = false },
+        )
+    }
+    if (viendoNube) {
+        DialogoNube(
+            nube = nube,
+            config = config,
+            onGuardar = { url, token ->
+                if (url.trim() != config.url || token.trim() != config.token) onConfigurar(url, token) else onSincronizar()
+                viendoNube = false
+            },
+            onCerrar = { viendoNube = false },
         )
     }
     if (nuevoServicio) {

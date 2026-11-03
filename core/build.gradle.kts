@@ -23,6 +23,9 @@ kotlin {
             api(libs.coroutines.core)
             api(libs.serialization.json)
             api(libs.datetime)
+            api(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.json)
         }
         jvmTest.dependencies {
             implementation(libs.junit.jupiter)

@@ -4,7 +4,11 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.carobd.core.datos.Bitacora
+import com.carobd.core.sync.ConfigNube
+import com.carobd.core.sync.EstadoNube
 import com.carobd.core.sync.SyncJson
+import com.carobd.core.viaje.RegistradorViaje
 import com.carobd.core.tablero.Alerta
 import com.carobd.core.tablero.Alertas
 import com.carobd.core.tablero.DefinicionTablero
@@ -14,13 +18,19 @@ import com.carobd.core.tablero.TipoGauge
 import com.carobd.screen.obd.FuenteDatos
 import com.carobd.screen.ui.AccionesTablero
 import com.carobd.screen.obd.FuenteDemo
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.datetime.Clock
 import kotlinx.serialization.builtins.ListSerializer
 import java.time.LocalTime
 import java.util.UUID
@@ -36,6 +46,11 @@ data class EstadoTablero(
     val editando: Boolean = false,
     val modoNoche: ModoNoche = ModoNoche.AUTO,
     val esDeNoche: Boolean = false,
+    val nube: EstadoNube = EstadoNube(),
+    val config: ConfigNube = ConfigNube(),
+    val odometroKm: Double = 0.0,
+    val viajeEnCursoKm: Double? = null,
+    val ultimoViajeKm: Double? = null,
 ) {
     val actual: DefinicionTablero get() = tableros[indice.coerceIn(0, tableros.lastIndex)]
 }
@@ -54,7 +69,25 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
     val estado: StateFlow<EstadoTablero> = _estado.asStateFlow()
     private var lectura: Job? = null
 
+    private val datos = DatosLocales(app)
+    private val bitacora = datos.bitacora
+    private var registrador: RegistradorViaje? = null
+
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            bitacora.vehiculo()
+            _estado.update { it.copy(config = datos.nube.config, odometroKm = bitacora.odometroKm()) }
+            datos.nube.refrescar()
+        }
+        viewModelScope.launch { datos.nube.estado.collect { n -> _estado.update { it.copy(nube = n) } } }
+        // Sincroniza al abrir y cada 15 minutos; si no hay red, los cambios esperan al siguiente intento.
+        viewModelScope.launch(Dispatchers.IO) {
+            while (true) {
+                datos.nube.sincronizar()
+                actualizarOdometro()
+                delay(15 * 60_000L)
+            }
+        }
         usarFuente(FuenteDemo())
         // Revisa cada minuto si ya es de noche (modo Auto).
         viewModelScope.launch {
@@ -67,11 +100,58 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
 
     fun usarFuente(fuente: FuenteDatos) {
         lectura?.cancel()
-        _estado.update { it.copy(fuente = fuente.nombre, valores = emptyMap(), alertas = emptyList()) }
+        _estado.update { it.copy(fuente = fuente.nombre, valores = emptyMap(), alertas = emptyList(), viajeEnCursoKm = null) }
+        val reg = if (fuente.grabaViajes) {
+            RegistradorViaje(Bitacora.ID_ACCENT, reloj = { Clock.System.now() }, nuevoId = { UUID.randomUUID().toString() })
+        } else null
+        registrador = reg
         lectura = viewModelScope.launch {
-            fuente.lecturas().collect { l ->
-                _estado.update { it.copy(valores = l.valores, alertas = Alertas.evaluar(l.valores)) }
-            }
+            fuente.lecturas()
+                // Si el adaptador se desconecta (se apagó el auto) o se cambia de fuente, el viaje en curso se cierra.
+                .onCompletion { withContext(NonCancellable) { reg?.cerrar()?.let { guardarViaje(it) } } }
+                .catch { _estado.update { it.copy(fuente = "${fuente.nombre}: desconectado", viajeEnCursoKm = null) } }
+                .collect { l ->
+                    val terminado = reg?.procesar(l)
+                    _estado.update {
+                        it.copy(
+                            valores = l.valores,
+                            alertas = Alertas.evaluar(l.valores),
+                            viajeEnCursoKm = reg?.takeIf { r -> r.enCurso }?.kmEnCurso,
+                        )
+                    }
+                    if (terminado != null) guardarViaje(terminado)
+                }
+        }
+    }
+
+    private suspend fun guardarViaje(v: com.carobd.core.model.Viaje) = withContext(Dispatchers.IO) {
+        bitacora.guardarViaje(v)
+        _estado.update { it.copy(ultimoViajeKm = v.km) }
+        actualizarOdometro()
+        datos.nube.sincronizar()
+    }
+
+    private suspend fun actualizarOdometro() {
+        val km = bitacora.odometroKm()
+        _estado.update { it.copy(odometroKm = km) }
+    }
+
+    // --- Nube ---
+
+    override fun configurarNube(url: String, token: String) {
+        val c = ConfigNube(url.trim(), token.trim())
+        _estado.update { it.copy(config = c) }
+        viewModelScope.launch(Dispatchers.IO) {
+            datos.configurar(c)
+            datos.nube.sincronizar()
+            actualizarOdometro()
+        }
+    }
+
+    override fun sincronizarAhora() {
+        viewModelScope.launch(Dispatchers.IO) {
+            datos.nube.sincronizar()
+            actualizarOdometro()
         }
     }
 

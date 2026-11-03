@@ -11,6 +11,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 /**
  * Una tabla por entidad con el mismo esquema: id, usuario, vehiculo, updated_at, deleted_at y el JSON completo.
  * El servidor no interpreta el contenido; solo resuelve conflictos por updated_at y reparte cambios.
+ * `recibido_en` es la hora del servidor al guardar: el pull se hace por esa columna, no por updated_at,
+ * porque un cambio hecho sin conexión llega con un updated_at viejo y no debe perderse.
  * Guardar el JSON entero evita migraciones cada vez que una entidad gana un campo.
  */
 abstract class TablaSync(nombre: String) : Table(nombre) {
@@ -19,6 +21,7 @@ abstract class TablaSync(nombre: String) : Table(nombre) {
     val vehiculoId = varchar("vehiculo_id", 64).index()
     val updatedAt = timestamp("updated_at").index()
     val deletedAt = timestamp("deleted_at").nullable()
+    val recibidoEn = timestamp("recibido_en").index()
     val json = text("json")
     override val primaryKey = PrimaryKey(id)
 }
