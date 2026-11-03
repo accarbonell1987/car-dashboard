@@ -29,20 +29,25 @@ import org.jetbrains.exposed.sql.update
 
 /** Aplica un paquete de cambios y devuelve lo que cambió para ese usuario desde `desde`. */
 class Almacen(private val db: Database) {
+    companion object {
+        val MARGEN = kotlin.time.Duration.parse("2m")
+    }
 
-    fun sincronizar(usuario: String, req: SyncRequest): SyncResponse = transaction(db) {
+    fun sincronizar(usuario: String, req: SyncRequest, ahora: Instant = Clock.System.now()): SyncResponse = transaction(db) {
         val aceptados = mutableListOf<String>()
         val c = req.cambios
-        aceptados += guardar(Vehiculos, usuario, c.vehiculos, Vehiculo.serializer()) { it.id }
-        aceptados += guardar(Viajes, usuario, c.viajes, Viaje.serializer()) { it.vehiculoId }
-        aceptados += guardar(LecturasOdometro, usuario, c.lecturasOdometro, LecturaOdometro.serializer()) { it.vehiculoId }
-        aceptados += guardar(EventosFalla, usuario, c.eventosFalla, EventoFalla.serializer()) { it.vehiculoId }
-        aceptados += guardar(AvisosSalud, usuario, c.avisosSalud, AvisoSalud.serializer()) { it.vehiculoId }
-        aceptados += guardar(Servicios, usuario, c.servicios, Servicio.serializer()) { it.vehiculoId }
-        aceptados += guardar(ItemsMantenimiento, usuario, c.itemsMantenimiento, ItemMantenimiento.serializer()) { it.vehiculoId }
-        aceptados += guardar(Tableros, usuario, c.tableros, Tablero.serializer()) { it.vehiculoId }
+        aceptados += guardar(Vehiculos, usuario, ahora, c.vehiculos, Vehiculo.serializer()) { it.id }
+        aceptados += guardar(Viajes, usuario, ahora, c.viajes, Viaje.serializer()) { it.vehiculoId }
+        aceptados += guardar(LecturasOdometro, usuario, ahora, c.lecturasOdometro, LecturaOdometro.serializer()) { it.vehiculoId }
+        aceptados += guardar(EventosFalla, usuario, ahora, c.eventosFalla, EventoFalla.serializer()) { it.vehiculoId }
+        aceptados += guardar(AvisosSalud, usuario, ahora, c.avisosSalud, AvisoSalud.serializer()) { it.vehiculoId }
+        aceptados += guardar(Servicios, usuario, ahora, c.servicios, Servicio.serializer()) { it.vehiculoId }
+        aceptados += guardar(ItemsMantenimiento, usuario, ahora, c.itemsMantenimiento, ItemMantenimiento.serializer()) { it.vehiculoId }
+        aceptados += guardar(Tableros, usuario, ahora, c.tableros, Tablero.serializer()) { it.vehiculoId }
 
-        val desde = req.desde
+        // Margen para no perder escrituras de otra transacción que guardó con una hora un poco anterior
+        // y confirmó después. Recibir algo repetido no hace daño: aplicar es idempotente.
+        val desde = req.desde?.minus(MARGEN)
         SyncResponse(
             aceptados = aceptados,
             cambios = PaqueteCambios(
@@ -55,7 +60,7 @@ class Almacen(private val db: Database) {
                 itemsMantenimiento = leer(ItemsMantenimiento, usuario, desde, ItemMantenimiento.serializer()),
                 tableros = leer(Tableros, usuario, desde, Tablero.serializer()),
             ),
-            servidorAhora = Clock.System.now(),
+            servidorAhora = ahora,
         )
     }
 
@@ -63,6 +68,7 @@ class Almacen(private val db: Database) {
     private fun <T : Sincronizable> guardar(
         tabla: TablaSync,
         usuario: String,
+        ahora: Instant,
         entrantes: List<T>,
         serializer: KSerializer<T>,
         vehiculoDe: (T) -> String,
@@ -76,6 +82,7 @@ class Almacen(private val db: Database) {
                     it[vehiculoId] = vehiculoDe(e)
                     it[updatedAt] = e.updatedAt.toJavaInstant()
                     it[deletedAt] = e.deletedAt?.toJavaInstant()
+                    it[recibidoEn] = ahora.toJavaInstant()
                     it[json] = SyncJson.json.encodeToString(serializer, e)
                 }
                 e.id
@@ -85,6 +92,7 @@ class Almacen(private val db: Database) {
                 tabla.update({ tabla.id eq e.id }) {
                     it[updatedAt] = e.updatedAt.toJavaInstant()
                     it[deletedAt] = e.deletedAt?.toJavaInstant()
+                    it[recibidoEn] = ahora.toJavaInstant()
                     it[json] = SyncJson.json.encodeToString(serializer, e)
                 }
                 e.id
@@ -96,7 +104,7 @@ class Almacen(private val db: Database) {
     private fun <T : Sincronizable> leer(tabla: TablaSync, usuario: String, desde: Instant?, serializer: KSerializer<T>): List<T> {
         val consulta = tabla.selectAll().where {
             if (desde == null) tabla.usuario eq usuario
-            else (tabla.usuario eq usuario) and (tabla.updatedAt greater desde.toJavaInstant())
+            else (tabla.usuario eq usuario) and (tabla.recibidoEn greater desde.toJavaInstant())
         }
         return consulta.map { SyncJson.json.decodeFromString(serializer, it[tabla.json]) }
     }
