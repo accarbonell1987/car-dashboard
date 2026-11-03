@@ -22,6 +22,7 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
         var t = 0L
         var kmh = 0.0
         var tempRefrig = 22.0
+        var tempAceite = 22.0
         var combustible = 62.0
         var odometroKm = 0.0
         var faseSemaforo = 0L
@@ -37,6 +38,7 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
             val carga = min(100.0, 15 + acelerador * 0.7)
             val map = 100 + (acelerador / 100.0) * 120 * (rpm / 3000.0).coerceIn(0.3, 1.0)
             tempRefrig += ((88.0 - tempRefrig) * 0.0015)
+            tempAceite += ((95.0 - tempAceite) * 0.0008)
             val consumoLh = 0.6 + carga / 100.0 * 9.0
             combustible -= consumoLh * periodoMs / 3_600_000.0 / 45.0 * 100.0
             odometroKm += kmh * periodoMs / 3_600_000.0
@@ -55,6 +57,8 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
                         "maf" to 5 + carga * 1.8,
                         "temp_refrigerante" to tempRefrig,
                         "temp_admision" to 28.0 + carga / 10,
+                        // El aceite se calienta más lento que el refrigerante y termina unos grados arriba.
+                        "temp_aceite" to tempAceite,
                         "presion_riel" to 300 + carga * 12,
                         "consumo_lh" to consumoLh,
                         "consumo_l100" to if (kmh > 5) consumoLh / kmh * 100 else 0.0,
