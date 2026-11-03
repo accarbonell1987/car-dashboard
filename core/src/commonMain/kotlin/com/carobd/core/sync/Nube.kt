@@ -78,10 +78,13 @@ class Nube(
 
     private fun describir(e: Throwable): String {
         val msg = e.message.orEmpty()
+        val tipo = e::class.simpleName.orEmpty()
         return when {
             "401" in msg -> "El token no es válido"
-            msg.isBlank() -> "Sin conexión con el servidor"
-            else -> msg.take(120)
+            "El servidor respondió" in msg -> msg.take(120)
+            // Errores de red de cada motor (OkHttp, Darwin, CIO): en inglés y con detalles que no ayudan.
+            "imeout" in msg || "imeout" in tipo -> "El servidor no respondió a tiempo"
+            else -> "No se pudo conectar con el servidor"
         }
     }
 }

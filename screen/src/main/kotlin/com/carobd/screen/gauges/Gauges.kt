@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.carobd.core.model.NivelAviso
@@ -77,7 +78,8 @@ fun Gauge(celda: Celda, senal: Senal, valor: Double?, nivel: NivelAviso?, modifi
 private fun fraccion(valor: Double?, senal: Senal): Float =
     if (valor == null) 0f else ((valor - senal.min) / (senal.max - senal.min)).toFloat().coerceIn(0f, 1f)
 
-private fun tamTexto(lado: Float, factor: Float) = (lado * factor).coerceAtLeast(10f).sp
+// Mínimo 13sp: las etiquetas se leen de reojo, a casi un metro de la pantalla.
+private fun tamTexto(lado: Float, factor: Float) = (lado * factor).coerceAtLeast(13f).sp
 
 @Composable
 private fun GaugeArco(senal: Senal, valor: Double?, nivel: NivelAviso?) {
@@ -98,7 +100,7 @@ private fun GaugeArco(senal: Senal, valor: Double?, nivel: NivelAviso?) {
             Text(formatear(valor, senal), color = if (nivel != null) color else p.texto, fontSize = (lado * 0.22f).sp, fontWeight = FontWeight.Bold)
             Text(senal.unidad, color = p.tenue, fontSize = tamTexto(lado, 0.08f))
         }
-        Text(senal.nombre, color = p.tenue, fontSize = tamTexto(lado, 0.08f), modifier = Modifier.align(Alignment.BottomCenter), maxLines = 1)
+        Text(senal.nombre, color = p.tenue, fontSize = tamTexto(lado, 0.08f), modifier = Modifier.align(Alignment.BottomCenter), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
