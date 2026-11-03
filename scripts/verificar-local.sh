@@ -23,13 +23,13 @@ gradle_en_docker() {
 
 case "${1:-todo}" in
   todo)
-    gradle_en_docker :core:test :server:test :screen:assembleDebug :mobile:assembleDebug
+    gradle_en_docker :core:jvmTest :server:test :screen:assembleDebug :mobile:assembleDebug
     echo
     echo "APKs listos:"
     ls -1 screen/build/outputs/apk/debug/*.apk mobile/build/outputs/apk/debug/*.apk
     ;;
   rapido)
-    gradle_en_docker -Pcarobd.android=false :core:test :server:test
+    gradle_en_docker -Pcarobd.android=false :core:jvmTest :server:test
     ;;
   servidor)
     gradle_en_docker -Pcarobd.android=false :server:fatJar

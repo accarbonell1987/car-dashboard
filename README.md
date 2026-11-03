@@ -8,26 +8,42 @@ Por ahora el vehículo es fijo: Hyundai Accent 2016 1.6 CRDi diésel manual, con
 
 | Carpeta | Qué es |
 |---|---|
-| `core/` | Kotlin puro compartido: modelo de datos, catálogo de PIDs OBD-II, decodificador, cálculo de marcha, plan de mantenimiento, reglas de sincronización y un simulador del Accent. |
+| `core/` | Kotlin Multiplatform compartido por todo (servidor, Android e iPhone): modelo de datos, catálogo de PIDs OBD-II, decodificador, cálculo de marcha, plan de mantenimiento, reglas del garaje y de sincronización, y un simulador del Accent. |
 | `screen/` | App Android para la pantalla del auto (horizontal, 1280x720). Grilla de 6x3 gauges editable, modo demo con el simulador y conexión al ELM327 por Bluetooth. |
-| `mobile/` | App Android para el teléfono. Vehículo, plan de mantenimiento con lo que falta por km y por fecha, y registro de servicios. |
+| `mobile/` | App del teléfono en Compose Multiplatform: la misma interfaz para **iPhone y Android** (y una vista previa de escritorio). Vehículo, plan de mantenimiento con lo que falta por km y por fecha, y registro de servicios. |
+| `mobile/iosApp/` | Proyecto de Xcode que envuelve la app para iPhone. |
 | `server/` | API en Ktor con Postgres para el VPS. `POST /sync` recibe y entrega cambios; `GET /salud` responde `ok`. |
 | `server/deploy/` | Docker Compose con Postgres, la API, Caddy con TLS y un respaldo diario. |
 
 ## Compilar
 
-Requiere JDK 17. Las apps Android requieren además el Android SDK.
+Requiere JDK 17. Las apps (pantalla y móvil) requieren además el Android SDK; lo más fácil es instalar Android Studio.
 
 ```bash
 # Todo
 ./gradlew build
 
 # Solo core y servidor, sin Android SDK
-./gradlew -Pcarobd.android=false :core:test :server:test
+./gradlew -Pcarobd.android=false :core:jvmTest :server:test
+
+# Vista previa de la app móvil en una ventana del Mac
+./gradlew :mobile:run
 
 # APKs de depuración
 ./gradlew :screen:assembleDebug :mobile:assembleDebug
 ```
+
+### App del móvil en el iPhone
+
+Necesitas Xcode (App Store) y haber abierto antes el proyecto en Android Studio una vez, para que exista `local.properties` con la ruta del Android SDK.
+
+1. Abre `mobile/iosApp/iosApp.xcodeproj` en Xcode.
+2. Elige un simulador de iPhone arriba y pulsa ▶. La primera compilación tarda varios minutos porque Gradle compila Kotlin para iOS.
+3. Para tu iPhone real: pon tu Team ID en `mobile/iosApp/Configuration/Config.xcconfig` (basta una cuenta gratuita de Apple), conecta el teléfono y elígelo como destino.
+
+### App del móvil en Android
+
+En Android Studio elige la configuración `mobile` y un emulador, y pulsa ▶.
 
 ### Verificar en local con Docker (lo normal)
 

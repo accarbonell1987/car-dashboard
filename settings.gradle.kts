@@ -37,9 +37,12 @@ include(":core")
 include(":server")
 
 // Las apps Android necesitan el SDK de Android y el repositorio de Google.
-// Para compilar solo core y server (por ejemplo sin SDK): gradle build -Pcarobd.android=false
+// La app móvil (Compose Multiplatform) también los necesita, incluso para iOS y escritorio.
+// Para compilar solo core y server sin ellos: ./gradlew -Pcarobd.android=false ...
 val withAndroid = providers.gradleProperty("carobd.android").map { it.toBoolean() }.getOrElse(true)
 if (withAndroid) {
     include(":screen")
     include(":mobile")
+} else {
+    rootProject.buildFileName = "build.sin-android.gradle.kts"
 }
