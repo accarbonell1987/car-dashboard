@@ -5,6 +5,8 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.carobd.core.datos.Bitacora
+import com.carobd.core.model.DatosGaraje
+import com.carobd.core.sim.Historial
 import com.carobd.core.sync.ConfigNube
 import com.carobd.core.sync.EstadoNube
 import com.carobd.core.sync.SyncJson
@@ -37,6 +39,12 @@ import java.util.UUID
 
 enum class ModoNoche(val etiqueta: String) { AUTO("Auto"), DIA("Día"), NOCHE("Noche") }
 
+/** Las pestañas de la barra inferior. */
+enum class Seccion(val etiqueta: String) { INICIO("Inicio"), TABLERO("Tablero"), DIAGNOSTICO("Diagnóstico"), VEHICULO("Vehículo"), AJUSTES("Ajustes") }
+
+/** Señales que guarda la gráfica del último minuto en Diagnóstico. */
+val SENALES_GRAFICA = listOf("temp_refrigerante", "voltaje", "boost", "rpm")
+
 data class EstadoTablero(
     val tableros: List<DefinicionTablero>,
     val indice: Int = 0,
@@ -51,6 +59,16 @@ data class EstadoTablero(
     val odometroKm: Double = 0.0,
     val viajeEnCursoKm: Double? = null,
     val ultimoViajeKm: Double? = null,
+    val viajeEnCursoSeg: Long = 0,
+    val viajeEnCursoL100: Double? = null,
+    val seccion: Seccion = Seccion.INICIO,
+    val esDemo: Boolean = true,
+    /** Vehículo, plan de mantenimiento y servicios tal como llegaron del móvil por la nube. */
+    val garaje: DatosGaraje? = null,
+    /** Último minuto de [SENALES_GRAFICA], una muestra por segundo. */
+    val series: Map<String, List<Double>> = emptyMap(),
+    /** Brillo de la ventana de 0,1 a 1; null deja el del sistema. */
+    val brillo: Float? = null,
 ) {
     val actual: DefinicionTablero get() = tableros[indice.coerceIn(0, tableros.lastIndex)]
 }
@@ -64,6 +82,8 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
             tableros = cargarTableros(),
             indice = prefs.getInt("indice", 0),
             modoNoche = runCatching { ModoNoche.valueOf(prefs.getString("modo_noche", "AUTO")!!) }.getOrDefault(ModoNoche.AUTO),
+            seccion = runCatching { Seccion.valueOf(prefs.getString("seccion", "INICIO")!!) }.getOrDefault(Seccion.INICIO),
+            brillo = prefs.getFloat("brillo", -1f).takeIf { it > 0f },
         ),
     )
     val estado: StateFlow<EstadoTablero> = _estado.asStateFlow()
@@ -72,11 +92,12 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
     private val datos = DatosLocales(app)
     private val bitacora = datos.bitacora
     private var registrador: RegistradorViaje? = null
+    private val historial = Historial(SENALES_GRAFICA)
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
             bitacora.vehiculo()
-            _estado.update { it.copy(config = datos.nube.config, odometroKm = bitacora.odometroKm()) }
+            _estado.update { it.copy(config = datos.nube.config, odometroKm = bitacora.odometroKm(), garaje = bitacora.garajeSinCrear()) }
             datos.nube.refrescar()
         }
         viewModelScope.launch { datos.nube.estado.collect { n -> _estado.update { it.copy(nube = n) } } }
@@ -100,7 +121,10 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
 
     fun usarFuente(fuente: FuenteDatos) {
         lectura?.cancel()
-        _estado.update { it.copy(fuente = fuente.nombre, valores = emptyMap(), alertas = emptyList(), viajeEnCursoKm = null) }
+        historial.limpiar()
+        _estado.update {
+            it.copy(fuente = fuente.nombre, esDemo = !fuente.grabaViajes, valores = emptyMap(), alertas = emptyList(), viajeEnCursoKm = null, series = emptyMap())
+        }
         val reg = if (fuente.grabaViajes) {
             RegistradorViaje(Bitacora.ID_ACCENT, reloj = { Clock.System.now() }, nuevoId = { UUID.randomUUID().toString() })
         } else null
@@ -112,11 +136,15 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
                 .catch { _estado.update { it.copy(fuente = "${fuente.nombre}: desconectado", viajeEnCursoKm = null) } }
                 .collect { l ->
                     val terminado = reg?.procesar(l)
+                    val nuevaMuestra = historial.agregar(l)
                     _estado.update {
                         it.copy(
                             valores = l.valores,
                             alertas = Alertas.evaluar(l.valores),
                             viajeEnCursoKm = reg?.takeIf { r -> r.enCurso }?.kmEnCurso,
+                            viajeEnCursoSeg = reg?.segEnCurso ?: 0,
+                            viajeEnCursoL100 = reg?.l100EnCurso,
+                            series = if (nuevaMuestra) SENALES_GRAFICA.associateWith(historial::serie) else it.series,
                         )
                     }
                     if (terminado != null) guardarViaje(terminado)
@@ -133,7 +161,26 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
 
     private suspend fun actualizarOdometro() {
         val km = bitacora.odometroKm()
-        _estado.update { it.copy(odometroKm = km) }
+        val g = bitacora.garajeSinCrear()
+        _estado.update { it.copy(odometroKm = km, garaje = g) }
+    }
+
+    // --- Navegación y pantalla ---
+
+    override fun irA(s: Seccion) {
+        _estado.update { it.copy(seccion = s, editando = false) }
+        prefs.edit().putString("seccion", s.name).apply()
+    }
+
+    override fun elegirModoNoche(m: ModoNoche) {
+        _estado.update { it.copy(modoNoche = m) }
+        prefs.edit().putString("modo_noche", m.name).apply()
+        actualizarNoche()
+    }
+
+    override fun fijarBrillo(b: Float?) {
+        _estado.update { it.copy(brillo = b) }
+        prefs.edit().putFloat("brillo", b ?: -1f).apply()
     }
 
     // --- Nube ---
@@ -163,13 +210,6 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
     }
 
     override fun alternarEdicion() = _estado.update { it.copy(editando = !it.editando) }
-
-    override fun siguienteModoNoche() {
-        val siguiente = ModoNoche.entries[(_estado.value.modoNoche.ordinal + 1) % ModoNoche.entries.size]
-        _estado.update { it.copy(modoNoche = siguiente) }
-        prefs.edit().putString("modo_noche", siguiente.name).apply()
-        actualizarNoche()
-    }
 
     private fun actualizarNoche() {
         val hora = LocalTime.now().hour

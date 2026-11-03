@@ -22,7 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.gauges.Paleta
-import com.carobd.screen.ui.TableroScreen
+import android.view.WindowManager
+import androidx.compose.runtime.LaunchedEffect
+import com.carobd.screen.ui.PantallaPrincipal
 
 class MainActivity : ComponentActivity() {
     private val vm: TableroViewModel by viewModels()
@@ -32,11 +34,17 @@ class MainActivity : ComponentActivity() {
         pantallaCompleta()
         setContent {
             val estado by vm.estado.collectAsStateWithLifecycle()
+            // Brillo propio de la app (Ajustes > Pantalla); null deja el del sistema.
+            LaunchedEffect(estado.brillo) {
+                window.attributes = window.attributes.apply {
+                    screenBrightness = estado.brillo ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                }
+            }
             MaterialTheme(colorScheme = darkColorScheme()) {
                 CompositionLocalProvider(LocalPaleta provides if (estado.esDeNoche) Paleta.noche else Paleta.dia) {
                     // safeDrawing cubre el notch o una barra que aparezca al deslizar.
                     Box(Modifier.fillMaxSize().background(Color.Black).windowInsetsPadding(WindowInsets.safeDrawing)) {
-                        TableroScreen(estado, vm)
+                        PantallaPrincipal(estado, vm)
                     }
                 }
             }

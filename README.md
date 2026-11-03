@@ -81,8 +81,11 @@ curl https://TU_DOMINIO/salud
 
 ## Fases
 
-0. Base del monorepo (esta).
+0. Base del monorepo.
 1. Probar el enlace con el vLinker: Car Scanner en la pantalla, y Bluetooth con el teléfono emparejado a la vez.
 2. Tablero: mover y redimensionar gauges, varios tableros, modo noche.
-3. Room y sincronización real entre pantalla, móvil y VPS.
-4. PIDs de Hyundai (modo 22) y prueba del BCM para puertas y luces.
+3. Guardado local y sincronización entre pantalla, móvil y VPS.
+3.5. Interfaz de la pantalla tipo launcher: barra de estado, pestañas Inicio, Tablero, Diagnóstico, Vehículo y Ajustes.
+4. Diagnóstico con el vLinker: leer y borrar códigos de falla (modos 03, 07 y 04).
+5. PIDs de Hyundai (modo 22) y prueba del BCM para puertas y luces.
+6. Varios vehículos: selector de marca, modelo, año y color, con su perfil de señales.

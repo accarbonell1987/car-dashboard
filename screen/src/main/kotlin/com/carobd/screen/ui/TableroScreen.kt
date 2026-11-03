@@ -52,6 +52,8 @@ import com.carobd.core.tablero.Celda
 import com.carobd.core.tablero.Grilla
 import com.carobd.core.tablero.TipoGauge
 import com.carobd.screen.EstadoTablero
+import com.carobd.screen.ModoNoche
+import com.carobd.screen.Seccion
 import com.carobd.screen.gauges.Gauge
 import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.gauges.formatear
@@ -60,7 +62,6 @@ import com.carobd.screen.gauges.formatear
 interface AccionesTablero {
     fun seleccionar(indice: Int)
     fun alternarEdicion()
-    fun siguienteModoNoche()
     fun mover(id: String, col: Int, fila: Int)
     fun redimensionar(id: String, ancho: Int, alto: Int)
     fun cambiarSenal(id: String, senalId: String, tipo: TipoGauge)
@@ -69,6 +70,9 @@ interface AccionesTablero {
     fun restaurar()
     fun configurarNube(url: String, token: String)
     fun sincronizarAhora()
+    fun irA(s: Seccion)
+    fun elegirModoNoche(m: ModoNoche)
+    fun fijarBrillo(b: Float?)
 }
 
 /**
@@ -84,10 +88,9 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
     var eligiendo by remember { mutableStateOf<Celda?>(null) }
     var agregando by remember { mutableStateOf(false) }
     var lleno by remember { mutableStateOf(false) }
-    var viendoNube by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().background(p.fondo).padding(8.dp)) {
-        BarraSuperior(e, acciones, onAgregar = { agregando = true }, onNube = { viendoNube = true })
+    Column(Modifier.fillMaxSize().background(p.fondo)) {
+        BarraTableros(e, acciones, onAgregar = { agregando = true })
         if (!e.editando && e.alertas.isNotEmpty()) BannerAlerta(e.alertas.first())
         Spacer(Modifier.height(6.dp))
         GrillaTablero(e, acciones, onElegir = { eligiendo = it })
@@ -115,7 +118,6 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
             onCerrar = { agregando = false },
         )
     }
-    if (viendoNube) DialogoNube(e, acciones, onCerrar = { viendoNube = false })
     if (lleno) {
         AlertDialog(
             onDismissRequest = { lleno = false },
@@ -127,7 +129,7 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
 }
 
 @Composable
-private fun BarraSuperior(e: EstadoTablero, acciones: AccionesTablero, onAgregar: () -> Unit, onNube: () -> Unit) {
+private fun BarraTableros(e: EstadoTablero, acciones: AccionesTablero, onAgregar: () -> Unit) {
     val p = LocalPaleta.current
     Row(
         Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 4.dp),
@@ -152,18 +154,13 @@ private fun BarraSuperior(e: EstadoTablero, acciones: AccionesTablero, onAgregar
         if (e.editando) {
             BotonTexto("+ Agregar", p.normal, onAgregar)
             BotonTexto("Restaurar", p.tenue) { acciones.restaurar() }
-        } else {
-            e.viajeEnCursoKm?.let { Text("Viaje ${"%.1f".format(it)} km", color = p.normal, fontSize = 13.sp) }
-            Text(e.fuente, color = p.tenue, fontSize = 13.sp)
-            BotonTexto(textoNube(e), if (e.nube.error != null) p.atencion else p.tenue, onNube)
-            BotonTexto(if (e.esDeNoche) "☾ ${e.modoNoche.etiqueta}" else "☀ ${e.modoNoche.etiqueta}", p.tenue) { acciones.siguienteModoNoche() }
         }
         BotonTexto(if (e.editando) "Listo" else "Editar", p.normal) { acciones.alternarEdicion() }
     }
 }
 
 @Composable
-private fun BotonTexto(texto: String, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+internal fun BotonTexto(texto: String, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
     Text(
         texto,
         color = color,
@@ -173,7 +170,7 @@ private fun BotonTexto(texto: String, color: androidx.compose.ui.graphics.Color,
 }
 
 @Composable
-private fun BannerAlerta(a: Alerta) {
+internal fun BannerAlerta(a: Alerta) {
     val p = LocalPaleta.current
     val color = if (a.regla.nivel == NivelAviso.CRITICO) p.peligro else p.atencion
     val senal = Catalogo.porId(a.regla.senalId)

@@ -12,6 +12,12 @@
 
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
+    <!-- Para abrir Maps y Waze desde Inicio (Android 11+ solo deja ver las apps declaradas) -->
+    <queries>
+        <package android:name="com.google.android.apps.maps" />
+        <package android:name="com.waze" />
+    </queries>
+
     <application
         android:label="@string/app_name"
         android:theme="@style/Theme.Carobd"

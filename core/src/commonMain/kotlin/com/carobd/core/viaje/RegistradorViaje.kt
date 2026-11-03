@@ -54,6 +54,9 @@ class RegistradorViaje(
 
     val enCurso: Boolean get() = actual != null
     val kmEnCurso: Double get() = actual?.km ?: 0.0
+    val segEnCurso: Long get() = actual?.let { (it.ultimoMs - it.inicioMs) / 1000 } ?: 0L
+    /** Consumo medio del viaje en curso, si la ECU informa consumo y ya hay distancia para que tenga sentido. */
+    val l100EnCurso: Double? get() = actual?.takeIf { it.hayConsumo && it.km > 0.5 }?.let { it.litros / it.km * 100 }
 
     /** Procesa una lectura. Devuelve el viaje si con ella terminó uno. */
     fun procesar(l: Lectura): Viaje? {
