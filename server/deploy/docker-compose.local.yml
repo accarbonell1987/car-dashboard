@@ -1,0 +1,36 @@
+# Servidor local para probar en tu máquina: Postgres + API en http://localhost:8080, sin Caddy ni respaldo.
+# Se usa desde scripts/verificar-local.sh servidor
+name: carobd-local
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: carobd
+      POSTGRES_USER: carobd
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local}
+    volumes:
+      - carobd-db-local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carobd"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DATABASE_URL: jdbc:postgresql://db:5432/carobd
+      DATABASE_USER: carobd
+      DATABASE_PASSWORD: ${DB_PASSWORD:-local}
+      CAROBD_TOKENS: ${CAROBD_TOKENS:-local:alberto}
+
+volumes:
+  carobd-db-local:

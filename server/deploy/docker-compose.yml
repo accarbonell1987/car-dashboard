@@ -1,0 +1,57 @@
+# Despliegue en el VPS: Postgres + API + Caddy con TLS automático.
+# 1) Copiar .env.ejemplo a .env y completar.  2) docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: carobd
+      POSTGRES_USER: carobd
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carobd"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      DATABASE_URL: jdbc:postgresql://db:5432/carobd
+      DATABASE_USER: carobd
+      DATABASE_PASSWORD: ${DB_PASSWORD}
+      CAROBD_TOKENS: ${CAROBD_TOKENS}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMINIO: ${DOMINIO}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy:/data
+    depends_on:
+      - api
+
+  respaldo:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./data/respaldos:/respaldos
+    entrypoint: ["sh", "-c", "while true; do pg_dump -h db -U carobd carobd | gzip > /respaldos/carobd-$(date +%F).sql.gz; find /respaldos -mtime +30 -delete; sleep 86400; done"]
