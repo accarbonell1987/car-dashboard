@@ -77,7 +77,7 @@ docker compose up -d --remove-orphans || volver_atras
 # 5) Prueba de humo local: el API tiene que contestar.
 PUERTO="$(grep '^API_PORT=' .env | cut -d= -f2)"
 for _ in $(seq 1 30); do
-  if curl -fsS --max-time 3 "http://127.0.0.1:$PUERTO/salud" > /dev/null 2>&1; then
+  if curl -fsS --max-time 3 "http://127.0.0.1:$PUERTO/health" > /dev/null 2>&1; then
     echo "OK: CAROBD $TAG respondiendo en 127.0.0.1:$PUERTO"
     exit 0
   fi

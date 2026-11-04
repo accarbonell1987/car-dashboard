@@ -85,7 +85,7 @@ SHA=<sha anterior> VPS=<IP_DEL_VPS> DOMINIO=carobd.guay.pro server/deploy/vps/de
 ```
 
 El script del VPS además guarda `compose.yml.prev` y `.env.prev`, y vuelve solo a la versión anterior
-si la nueva no arranca o no responde en `/salud` en 60 segundos.
+si la nueva no arranca o no responde en `/health` en 60 segundos.
 
 Si el vhost causara problemas (root): `rm /etc/nginx/sites-enabled/zz-carobd && nginx -t && systemctl reload nginx`.
 

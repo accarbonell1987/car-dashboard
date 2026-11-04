@@ -50,8 +50,8 @@ echo "== Pruebas de humo"
 FALLO=0
 codigo() { curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$1" || true; }
 
-c="$(codigo "https://$DOMINIO/salud")"
-[[ "$c" == "000" ]] && c="$(codigo "http://$DOMINIO/salud")"   # antes de certbot solo hay http
+c="$(codigo "https://$DOMINIO/health")"
+[[ "$c" == "000" ]] && c="$(codigo "http://$DOMINIO/health")"   # antes de certbot solo hay http
 printf '%-32s %s\n' "$DOMINIO (CAROBD)" "$c"
 [[ "$c" =~ ^[23] ]] || { echo "  CAROBD no responde 2xx/3xx." >&2; FALLO=1; }
 

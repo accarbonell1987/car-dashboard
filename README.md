@@ -12,7 +12,7 @@ Por ahora el vehículo es fijo: Hyundai Accent 2016 1.6 CRDi diésel manual, con
 | `screen/` | App Android para la pantalla del auto (horizontal, 1280x720). Grilla de 6x3 gauges editable, modo demo con el simulador y conexión al ELM327 por Bluetooth. |
 | `mobile/` | App del teléfono en Compose Multiplatform: la misma interfaz para **iPhone y Android** (y una vista previa de escritorio). Vehículo, plan de mantenimiento con lo que falta por km y por fecha, y registro de servicios. |
 | `mobile/iosApp/` | Proyecto de Xcode que envuelve la app para iPhone. |
-| `server/` | API en Ktor con Postgres para el VPS. `POST /sync` recibe y entrega cambios; `GET /salud` responde `ok`. |
+| `server/` | API en Ktor con Postgres para el VPS. `POST /sync` recibe y entrega cambios; `GET /health` responde `ok`. |
 | `server/deploy/` | Compose local para pruebas y `vps/`: despliegue en el VPS compartido (Postgres, API, respaldo diario; nginx del VPS hace de proxy). |
 
 ## Compilar
