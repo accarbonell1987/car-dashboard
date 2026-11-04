@@ -13,7 +13,7 @@ Por ahora el vehículo es fijo: Hyundai Accent 2016 1.6 CRDi diésel manual, con
 | `mobile/` | App del teléfono en Compose Multiplatform: la misma interfaz para **iPhone y Android** (y una vista previa de escritorio). Vehículo, plan de mantenimiento con lo que falta por km y por fecha, y registro de servicios. |
 | `mobile/iosApp/` | Proyecto de Xcode que envuelve la app para iPhone. |
 | `server/` | API en Ktor con Postgres para el VPS. `POST /sync` recibe y entrega cambios; `GET /salud` responde `ok`. |
-| `server/deploy/` | Docker Compose con Postgres, la API, Caddy con TLS y un respaldo diario. |
+| `server/deploy/` | Compose local para pruebas y `vps/`: despliegue en el VPS compartido (Postgres, API, respaldo diario; nginx del VPS hace de proxy). |
 
 ## Compilar
 
@@ -69,15 +69,14 @@ Cada registro tiene un id UUID creado en el dispositivo, `updatedAt` y `deletedA
 
 ## Desplegar el servidor en el VPS
 
-```bash
-./gradlew -Pcarobd.android=false :server:fatJar
-cd server/deploy
-cp .env.ejemplo .env   # completar DOMINIO, DB_PASSWORD y CAROBD_TOKENS
-docker compose up -d --build
-curl https://TU_DOMINIO/salud
-```
+El VPS es compartido con sistemas de clientes: CAROBD escucha solo en `127.0.0.1`, usa su propia red,
+usuario y vhost (`zz-carobd`), y se despliega con una llave que solo puede correr su script.
+La imagen se construye en la Mac para `linux/amd64` y se sube a GHCR; nunca se construye en el VPS.
+Los pasos están en [`server/deploy/vps/INSTALAR.md`](server/deploy/vps/INSTALAR.md).
 
-`CAROBD_TOKENS` tiene la forma `token1:usuario1,token2:usuario2`. Cada dispositivo envía su token como `Authorization: Bearer ...`.
+```bash
+VPS=<ip> DOMINIO=carobd.guay.pro server/deploy/vps/desplegar.sh
+```
 
 ## Fases
 

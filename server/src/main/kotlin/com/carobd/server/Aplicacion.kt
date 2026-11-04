@@ -25,7 +25,7 @@ import io.ktor.server.routing.routing
 
 /**
  * Servidor CAROBD: un solo endpoint de sincronización más salud.
- * Configuración por variables de entorno (ver deploy/docker-compose.yml).
+ * Configuración por variables de entorno (ver deploy/vps/compose.vps.yml).
  */
 fun main() {
     val puerto = System.getenv("PORT")?.toIntOrNull() ?: 8080
