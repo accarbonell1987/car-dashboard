@@ -1,0 +1,82 @@
+# CAROBD en el VPS compartido. Lo sube deploy-vps.sh por stdin; .env y env/ viven solo en el servidor.
+# Reglas del VPS (como Corehub): solo 127.0.0.1, red propia, Postgres sin puerto,
+# logs con tope, imagen fija por sha. No usa la red de Corehub: CAROBD no habla con él.
+# CAROBD_DIR solo se cambia para probar en la Mac; en el VPS queda /opt/carobd/prod.
+name: carobd-prod
+
+x-logs: &logs
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: carobd
+      POSTGRES_USER: carobd
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?falta DB_PASSWORD en .env}
+    volumes:
+      - ${CAROBD_DIR:-/opt/carobd/prod}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carobd"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [carobd]
+    logging: *logs
+    mem_limit: 256m
+
+  api:
+    image: ghcr.io/accarbonell1987/car-dashboard/server:${CAROBD_TAG:?falta CAROBD_TAG}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_PORT:?falta API_PORT en .env}:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: jdbc:postgresql://db:5432/carobd
+      DATABASE_USER: carobd
+      DATABASE_PASSWORD: ${DB_PASSWORD}
+      # El VPS es compartido: la JVM no toma más de lo que necesita.
+      JAVA_TOOL_OPTIONS: "-Xmx192m -XX:+UseSerialGC"
+    env_file:
+      - ${CAROBD_DIR:-/opt/carobd/prod}/env/api.env
+    networks: [carobd]
+    logging: *logs
+    mem_limit: 320m
+
+  # Respaldo diario de la base, se guardan 30 días.
+  respaldo:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ${CAROBD_DIR:-/opt/carobd/prod}/data/respaldos:/respaldos
+    # Espera a que Postgres acepte conexiones y escribe a .tmp: un dump que falla nunca pisa el del día.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -o pipefail
+        while true; do
+          until pg_isready -h db -U carobd -q; do sleep 5; done
+          f=/respaldos/carobd-$$(date +%F).sql.gz
+          if pg_dump -h db -U carobd carobd | gzip > "$$f.tmp"; then mv "$$f.tmp" "$$f"; else rm -f "$$f.tmp"; fi
+          find /respaldos -name 'carobd-*.sql.gz' -mtime +30 -delete
+          sleep 86400
+        done
+    networks: [carobd]
+    logging: *logs
+    mem_limit: 64m
+
+networks:
+  carobd:
+    name: carobd-prod

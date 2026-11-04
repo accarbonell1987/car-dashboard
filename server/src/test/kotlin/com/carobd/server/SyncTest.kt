@@ -36,7 +36,7 @@ class SyncTest {
         application { modulo(Almacen(db), Tokens.desdeTexto("tok-pantalla:alberto,tok-movil:alberto,tok-otro:otra")) }
         val cliente = createClient { install(ContentNegotiation) { json(SyncJson.json) } }
 
-        assertEquals(HttpStatusCode.OK, cliente.get("/salud").status)
+        assertEquals(HttpStatusCode.OK, cliente.get("/health").status)
         assertEquals(HttpStatusCode.Unauthorized, cliente.post("/sync") {
             contentType(ContentType.Application.Json); setBody(SyncRequest("x", null, PaqueteCambios()))
         }.status)
