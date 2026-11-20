@@ -1,0 +1,46 @@
+epoch,hora,evento
+1795189697,12:48:17,registro OK (inicio 12:48:04, ciclo ~5 s)
+1795189697,12:48:17,PEDIDO paso 1 base
+1795189722,12:48:42,PEDIDO paso 1 base (reenviado)
+1795189735,12:48:55,NOTA base con luces de posicion encendidas
+1795189802,12:50:02,INICIO paso 1 base
+1795189815,12:50:15,FIN paso 1 base
+1795189815,12:50:15,PEDIDO paso 2 freno de mano
+1795189933,12:52:13,REINICIO registro 12:52:03 tras reenchufar adaptador
+1795189933,12:52:13,INICIO paso 1 base (todo cerrado, cinturon puesto, freno de mano puesto, luces de posicion)
+1795189947,12:52:27,FIN paso 1 base
+1795189947,12:52:27,PEDIDO paso 2 soltar freno de mano y volver a ponerlo
+1795190001,12:53:21,HECHO paso 2 (mensaje 15:53:16Z)
+1795190001,12:53:21,PEDIDO paso 3 cinturon conductor
+1795190040,12:54:00,HECHO paso 3 (mensaje 15:53:55Z)
+1795190040,12:54:00,PEDIDO paso 4 puerta conductor
+1795190081,12:54:41,HECHO paso 4 (mensaje 15:54:36Z)
+1795190081,12:54:41,PEDIDO paso 5 puerta acompanante
+1795190130,12:55:30,HECHO paso 5 (mensaje 15:55:26Z)
+1795190163,12:56:03,REINICIO solo 690 (12:55:56), ~10 tramas/s
+1795190163,12:56:03,NOTA paso 5 sin cambios en 690 ni otros IDs: se repite
+1795190163,12:56:03,PEDIDO paso 5 repetir puerta acompanante
+1795190195,12:56:35,HECHO paso 5 repetido (mensaje 15:56:29Z)
+1795190200,12:56:40,PEDIDO paso 6 trasera izquierda
+1795190221,12:57:01,NOTA usuario: con puerta acompanante el testigo del tablero SI se enciende (pero 690 no cambia)
+1795190251,12:57:31,HECHO paso 6 (mensaje 15:57:26Z)
+1795190251,12:57:31,PEDIDO paso 7 trasera derecha
+1795190297,12:58:17,HECHO paso 7 (mensaje 15:58:11Z)
+1795190297,12:58:17,PEDIDO paso 8 baul
+1795190345,12:59:05,HECHO paso 8 (mensaje 15:58:59Z)
+1795190345,12:59:05,PEDIDO paso 9 intermitente izq luego der
+1795190355,12:59:15,NOTA paso 8: se abrio la tapa de combustible, no el baul (690 sin cambios)
+1795190387,12:59:47,HECHO paso 9 (mensaje 15:59:42Z)
+1795190387,12:59:47,PEDIDO paso 10 balizas
+1795190417,13:00:17,PEDIDO paso 8 repetir baul (usuario abre una puerta para llegar)
+1795190447,13:00:47,NOTA usuario repite pasos 8 9 10 desde aqui; PEDIDO paso 8 baul
+1795190482,13:01:22,HECHO paso 8 repetido baul (mensaje 16:01:18Z)
+1795190482,13:01:22,PEDIDO paso 9 repetir intermitentes
+1795190523,13:02:03,NOTA baul: bajo y subio por la puerta del acompanante
+1795190523,13:02:03,HECHO paso 9 repetido (mensaje 16:01:58Z)
+1795190523,13:02:03,PEDIDO paso 10 balizas
+1795190578,13:02:58,HECHO paso 10 (mensaje 16:02:51Z). NOTA: el usuario va de acompanante, su padre conduce; solo el cinturon del conductor avisa
+1795190578,13:02:58,PEDIDO paso 11 luces de posicion apagar/encender
+1795190621,13:03:41,HECHO paso 11 luces de posicion (mensaje 16:03:35Z)
+1795190621,13:03:41,PEDIDO paso 12 freno de mano repetir
+1795190656,13:04:16,HECHO paso 12 freno de mano (mensaje 16:04:10Z)

@@ -1,0 +1,220 @@
+Exploración ELM327 2026-11-20 11:49:13  BLE 'OBDII'
+ATZ    -> ['�', 'ELM327v1.5']
+ATE0   -> ['OK']
+ATL0   -> ['OK']
+ATS0   -> ['OK']
+ATH1   -> ['OK']
+ATAT1  -> ['OK']
+ATSP6  -> ['OK']
+ATI -> ['ELM327v1.5']  ATRV -> ['14.3V']
+
+==================== FASE 1: OBD-II estándar ====================
+0100 -> ['7E8064100983BA013']
+0120 -> ['7E8064120B819A011']
+0140 -> ['7E8064140CCD3009D']
+0160 -> ['7E8064160EFFFFFF3']
+0180 -> ['7E8064180EAC27190']
+
+PIDs Modo 01 soportados: 01 04 05 0B 0C 0D 0F 10 11 13 1C 1F 20 21 23 24 25 2C 2D 30 31 33 3C 40 41 42 45 46 49 4A 4C 4F 50 59 5C 5D 5E 60 61 62 63 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7F 80 81 82 83 85 87 89 8A 8F 92 93 94 98 99 9C
+
+-- Lectura de cada PID soportado --
+0101 Estado MIL/DTC           [7E8] 0028EBEB
+0104 Carga motor              [7E8] 32
+0105 Refrigerante             [7E8] 7B
+010B MAP                      [7E8] 65
+010C RPM                      [7E8] 0C3A
+010D Velocidad                [7E8] 00
+010F Temp admisión            [7E8] 5D
+0110 MAF                      [7E8] 03DA
+0111 Acelerador               [7E8] 00
+0113 Sensores O2              [7E8] 00
+011C Norma OBD                [7E8] 06
+011F Tiempo encendido         [7E8] 0256
+0121 Dist. con MIL            [7E8] 0000
+0123 Presión rail             [7E8] 0919
+0124 ?                        [7E8] 00000000
+0125 ?                        [7E8] 00000000
+012C EGR ordenada             [7E8] 00
+012D Error EGR                [7E8] 80
+0130 Arranques desde borrado  [7E8] FF
+0131 Dist. desde borrado      [7E8] 2E98
+0133 Barométrica              [7E8] 63
+013C ?                        [7E8] 018E
+0141 Monitores ciclo          [7E8] 000F8888
+0142 Voltaje módulo           [7E8] 37C8
+0145 Acelerador relativo      [7E8] 00
+0146 Temp ambiente            [7E8] 5C
+0149 Pedal D                  [7E8] 25
+014A Pedal E                  [7E8] 26
+014C Acelerador ordenado      [7E8] 00
+014F ?                        [7E8] 00000000
+0150 ?                        [7E8] 00000000
+0159 ?                        [7E8] 0A5C
+015C Temp aceite              [7E8] 00
+015D ?                        [7E8] 67D8
+015E Consumo L/h              [7E8] 0005
+0161 Par pedido %             [7E8] 76
+0162 Par real %               [7E8] 7F
+0163 Par referencia           [7E8] 0140
+0165 Entradas aux             [7E8] 00
+0166 ?                        [7E8] 00013D
+0167 Refrigerante (2)         [7E8] 00
+0168 Temp admisión (2)        [7E8] 0057
+0169 EGR (2)                  [7E8] 00
+016A ?                        [7E8] 00
+016B Temp EGR                 [7E8] 00
+016C ?                        [7E8] 00
+016D ?                        [7E8] 000AAB094E
+016E ?                        [7E8] 00
+016F Presión entrada turbo    [7E8] 00
+0170 Control boost            [7E8] 00
+0171 VGT                      [7E8] 00
+0172 ?                        [7E8] 00
+0173 Presión escape           [7E8] 00
+0174 RPM turbo                [7E8] 00
+0175 ?                        [7E8] 0056019005DC
+0176 ?                        [7E8] 00
+0177 Temp intercooler         [7E8] 00
+0178 Temp gases escape B1     [7E8] 0005DC05DC
+0179 ?                        [7E8] 00
+017A DPF B1                   [7E8] 000000
+017B ?                        [7E8] 00
+017C Temp DPF                 [7E8] 0005DC
+017F Tiempo motor total       [7E8] 0001077465004E6BEB00000000
+0181 ?                        [7E8] 000000000000000000000000000000000000000000
+0182 ?                        [7E8] 0000000000000000000000000000000000
+0183 NOx                      [7E8] 0000000000
+0185 ?                        [7E8] 00
+0187 ?                        [7E8] 00
+0189 ?                        [7E8] 00
+018A ?                        [7E8] 00
+018F ?                        [7E8] 00000000
+0192 ?                        [7E8] 00
+0193 ?                        [7E8] 00
+0194 ?                        [7E8] 00
+0198 ?                        [7E8] 00
+0199 ?                        [7E8] 00
+019C ?                        [7E8] 0000
+
+-- Modo 09 (información del vehículo) --
+0900 [7E8] 490054600000  'T`..'
+0902 [7E8] 4902014B4D484355343155414755303030303030  '.KMHCU41UAGU000000'
+0904 [7E8] 490402443052423330304D4E30454E55363031504D5330303030303030303030303030  '.D0RB300MN0ENU601PMS0000000000000'
+0906 [7E8] 49060225E06B8B00000000  '.%.k.....'
+0908 -> ['NODATA']
+090A [7E8] 490A0145434D002D456E67696E65436F6E74726F6C0000  '.ECM.-EngineControl..'
+090B [7E8] 490B1207B948690000000000000000000000000000000000000000000000000000000000000000  '...Hi................................'
+
+-- Códigos de falla --
+03 Confirmados  [7E8] 4300 -> ninguno
+07 Pendientes   [7E8] 4700 -> ninguno
+0A Permanentes  -> ['NODATA']
+
+-- Modo 06 (resultados de monitores) --
+0600 -> ['NODATA']
+
+==================== FASE 2: módulos que responden en el bus ====================
+  71A responde a 3E00: 71B:7F3E80
+  7B3 responde a 3E00: 7BB:7E
+  7C6 responde a 3E00: 7CE:7E00
+  7D2 responde a 3E00: 7DA:7F3E80
+  7D4 responde a 1001: 7DC:7F1012
+  7E0 responde a 3E00: 7E8:7E00
+
+Módulos encontrados: 71A 7B3 7C6 7D2 7D4 7E0
+
+-- Identificación de cada módulo --
+
+Módulo 71A:
+
+Módulo 7B3:
+
+Módulo 7C6:
+  1A80 [7CE] 61120309  'a...'
+  1A90 [7CE] 61120309  'a...'
+  2101 [7CE] 6100  'a.'
+  2180 [7CE] 61120309  'a...'
+
+Módulo 7D2:
+
+Módulo 7D4:
+  1A80 [7DC] 5A8052426B4D445053203620312E3035204D5800313141523138415330382D44423235203135303632380000000000  'Z.RBkMDPS 6 1.05 MX.11AR18AS08-DB25 150628.....'
+  2101 [7DC] 610106  'a..'
+
+Módulo 7E0:
+  22F190 [7E8] 62F1904B4D484355343155414755303030303030  'b..KMHCU41UAGU000000'
+  22F18B [7E8] 62F18B00000000  'b......'
+  22F189 [7E8] 62F189443052423330304D4E30454E55363031  'b..D0RB300MN0ENU601'
+  22F191 [7E8] 62F19133393134302D32413338352D  'b..39140-2A385-'
+  22F193 [7E8] 62F193443052423330304D4E30454E55363031  'b..D0RB300MN0ENU601'
+
+==================== FASE 3: datos propios de Hyundai en el motor (7E0) ====================
+
+-- Servicio 21 (bloques de datos estilo Hyundai/Kia) --
+  21: servicio no soportado (NRC 11)
+
+-- Servicio 22, identificadores 0000 a 00FF --
+  2200FA (67 bytes) 6200FA486174746F726900426F7363682E705F313230302E5377697463684F7665722E4D45444331372E56303031004150504C000C418087040340AA99340800100100
+  22: 1 respuestas válidas; negativas por código: 31x255
+
+-- Servicio 22, identificadores 0100 a 01FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0200 a 02FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0300 a 03FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 1000 a 10FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 1100 a 11FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2000 a 20FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2100 a 21FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores F000 a F0FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores F100 a F1FF --
+  22F180 (58 bytes) 62F1804D452844292F45444331372053425F5632332E30302E30302F313739333A45444331372050313230305F43422E52443041202020202020
+  22F182 (19 bytes) 62F182443052423330304D4E30454E55363031
+  22F189 (19 bytes) 62F189443052423330304D4E30454E55363031
+  22F18A (13 bytes) 62F18A20202020202020202020
+  22F18B (7 bytes) 62F18B00000000
+  22F18C (15 bytes) 62F18C202020202020202020202020
+  22F18D (33 bytes) 62F18D50313230302E524430412020202020202020202020202020202020202020
+  22F18E (19 bytes) 62F18E443052423330304D4E30454E55363031
+  22F18F (7 bytes) 62F18F25E06B8B
+  22F190 (20 bytes) 62F1904B4D484355343155414755303030303030
+  22F191 (15 bytes) 62F19133393134302D32413338352D
+  22F192 (15 bytes) 62F192025487140007150715025037
+  22F193 (19 bytes) 62F193443052423330304D4E30454E55363031
+  22F194 (146 bytes) 62F19430303030303031303A313033373535373234313A313230304430304E2030303030303033303A313033373535373234313A313230304430304E2030303030303034303A313033373535373234313A313230304430304E2030303030303036303A313033373535373234313A313230304430304E2030303030303038303A313033373535373234313A31323030443030
+  22F198 (13 bytes) 62F19820202020202020202020
+  22F199 (7 bytes) 62F19900000000
+  22: 16 respuestas válidas; negativas por código: 31x240
+
+==================== FASE 4: escucha pasiva del bus CAN ====================
+Tramas capturadas en 4.0s: 29, IDs distintos: 14  (BUFFER FULL: el clon perdió tramas)
+  080  x3     ej: 0020240C161116A2  00202C0C1511158E  0020300C1511152F
+  081  x2     ej: 400481000000001E  40048100000000D2
+  0A0  x1     ej: 3182380C00FE0000
+  0A1  x1     ej: 80808080665C0A00
+  18F  x2     ej: 00471500004E0020  00471600004E0020
+  260  x2     ej: 1415003000710019  1416003000710018
+  2A0  x2     ej: 2000810000000000
+  2C0  x3     ej: 0100000000000000
+  316  x3     ej: 21152C0C15110000  2115300C15110000  2116240C16110000
+  329  x3     ej: 0CB97D1009200010  E0B97D1009200010
+  350  x2     ej: 001075929900006E  0010C592990000DE
+  382  x2     ej: 00FE0F0000000004  00FE0F000000008C
+  543  x1     ej: 0000000000000000
+  545  x2     ej: D00A008C36008500  D00A008C39008500
+
+Fin. Duración 404 s. Voltaje final: ['14.2V']
