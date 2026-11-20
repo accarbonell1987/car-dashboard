@@ -59,6 +59,8 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
                         "consumo_l100" to if (kmh > 5) consumoLh / kmh * 100 else 0.0,
                         "voltaje" to voltaje,
                         "temp_ambiente" to 24.0,
+                        "mil" to 0.0,
+                        "codigos_falla" to 0.0,
                         "temp_dpf" to 180 + carga * 2.5,
                         "tiempo_motor" to seg,
                         "marcha" to marcha.toDouble(),

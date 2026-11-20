@@ -46,6 +46,16 @@ class CoreTest {
     }
 
     @Test
+    fun `lee la luz de check engine y los codigos del PID 0101`() {
+        // Real reply of the Accent: MIL off, no codes.
+        assertEquals(0.0, Decodificador.decodificar("41 01 00 28 EB EB", Catalogo.porId("mil")!!))
+        assertEquals(0.0, Decodificador.decodificar("41 01 00 28 EB EB", Catalogo.porId("codigos_falla")!!))
+        // Bit 7 of A is the lamp, bits 0-6 the number of stored codes: 0x83 = lamp on, 3 codes.
+        assertEquals(1.0, Decodificador.decodificar("41 01 83 28 EB EB", Catalogo.porId("mil")!!))
+        assertEquals(3.0, Decodificador.decodificar("41 01 83 28 EB EB", Catalogo.porId("codigos_falla")!!))
+    }
+
+    @Test
     fun `gana el updatedAt mas reciente`() {
         val viejo = viaje("v1", t0, km = 10.0)
         val nuevo = viaje("v1", t1, km = 12.0)

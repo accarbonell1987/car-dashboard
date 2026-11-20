@@ -88,7 +88,7 @@ object Decodificador {
     }
 }
 
-/** Evaluador mínimo de fórmulas aritméticas con variables: + - * / y paréntesis. */
+/** Evaluador mínimo de fórmulas aritméticas con variables: + - * / y paréntesis. `{A:7}` es el bit 7 de A, como en Torque. */
 object Formula {
     fun evaluar(expr: String, vars: Map<String, Double>): Double = Parser(expr.replace(" ", ""), vars).parse()
 
@@ -123,6 +123,14 @@ object Formula {
 
         private fun factor(): Double {
             if (i < s.length && s[i] == '-') { i++; return -factor() }
+            if (i < s.length && s[i] == '{') {
+                val cierre = s.indexOf('}', i)
+                require(cierre > i) { "Falta '}' en $s" }
+                val (nombre, bit) = s.substring(i + 1, cierre).split(':')
+                i = cierre + 1
+                val valor = vars[nombre] ?: error("Variable desconocida: $nombre")
+                return ((valor.toInt() shr bit.toInt()) and 1).toDouble()
+            }
             if (i < s.length && s[i] == '(') {
                 i++
                 val v = expr()

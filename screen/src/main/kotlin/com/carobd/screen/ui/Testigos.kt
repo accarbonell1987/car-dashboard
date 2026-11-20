@@ -41,6 +41,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import com.carobd.core.obd.Carroceria
 import com.carobd.screen.gauges.LocalPaleta
 
@@ -64,6 +68,8 @@ internal fun Testigos(valores: Map<String, Double>) {
     val testigos = listOf(
         Testigo(Carroceria.PUERTA, "Puerta abierta", p.atencion, 900, RepeatMode.Reverse, DrawScope::puerta),
         Testigo(Carroceria.CINTURON, "Cinturón sin abrochar", p.peligro, 500, RepeatMode.Reverse, DrawScope::cinturon),
+        // Steady like the real lamp: no loop (periodoMs = 0).
+        Testigo("mil", "Check engine", p.atencion, 0, RepeatMode.Restart, DrawScope::motor),
         // ponytail: 60° per period is seamless because the snowflake has six-fold symmetry.
         Testigo(Carroceria.AIRE, "Aire acondicionado", p.normal, 1200, RepeatMode.Restart, DrawScope::copoDeNieve),
     ).filter { valores[it.id] != null }
@@ -72,12 +78,15 @@ internal fun Testigos(valores: Map<String, Double>) {
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        for (t in testigos) key(t.id) { IconoTestigo(t, valores[t.id] == 1.0) }
+        for (t in testigos) key(t.id) {
+            val codigos = valores["codigos_falla"]?.toInt()?.takeIf { t.id == "mil" && it > 0 }
+            IconoTestigo(t, valores[t.id] == 1.0, codigos)
+        }
     }
 }
 
 @Composable
-private fun IconoTestigo(t: Testigo, activo: Boolean) {
+private fun IconoTestigo(t: Testigo, activo: Boolean, insignia: Int? = null) {
     val p = LocalPaleta.current
     val color by animateColorAsState(if (activo) t.color else p.tenue, tween(250), label = "color")
     val fondo by animateColorAsState(if (activo) t.color.copy(alpha = 0.18f) else p.pista, tween(250), label = "fondo")
@@ -89,7 +98,7 @@ private fun IconoTestigo(t: Testigo, activo: Boolean) {
         label = "escala",
     )
     // Only animate while on: a resting dashboard should not burn frames.
-    val ciclo = if (activo) {
+    val ciclo = if (activo && t.periodoMs > 0) {
         rememberInfiniteTransition(label = t.id).animateFloat(
             0f, 1f, infiniteRepeatable(tween(t.periodoMs, easing = LinearEasing), t.repetir), label = "ciclo",
         ).value
@@ -102,7 +111,7 @@ private fun IconoTestigo(t: Testigo, activo: Boolean) {
             .clip(RoundedCornerShape(12.dp))
             .background(fondo)
             .semantics {
-                contentDescription = t.nombre
+                contentDescription = if (insignia == null) t.nombre else "${t.nombre}, $insignia códigos de falla"
                 stateDescription = if (activo) "encendido" else "apagado"
             },
         contentAlignment = Alignment.Center,
@@ -110,6 +119,15 @@ private fun IconoTestigo(t: Testigo, activo: Boolean) {
         Canvas(Modifier.size(28.dp)) {
             // Icons are authored on a 24x24 grid, like web SVG icons.
             scale(size.minDimension / 24f, pivot = Offset.Zero) { t.dibujar(this, color, encendido, ciclo) }
+        }
+        if (insignia != null) {
+            Text(
+                "$insignia",
+                color = p.fondo,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).clip(CircleShape).background(t.color).padding(horizontal = 5.dp),
+            )
         }
     }
 }
@@ -130,6 +148,13 @@ private fun DrawScope.puerta(color: Color, encendido: Float, ciclo: Float) {
 // Seated person with a diagonal belt.
 private val persona = svg("M12 2.5a2 2 0 1 1 0 4a2 2 0 1 1 0 -4z M7.5 21v-6a4.5 4.5 0 0 1 9 0v6")
 private val banda = svg("M9 10.5l7 8")
+
+// Engine block with the oil cap, like the check engine lamp.
+private val bloque = svg("M8 6h4 M10 6v3 M6 9h8l2 2h2v-2h2v7h-2v-2h-2l-2 3h-6l-2-2h-2v-5h2z")
+
+private fun DrawScope.motor(color: Color, encendido: Float, ciclo: Float) {
+    drawPath(bloque, color, style = trazo)
+}
 
 private fun DrawScope.cinturon(color: Color, encendido: Float, ciclo: Float) {
     drawPath(persona, color, style = trazo)

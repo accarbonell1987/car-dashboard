@@ -46,6 +46,9 @@ object Catalogo {
         Senal("consumo_lh", "Consumo", "L/h", "01", "5E", formula = "(A*256+B)/20", bytes = 2, min = 0.0, max = 60.0, ritmo = Ritmo.MEDIO),
         Senal("combustible", "Combustible", "%", "01", "2F", formula = "A*100/255", min = 0.0, max = 100.0, ritmo = Ritmo.LENTO),
         Senal("voltaje", "Voltaje", "V", "01", "42", formula = "(A*256+B)/1000", bytes = 2, min = 0.0, max = 16.0, ritmo = Ritmo.LENTO),
+        // Engine status (PID 0101): bit 7 of A is the check engine lamp, bits 0-6 the stored code count.
+        Senal("mil", "Check engine", "", "01", "01", formula = "{A:7}", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
+        Senal("codigos_falla", "Códigos de falla", "", "01", "01", formula = "A-{A:7}*128", min = 0.0, max = 127.0, ritmo = Ritmo.LENTO),
         Senal("temp_ambiente", "Temp. ambiente", "°C", "01", "46", formula = "A-40", min = -40.0, max = 60.0, ritmo = Ritmo.LENTO),
         Senal("barometrica", "Presión barométrica", "kPa", "01", "33", formula = "A", min = 0.0, max = 255.0, ritmo = Ritmo.LENTO),
         // SAE J1979: A = sensores presentes (bit 0 = entrada del banco 1), B-C = esa temperatura ×0,1 −40.
