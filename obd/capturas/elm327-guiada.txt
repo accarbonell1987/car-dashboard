@@ -1,0 +1,17 @@
+Captura guiada 2026-11-20 12:34:25  BLE 'OBDII'
+ATZ -> ['�', 'ELM327v1.5'] | ATRV -> ['14.1V']
+010C -> OK
+REGISTRANDO desde 12:34:30 (epoch 1795188870.154)
+12:35:18 t=   48s ciclo 10 pids 6/6 5A0:1 5A1:2 5A2:1
+12:36:02 t=   92s ciclo 20 pids 6/6 4F1:3 543:5 5A0:1
+12:36:47 t=  137s ciclo 30 pids 6/6 0A0:3 0A1:2 4F1:1
+12:37:35 t=  185s ciclo 40 pids 6/6 316:29 081:16 0A0:1
+12:38:20 t=  230s ciclo 50 pids 6/6 4F0:15 4F0:15 316:29
+12:39:05 t=  275s ciclo 60 pids 6/6 382:14 382:15 4F0:13
+12:39:50 t=  320s ciclo 70 pids 6/6 350:12 350:14 382:11
+12:40:37 t=  368s ciclo 80 pids 6/6 080:29 080:20 350:12
+12:41:23 t=  414s ciclo 90 pids 6/6 18F:22 18F:28 080:26
+12:42:08 t=  458s ciclo 100 pids 6/6 2C0:29 2C0:25 18F:23
+12:42:54 t=  504s ciclo 110 pids 6/6 2A0:29 2A0:29 2C0:31
+12:43:38 t=  548s ciclo 120 pids 6/6 260:31 260:29 2A0:29
+FIN 12:44:11  581s, 127 ciclos

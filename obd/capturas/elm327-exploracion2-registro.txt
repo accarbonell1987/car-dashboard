@@ -1,0 +1,8 @@
+Exploración 2 ELM327 2026-11-20 12:16:49  BLE 'OBDII'
+ATZ -> ['�', 'ELM327v1.5']
+ATRV -> ['14.2V']
+
+==================== FASE 4: registro de PIDs clave ====================
+975 lecturas válidas en 61s = 16.1 lecturas/s (1.07 ciclos/s de 15 PIDs). CSV: ../capturas/elm327-ralenti.csv
+
+Fin. Duración 61 s. Voltaje final: ['14.1V']

@@ -1,0 +1,21 @@
+Exploración 2 ELM327 2026-11-20 12:21:56  BLE 'OBDII'
+ATZ -> ['�', 'ELM327v1.5']
+ATRV -> ['14.2V']
+
+==================== FASE 5: barrido de lectura en otros módulos ====================
+
+Módulo 7D2 (responde 7DA):
+  21 00-FF: 0 válidas; negativas: 80x256
+  1A 80-9F: 0 válidas; negativas: 80x32
+  22: servicio no soportado (NRC 11)
+  22 F100-F1FF: 0 válidas; negativas: 11x4
+  22: servicio no soportado (NRC 11)
+  22 0000-00FF: 0 válidas; negativas: 11x4
+  22: servicio no soportado (NRC 11)
+  22 B000-B0FF: 0 válidas; negativas: 11x4
+  22: servicio no soportado (NRC 11)
+  22 C000-C0FF: 0 válidas; negativas: 11x4
+
+Respuestas válidas por módulo: 7D2=0
+
+Fin. Duración 35 s. Voltaje final: ['14.2V']

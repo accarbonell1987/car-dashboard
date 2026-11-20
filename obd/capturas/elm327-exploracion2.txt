@@ -1,0 +1,26 @@
+Exploración 2 ELM327 2026-11-20 12:05:15  BLE 'OBDII'
+ATZ -> ['�', 'ELM327v1.5']
+ATRV -> ['14.2V']
+
+==================== FASE 1: inventario de IDs del bus ====================
+  grupo 000-03F: 0 tramas, IDs []
+  grupo 040-07F: 0 tramas, IDs []
+  grupo 080-0BF: 110 tramas, IDs ['080', '081', '0A0', '0A1']  BUFFER FULL
+  grupo 0C0-0FF: 0 tramas, IDs []
+  grupo 100-13F: 0 tramas, IDs []
+  grupo 140-17F: 0 tramas, IDs []
+  grupo 180-1BF: 194 tramas, IDs ['18F']
+  grupo 1C0-1FF: 0 tramas, IDs []
+  grupo 200-23F: 0 tramas, IDs []
+  grupo 240-27F: 194 tramas, IDs ['260']
+  grupo 280-2BF: 194 tramas, IDs ['2A0']
+  grupo 2C0-2FF: 194 tramas, IDs ['2C0']
+  grupo 300-33F: 51 tramas, IDs ['316', '329']
+  grupo 340-37F: 0 tramas, IDs []
+  grupo 380-3BF: 0 tramas, IDs []
+  grupo 3C0-3FF: 0 tramas, IDs []
+  grupo 400-43F: 0 tramas, IDs []
+  grupo 440-47F: 0 tramas, IDs []
+  grupo 480-4BF: 0 tramas, IDs []
+  grupo 4C0-4FF: 0 tramas, IDs []
+  grupo 500-53F: 0 tramas, IDs []

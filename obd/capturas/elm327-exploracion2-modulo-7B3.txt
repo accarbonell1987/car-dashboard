@@ -1,0 +1,23 @@
+Exploración 2 ELM327 2026-11-20 12:21:36  BLE 'OBDII'
+ATZ -> ['�', 'ELM327v1.5']
+ATRV -> ['14.3V']
+
+==================== FASE 5: barrido de lectura en otros módulos ====================
+
+Módulo 7B3 (responde 7BB):
+  21 00..: sin respuesta, se omite el resto
+  21 00-FF: 0 válidas; negativas: ninguna
+  1A 80..: sin respuesta, se omite el resto
+  1A 80-9F: 0 válidas; negativas: ninguna
+  22 F100..: sin respuesta, se omite el resto
+  22 F100-F1FF: 0 válidas; negativas: ninguna
+  22 0000..: sin respuesta, se omite el resto
+  22 0000-00FF: 0 válidas; negativas: ninguna
+  22 B000..: sin respuesta, se omite el resto
+  22 B000-B0FF: 0 válidas; negativas: ninguna
+  22 C000..: sin respuesta, se omite el resto
+  22 C000-C0FF: 0 válidas; negativas: ninguna
+
+Respuestas válidas por módulo: 7B3=0
+
+Fin. Duración 16 s. Voltaje final: ['14.2V']

@@ -1,0 +1,35 @@
+Exploración 2 ELM327 2026-11-20 12:17:55  BLE 'OBDII'
+ATZ -> ['�', 'ELM327v1.5']
+ATRV -> ['14.3V']
+
+==================== FASE 5: barrido de lectura en otros módulos ====================
+
+Módulo 7D4 (responde 7DC):
+  2101 (3 bytes) 610106  'a..'
+  21A2 (10 bytes) 61A27A83000026000000  'a.z...&...'
+  21A3 (18 bytes) 61A3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF  'a.................'
+  21A4 (16 bytes) 61A400BE00FF010102DC01FC00DD01FC  'a...............'
+  21A5 (8 bytes) 61A500BE00FF0101  'a.......'
+  21A6 (8 bytes) 61A60000030C0003  'a.......'
+  21A7 (5 bytes) 61A70F0A18  'a....'
+  21A9 (18 bytes) 61A9E62A3D94C527408037A6DE32524F067F  'a..*=..'@.7..2RO..'
+  21AA (5 bytes) 61AA5FEF00  'a._..'
+  21AB (5 bytes) 61AB040000  'a....'
+  21CA (6 bytes) 61CAFFFFFFFF  'a.....'
+  21CB (6 bytes) 61CB00BFFF40  'a....@'
+  21CC (6 bytes) 61CCFFFFFFFF  'a.....'
+  21 00-FF: 13 válidas; negativas: 12x243
+  1A80 (47 bytes) 5A8052426B4D445053203620312E3035204D5800313141523138415330382D44423235203135303632380000000000  'Z.RBkMDPS 6 1.05 MX.11AR18AS08-DB25 150628.....'
+  1A 80-9F: 1 válidas; negativas: 12x31
+  22 F100..: sin respuesta, se omite el resto
+  22 F100-F1FF: 0 válidas; negativas: ninguna
+  22 0000..: sin respuesta, se omite el resto
+  22 0000-00FF: 0 válidas; negativas: ninguna
+  22 B000..: sin respuesta, se omite el resto
+  22 B000-B0FF: 0 válidas; negativas: ninguna
+  22 C000..: sin respuesta, se omite el resto
+  22 C000-C0FF: 0 válidas; negativas: ninguna
+
+Respuestas válidas por módulo: 7D4=14
+
+Fin. Duración 38 s. Voltaje final: ['14.3V']

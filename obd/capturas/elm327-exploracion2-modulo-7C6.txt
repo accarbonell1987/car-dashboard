@@ -1,0 +1,70 @@
+Exploración 2 ELM327 2026-11-20 12:18:37  BLE 'OBDII'
+ATZ -> ['�', 'ELM327v1.5']
+ATRV -> ['14.2V']
+
+==================== FASE 5: barrido de lectura en otros módulos ====================
+
+Módulo 7C6 (responde 7CE):
+  2101 (2 bytes) 6100  'a.'
+  2102 (2 bytes) 6100  'a.'
+  2103 (2 bytes) 6100  'a.'
+  2104 (2 bytes) 6100  'a.'
+  2105 (2 bytes) 6100  'a.'
+  2106 (2 bytes) 6100  'a.'
+  2107 (2 bytes) 6100  'a.'
+  2108 (2 bytes) 6100  'a.'
+  210C (9 bytes) 610000024602460011  'a...F.F..'
+  210E (11 bytes) 61035D021302FB01750000  'a.].....u..'
+  210F (3 bytes) 610000  'a..'
+  2110 (3 bytes) 61030C  'a..'
+  211A (4 bytes) 61644800  'adH.'
+  2120 (2 bytes) 6100  'a.'
+  212A (5 bytes) 6100016484  'a..d.'
+  2132 (3 bytes) 610000  'a..'
+  2144 (2 bytes) 6100  'a.'
+  2145 (2 bytes) 6100  'a.'
+  2146 (2 bytes) 6100  'a.'
+  2147 (5 bytes) 6164226484  'ad"d.'
+  2180 (4 bytes) 61120309  'a...'
+  21 00-FF: 21 válidas; negativas: 22x235
+  1A80 (4 bytes) 61120309  'a...'
+  1A81 (4 bytes) 61120309  'a...'
+  1A82 (4 bytes) 61120309  'a...'
+  1A83 (4 bytes) 61120309  'a...'
+  1A84 (4 bytes) 61120309  'a...'
+  1A85 (4 bytes) 61120309  'a...'
+  1A86 (4 bytes) 61120309  'a...'
+  1A87 (4 bytes) 61120309  'a...'
+  1A88 (4 bytes) 5A88FFFF  'Z...'
+  1A89 (4 bytes) 61120309  'a...'
+  1A8A (4 bytes) 61120309  'a...'
+  1A8B (4 bytes) 61120309  'a...'
+  1A8C (4 bytes) 61120309  'a...'
+  1A8D (4 bytes) 61120309  'a...'
+  1A8E (4 bytes) 61120309  'a...'
+  1A8F (4 bytes) 61120309  'a...'
+  1A90 (4 bytes) 61120309  'a...'
+  1A91 (4 bytes) 61120309  'a...'
+  1A92 (4 bytes) 61120309  'a...'
+  1A93 (4 bytes) 61120309  'a...'
+  1A94 (4 bytes) 61120309  'a...'
+  1A95 (4 bytes) 61120309  'a...'
+  1A96 (4 bytes) 61120309  'a...'
+  1A97 (4 bytes) 61120309  'a...'
+  1A98 (4 bytes) 61120309  'a...'
+  1A99 (4 bytes) 61120309  'a...'
+  1A9A (4 bytes) 61120309  'a...'
+  1A9B (4 bytes) 61120309  'a...'
+  1A9C (4 bytes) 61120309  'a...'
+  1A9D (4 bytes) 61120309  'a...'
+  1A9E (4 bytes) 61120309  'a...'
+  1A9F (4 bytes) 61120309  'a...'
+  1A 80-9F: 32 válidas; negativas: ninguna
+  22 F100-F1FF: 0 válidas; negativas: 22x256
+  22 0000-00FF: 0 válidas; negativas: 22x256
+  22 B000-B0FF: 0 válidas; negativas: 22x256
+  22 C000-C0FF: 0 válidas; negativas: 22x256
+
+Respuestas válidas por módulo: 7C6=53
+
+Fin. Duración 174 s. Voltaje final: ['14.1V']

@@ -1,0 +1,26 @@
+epoch,hora,evento
+1795188919.125,12:35:19,registro OK (inicio 12:34:30)
+1795188919,12:35:19,PEDIDO paso 1 ralenti sin tocar
+1795188966,12:36:06,HECHO paso 1 (mensaje 15:36:06Z)
+1795188971,12:36:11,PEDIDO paso 2 2000 rpm mantenidas
+1795188996,12:36:36,HECHO paso 2
+1795189001,12:36:41,PEDIDO paso 3 golpe a 3000 y soltar
+1795189014,12:36:54,HECHO paso 3
+1795189026,12:37:06,PEDIDO paso 3 repetir (golpes cortos: max visto 1144 rpm)
+1795189031,12:37:11,HECHO paso 3 (repeticion)
+1795189043,12:37:23,PEDIDO paso 3 otra vez (sin picos en repeticion)
+1795189077,12:37:57,HECHO paso 3 (6 s a 3000)
+1795189086,12:38:06,PEDIDO paso 4 freno pisado
+1795189141,12:39:01,HECHO paso 4
+1795189147,12:39:07,PEDIDO paso 5 embrague pisado
+1795189198,12:39:58,HECHO paso 5
+1795189204,12:40:04,PEDIDO paso 6 AC al maximo
+1795189251,12:40:51,HECHO paso 6
+1795189257,12:40:57,PEDIDO paso 7 AC off + luces bajas y altas
+1795189315,12:41:55,HECHO paso 7
+1795189321,12:42:01,PEDIDO paso 8 volante a tope izq y der
+1795189370,12:42:50,HECHO paso 8
+1795189376,12:42:56,PEDIDO paso 9 luneta termica
+1795189402,12:43:22,HECHO paso 9
+1795189408,12:43:28,PEDIDO paso 10 embrague + reversa + neutro
+1795189443,12:44:03,HECHO paso 10
