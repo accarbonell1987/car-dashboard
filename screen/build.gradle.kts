@@ -14,8 +14,10 @@ android {
         // Android 7.0+: muchas pantallas de auto declaran una versión y corren otra más vieja.
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // Commit count: grows with every release, so the in-app updater can tell which APK is newer.
+        val commits = providers.exec { commandLine("git", "rev-list", "--count", "HEAD") }.standardOutput.asText.get().trim().toInt()
+        versionCode = commits
+        versionName = "0.1.$commits"
     }
 
     buildTypes {

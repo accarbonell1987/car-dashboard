@@ -63,7 +63,7 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
                         "codigos_falla" to 0.0,
                         "temp_dpf" to 180 + carga * 2.5,
                         "tiempo_motor" to seg,
-                        "marcha" to marcha.toDouble(),
+                        "marcha" to marchas.marcha(rpm, kmh).toDouble(),
                         "odometro_viaje_km" to odometroKm,
                     ),
                 ),

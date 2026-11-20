@@ -1,5 +1,9 @@
 package com.carobd.screen.ui
 
+import kotlinx.coroutines.launch
+import com.carobd.screen.EstadoActualizacion
+import com.carobd.screen.Actualizador
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -335,9 +339,25 @@ private fun AjustesAcerca() {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "?"
     }
     Fila("Versión de la app", version)
+    val alcance = rememberCoroutineScope()
+    val estado by Actualizador.estado.collectAsState()
     Text(
-        "Las actualizaciones desde tu servidor (con verificación de firma del APK) llegan después de subir el servidor al VPS.",
-        color = p.tenue,
+        when (val s = estado) {
+            EstadoActualizacion.AlDia -> "Tienes la última versión. La app revisa sola al abrir y cada 6 horas."
+            EstadoActualizacion.Buscando -> "Buscando en GitHub…"
+            is EstadoActualizacion.Disponible -> "Hay una versión nueva: ${s.apk.nombre}."
+            is EstadoActualizacion.Descargando -> "Descargando… ${(s.progreso * 100).toInt()} %"
+            is EstadoActualizacion.Error -> s.mensaje
+        },
+        color = if (estado is EstadoActualizacion.Error) p.atencion else p.tenue,
         fontSize = 14.sp,
     )
+    val s = estado
+    if (s is EstadoActualizacion.Disponible) {
+        Boton("Actualizar", Modifier.fillMaxWidth(), principal = true) { alcance.launch { Actualizador.instalar(context, s.apk) } }
+    } else {
+        Boton("Buscar actualización", Modifier.fillMaxWidth(), activo = s !is EstadoActualizacion.Buscando && s !is EstadoActualizacion.Descargando) {
+            alcance.launch { Actualizador.buscar(context) }
+        }
+    }
 }

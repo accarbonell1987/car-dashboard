@@ -1,6 +1,14 @@
 package com.carobd.screen.ui
 
 import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
+import com.carobd.screen.ui.comun.Boton
+import com.carobd.screen.EstadoActualizacion
+import com.carobd.screen.Actualizador
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +58,7 @@ fun PantallaPrincipal(e: EstadoTablero, acciones: AccionesTablero) {
     val p = LocalPaleta.current
     Column(Modifier.fillMaxSize().background(p.fondo)) {
         BarraEstado(e, acciones)
+        AvisoActualizacion()
         Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp)) {
             when (e.seccion) {
                 Seccion.INICIO -> InicioScreen(e, acciones)
@@ -161,3 +170,34 @@ private fun iconoDe(s: Seccion) = when (s) {
     Seccion.VEHICULO -> Icono.VEHICULO
     Seccion.AJUSTES -> Icono.AJUSTES
 }
+
+/** Checks GitHub on start and every 6 hours; when a newer APK exists, one tap downloads and installs it. */
+@Composable
+private fun AvisoActualizacion() {
+    val p = LocalPaleta.current
+    val context = LocalContext.current
+    val alcance = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        while (true) {
+            Actualizador.buscar(context)
+            delay(6 * 60 * 60_000L)
+        }
+    }
+    val estado by Actualizador.estado.collectAsState()
+    val texto = when (val s = estado) {
+        is EstadoActualizacion.Disponible -> "Hay una versión nueva: ${s.apk.nombre}"
+        is EstadoActualizacion.Descargando -> "Descargando ${s.apk.nombre}… ${(s.progreso * 100).toInt()} %"
+        else -> return
+    }
+    Row(
+        Modifier.fillMaxWidth().background(p.normal.copy(alpha = 0.18f)).padding(horizontal = 20.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(texto, color = p.texto, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        val s = estado
+        if (s is EstadoActualizacion.Disponible) {
+            Boton("Actualizar", principal = true) { alcance.launch { Actualizador.instalar(context, s.apk) } }
+        }
+    }
+}
+
