@@ -87,6 +87,8 @@ interface AccionesTablero {
     fun usarEmulador(direccion: String)
     fun usarBle(dispositivo: DispositivoBle)
     fun fijarTestigos(activos: Boolean)
+    /** The odometer as the car's dashboard shows it. */
+    fun fijarOdometro(km: Int)
     /** Últimos comandos y respuestas del adaptador, para la sección Registro de Ajustes. */
     val registro: StateFlow<List<String>>
 }

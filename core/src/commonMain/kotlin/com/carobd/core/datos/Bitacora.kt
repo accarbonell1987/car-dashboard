@@ -38,11 +38,13 @@ class Bitacora(
          */
         fun odometro(m: AlmacenEnMemoria, vehiculoId: String): Double {
             val v = m.vehiculos[vehiculoId] ?: return 0.0
-            val lecturas = m.lecturasOdometro.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null }
+            // The initial reading is the odometer the driver read off the dashboard: anything older is superseded.
+            val desde = v.odometroInicialFecha
+            val lecturas = m.lecturasOdometro.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null && it.fecha >= desde }
             val firmes = buildList {
                 add(v.odometroInicialFecha to v.odometroInicialKm)
                 lecturas.filter { it.origen != OrigenOdometro.CALCULADO }.forEach { add(it.fecha to it.km) }
-                m.servicios.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null }.forEach { add(it.fecha to it.km) }
+                m.servicios.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null && it.fecha >= desde }.forEach { add(it.fecha to it.km) }
             }
             val base = firmes.maxBy { it.first }
             val recorrido = m.viajes.values
@@ -62,6 +64,15 @@ class Bitacora(
     }
 
     suspend fun odometroKm(vehiculoId: String = ID_ACCENT): Double = almacen.leer { odometro(it, vehiculoId) }
+
+    /**
+     * The odometer as the car's dashboard shows it (OBD can't read it on the Accent). It becomes the new
+     * starting point, even if it is lower than the estimate: the 90.600 km start was only a placeholder.
+     */
+    suspend fun fijarOdometroReal(km: Int) {
+        val ahora = reloj()
+        almacen.guardar(vehiculo().copy(odometroInicialKm = km, odometroInicialFecha = ahora, updatedAt = ahora))
+    }
 
     /** Guarda un viaje cerrado y deja una lectura del odómetro calculado al terminar. */
     suspend fun guardarViaje(viaje: Viaje): LecturaOdometro {
