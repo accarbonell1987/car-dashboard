@@ -55,6 +55,7 @@ import com.carobd.screen.ui.comun.Boton
 import com.carobd.screen.ui.comun.Icono
 import com.carobd.screen.ui.comun.IconoTrazo
 import com.carobd.screen.ui.comun.Tarjeta
+import com.carobd.screen.ui.comun.TarjetaIcono
 import com.carobd.screen.ui.comun.dec
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -321,23 +322,6 @@ private fun TarjetaAdaptador(e: EstadoTablero, acciones: AccionesTablero, modifi
     }
     Tarjeta(modifier) {
         TituloConIcono(Icono.ADAPTADOR, "Adaptador OBD")
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(color.copy(alpha = 0.12f))
-                .clickable(role = Role.Button) { acciones.irA(Seccion.AJUSTES) }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            IconoTrazo(Icono.ADAPTADOR, color, 48.dp)
-            Column(Modifier.weight(1f)) {
-                Text(titulo, color = color, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Text(detalle, color = p.tenue, fontSize = 15.sp, maxLines = 2)
-            }
-            Box(Modifier.size(12.dp).clip(CircleShape).background(color))
-        }
+        TarjetaIcono(Icono.ADAPTADOR, titulo, detalle, Modifier.fillMaxWidth().weight(1f), color = color) { acciones.irA(Seccion.AJUSTES) }
     }
 }

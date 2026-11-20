@@ -26,6 +26,7 @@ import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.ui.comun.Icono
 import com.carobd.screen.ui.comun.IconoTrazo
 import com.carobd.screen.ui.comun.Tarjeta
+import com.carobd.screen.ui.comun.TarjetaIcono
 import kotlin.math.floor
 
 /** The car: a large silhouette (later the 3D model) and its data as icon tiles. */
@@ -52,29 +53,9 @@ fun VehiculoScreen(e: EstadoTablero, @Suppress("UNUSED_PARAMETER") acciones: Acc
             )
             for (fila in datos.chunked(2)) {
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    for ((icono, nombre, valor) in fila) DatoVehiculo(icono, nombre, valor, Modifier.weight(1f).fillMaxHeight())
+                    for ((icono, nombre, valor) in fila) TarjetaIcono(icono, valor, nombre, Modifier.weight(1f).fillMaxHeight())
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun DatoVehiculo(icono: Icono, nombre: String, valor: String, modifier: Modifier) {
-    val p = LocalPaleta.current
-    Row(
-        modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(p.celda)
-            .border(1.dp, p.linea, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        IconoTrazo(icono, p.normal, 44.dp)
-        Column {
-            Text(nombre, color = p.tenue, fontSize = 15.sp)
-            Text(valor, color = p.texto, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

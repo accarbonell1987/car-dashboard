@@ -1,5 +1,7 @@
 package com.carobd.screen.ui
 
+import androidx.compose.foundation.layout.height
+import com.carobd.screen.ui.comun.TarjetaIcono
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
@@ -60,9 +62,9 @@ import kotlin.math.floor
 @Composable
 fun DiagnosticoScreen(e: EstadoTablero) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            EstadoSenales(e, Modifier.weight(1f))
-            EstadoMotor(e, Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            EstadoSenales(e, Modifier.weight(1f).fillMaxHeight())
+            EstadoMotor(e, Modifier.weight(1f).fillMaxHeight())
         }
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TiempoReal(e, Modifier.weight(1.3f).fillMaxHeight())
@@ -105,20 +107,8 @@ private fun fueraDeRango(e: EstadoTablero) = SENALES_SALUD.count { id ->
 
 /** A status tile: icon, headline and detail, coloured by state. */
 @Composable
-private fun TarjetaEstado(icono: Icono, titulo: String, detalle: String, color: Color, modifier: Modifier) {
-    val p = LocalPaleta.current
-    Row(
-        modifier.clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = 0.12f)).padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        IconoTrazo(icono, color, 40.dp)
-        Column {
-            Text(titulo, color = color, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
-            Text(detalle, color = p.tenue, fontSize = 15.sp)
-        }
-    }
-}
+private fun TarjetaEstado(icono: Icono, titulo: String, detalle: String, color: Color, modifier: Modifier) =
+    TarjetaIcono(icono, titulo, detalle, modifier, color = color)
 
 @Composable
 private fun EstadoSenales(e: EstadoTablero, modifier: Modifier) {

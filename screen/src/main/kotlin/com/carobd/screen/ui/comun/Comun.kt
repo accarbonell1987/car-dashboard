@@ -1,5 +1,7 @@
 package com.carobd.screen.ui.comun
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.material3.SwitchDefaults
@@ -207,3 +209,30 @@ fun IconoTrazo(icono: Icono, color: Color, tam: Dp = 24.dp, modifier: Modifier =
 
 /** Un decimal con coma, como se escribe en español. */
 fun dec(x: Double, decimales: Int = 1): String = "%.${decimales}f".format(java.util.Locale("es"), x)
+
+/**
+ * Tile with a large centred icon and the data underneath (value big, name small).
+ * The icon scales with the tile, about half its height, so the space is used and it reads from a metre away.
+ */
+@Composable
+fun TarjetaIcono(icono: Icono, valor: String, nombre: String, modifier: Modifier = Modifier, color: Color? = null, onClick: (() -> Unit)? = null) {
+    val p = LocalPaleta.current
+    val tono = color ?: p.normal
+    BoxWithConstraints(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (color != null) color.copy(alpha = 0.12f) else p.celda)
+            .border(1.dp, p.linea, RoundedCornerShape(16.dp))
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .padding(12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        val lado = minOf(maxHeight * 0.5f, maxWidth * 0.5f)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            IconoTrazo(icono, tono, lado)
+            Text(valor, color = color ?: p.texto, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(nombre, color = p.tenue, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
