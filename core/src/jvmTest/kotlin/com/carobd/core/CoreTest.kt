@@ -34,6 +34,9 @@ class CoreTest {
         assertEquals(52.0, Decodificador.decodificar("41055C>", Catalogo.porId("temp_refrigerante")!!))
         assertEquals(14.2, Decodificador.decodificar("41 42 37 78", Catalogo.porId("voltaje")!!)!!, 0.001)
         assertNull(Decodificador.decodificar("NO DATA", Catalogo.porId("rpm")!!))
+        // 017C del Accent: máscara 00 = sin sensor de DPF válido, aunque B-C traiga 05DC.
+        assertNull(Decodificador.decodificar("41 7C 00 05 DC", Catalogo.porId("temp_dpf")!!))
+        assertEquals(110.0, Decodificador.decodificar("417C0105DC", Catalogo.porId("temp_dpf")!!)!!, 0.001)
     }
 
     @Test

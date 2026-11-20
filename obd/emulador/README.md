@@ -21,6 +21,7 @@ python3 obd/emulador/elm327_emulador.py
 | `--velocidad` | `1` | Factor de tiempo de la reproducción: con `2` la captura avanza el doble de rápido. |
 | `--latencia` | `60` | Milisegundos por petición OBD. 60 ms da unas 16 lecturas/s, como el clon. |
 | `--pty` | — | Crea un pseudo-terminal serie en vez de escuchar por TCP. |
+| `--clon-ble` | — | Imita al clon por BLE: manda un prompt tardío después de detener `ATMA`. Sirve para probar que el cliente se resincroniza. |
 
 Atiende un cliente por vez. Cuando uno se desconecta, acepta al siguiente.
 

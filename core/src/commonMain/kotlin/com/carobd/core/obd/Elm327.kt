@@ -18,8 +18,13 @@ data class Respuesta(val texto: String, val completa: Boolean)
 interface TransporteElm {
     suspend fun abrir()
     suspend fun escribir(texto: String)
-    /** Lee hasta el prompt '>' o hasta que pasen [timeoutMs]. */
+    /**
+     * Lee hasta el prompt '>' o hasta que pasen [timeoutMs]. Lo que llegue después del '>' queda para la
+     * próxima lectura: puede ser la respuesta buena detrás de un prompt atrasado.
+     */
     suspend fun leer(timeoutMs: Long): Respuesta
+    /** Tira lo que haya llegado y nadie leyó (restos de ATMA, prompts tardíos del clon por BLE). */
+    fun descartar()
     fun cerrar()
 }
 
@@ -66,11 +71,31 @@ class Elm327(
     private var fallosCarroceria = 0
     private var proximaEscucha = reloj.markNow()
 
+    /** Testigos de carrocería (escucha ATMA). Se puede apagar en caliente si molestan en algún adaptador. */
+    var testigos: Boolean = true
+        set(valor) {
+            field = valor
+            fallosCarroceria = 0 // reactivarlos a mano vuelve a intentar aunque se hubieran apagado solos
+        }
+
+    private val _registro = MutableStateFlow<List<String>>(emptyList())
+    /** Últimos [LARGO_REGISTRO] comandos y respuestas en crudo, para diagnosticar en el auto. */
+    val registro: StateFlow<List<String>> = _registro.asStateFlow()
+
+    private fun anotar(linea: String) {
+        _registro.value = (_registro.value + linea).takeLast(LARGO_REGISTRO)
+    }
+
     fun lecturas(): Flow<Lectura> = flow {
         val inicio = reloj.markNow()
         var reintento = 0
         while (true) {
-            _estado.value = EstadoConexion(if (reintento == 0) FaseConexion.CONECTANDO else FaseConexion.RECONECTANDO, intento = reintento)
+            // El detalle del último error se conserva mientras reintenta: es lo que hay que leer en el auto.
+            _estado.value = EstadoConexion(
+                if (reintento == 0) FaseConexion.CONECTANDO else FaseConexion.RECONECTANDO,
+                detalle = if (reintento == 0) "" else _estado.value.detalle,
+                intento = reintento,
+            )
             val conectado = protegido { transporte.abrir(); iniciar() } == true
             while (conectado) {
                 // emit fuera de protegido: un error del colector no se confunde con uno del adaptador.
@@ -94,20 +119,45 @@ class Elm327(
         null
     }
 
-    private suspend fun enviar(comando: String, timeout: Long = timeoutMs): String {
+    /**
+     * Envía [comando] y devuelve SU respuesta. Antes descarta la basura pendiente, y después saltea las respuestas
+     * completas que no pasan [valida]: son atrasadas de otro comando. El clon por BLE manda un prompt tardío
+     * tras ATMA; sin esto, cada respuesta quedaba emparejada con el comando anterior y los PIDs no se
+     * actualizaban. NO DATA, "?" y los errores cuentan como respuesta.
+     */
+    private suspend fun enviar(comando: String, timeout: Long = timeoutMs, valida: (String) -> Boolean = { true }): String {
+        transporte.descartar()
         transporte.escribir("$comando\r")
-        val r = transporte.leer(timeout)
-        if (r.completa) fallosSeguidos = 0
-        else if (++fallosSeguidos >= intentos) throw AdaptadorSinRespuesta("sin respuesta a $comando")
-        return r.texto
+        val fin = reloj.markNow() + timeout.milliseconds
+        while (fin.hasNotPassedNow()) {
+            val r = transporte.leer(-fin.elapsedNow().inWholeMilliseconds)
+            if (!r.completa) {
+                anotar("$comando → ${legible(r.texto)} (sin prompt)")
+                break
+            }
+            if (valida(r.texto) || esError(r.texto)) {
+                anotar("$comando → ${legible(r.texto)}")
+                fallosSeguidos = 0
+                return r.texto
+            }
+            anotar("$comando ✕ atrasada: ${legible(r.texto)}")
+        }
+        if (++fallosSeguidos >= intentos) throw AdaptadorSinRespuesta("sin respuesta a $comando")
+        return ""
     }
+
+    private fun limpio(texto: String) = texto.uppercase().replace(" ", "").replace("\r", "").replace("\n", "")
+    private fun esError(texto: String) = limpio(texto).let { t -> t == "?" || "NODATA" in t || "ERROR" in t || "UNABLE" in t }
+    private fun esOk(texto: String) = "OK" in limpio(texto)
+    private fun responde(prefijo: String): (String) -> Boolean = { prefijo in limpio(it) }
+    private fun legible(texto: String) = texto.trim().replace("\r", " ⏎ ").replace("\n", "").take(120)
 
     private suspend fun iniciar(): Boolean {
         fallosSeguidos = 0
         var banner: String? = null
         // El clon manda un byte basura antes del banner: se descarta todo lo anterior a "ELM327".
         for (i in 1..intentos) {
-            val r = enviar("ATZ", 3000)
+            val r = enviar("ATZ", 3000) { "ELM327" in it }
             if ("ELM327" in r) {
                 banner = "ELM327" + r.substringAfter("ELM327").lineSequence().first().trimEnd()
                 break
@@ -115,18 +165,18 @@ class Elm327(
         }
         banner ?: throw AdaptadorSinRespuesta("ATZ no devolvió el banner ELM327")
         // Protocolo fijo del Accent (ISO 15765-4 CAN 11/500): evita el SEARCHING... de ATSP0.
-        for (c in listOf("ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP6")) enviar(c)
+        for (c in listOf("ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP6")) enviar(c, valida = ::esOk)
         val soportados = leerSoportados()
-        val vin = Decodificador.vin(enviar("0902", 3000))
+        val vin = Decodificador.vin(enviar("0902", 3000, responde("4902")))
         senales = Catalogo.estandar.filter {
             it.modo == "01" && it.pid != null && it.id !in excluir && (soportados.isEmpty() || it.pid.toInt(16) in soportados)
         }
         valores.clear()
         ciclo = 0
-        carroceriaActiva = true
+        carroceriaActiva = testigos
         fallosCarroceria = 0
         proximaEscucha = reloj.markNow()
-        _estado.value = EstadoConexion(FaseConexion.CONECTADO, adaptador = banner, vin = vin, pidsSoportados = soportados.size, carroceria = true)
+        _estado.value = EstadoConexion(FaseConexion.CONECTADO, adaptador = banner, vin = vin, pidsSoportados = soportados.size, carroceria = testigos)
         return true
     }
 
@@ -135,7 +185,7 @@ class Elm327(
         val soportados = mutableSetOf<Int>()
         var base = 0x00
         while (base <= 0xE0) {
-            val pids = Decodificador.pidsSoportados(base, enviar("01" + hex2(base))) ?: break
+            val pids = Decodificador.pidsSoportados(base, enviar("01" + hex2(base), valida = responde("41" + hex2(base)))) ?: break
             soportados += pids
             if (base + 0x20 !in pids) break
             base += 0x20
@@ -150,9 +200,20 @@ class Elm327(
                 Ritmo.MEDIO -> ciclo % 10 == 0L
                 Ritmo.LENTO -> ciclo % 50 == 0L
             }
-            if (toca) Decodificador.decodificar(enviar(senal.modo + senal.pid), senal)?.let { valores[senal.id] = it }
+            if (toca) {
+                val respuesta = enviar(senal.modo + senal.pid, valida = responde("41" + senal.pid))
+                Decodificador.decodificar(respuesta, senal)?.let { valores[senal.id] = it }
+            }
         }
-        if (carroceriaActiva && proximaEscucha.hasPassedNow()) {
+        if (!testigos && _estado.value.carroceria) {
+            Carroceria.senales.forEach { valores.remove(it) }
+            _estado.value = _estado.value.copy(carroceria = false)
+        }
+        if (testigos && !_estado.value.carroceria && fallosCarroceria < 3) {
+            carroceriaActiva = true
+            _estado.value = _estado.value.copy(carroceria = true)
+        }
+        if (testigos && carroceriaActiva && proximaEscucha.hasPassedNow()) {
             escucharCarroceria()
             proximaEscucha = reloj.markNow() + periodoCarroceriaMs.milliseconds
         }
@@ -162,16 +223,17 @@ class Elm327(
     }
 
     /**
-     * Escucha pasiva: ATCAF0 (tramas crudas), luego ATCRA<id> + ATMA unos ms por cada ID, se detiene con un byte
-     * y se espera el prompt. Al final restaura ATCRA y ATCAF1 para volver a pedir PIDs.
-     * Tras 3 escuchas sin tramas o con error se desactiva sola; los PIDs siguen igual.
+     * Escucha pasiva: ATCAF0 (tramas crudas), luego ATCRA<id> + ATMA unos ms por cada ID; se detiene con un byte,
+     * se drena hasta el prompt y se tiran los restos tardíos. Al final restaura ATCRA y ATCAF1 esperando OK,
+     * para volver a pedir PIDs. Tras 3 escuchas sin tramas o con error se desactiva sola; los PIDs siguen igual.
      */
     private suspend fun escucharCarroceria() {
         var conTramas = 0
         try {
-            enviar("ATCAF0")
+            enviar("ATCAF0", valida = ::esOk)
             for (id in Carroceria.ids) {
-                enviar("ATCRA$id")
+                enviar("ATCRA$id", valida = ::esOk)
+                transporte.descartar()
                 transporte.escribir("ATMA\r")
                 var r = transporte.leer(ventanaEscuchaMs)
                 if (!r.completa) {
@@ -180,6 +242,10 @@ class Elm327(
                     if (!cierre.completa) throw AdaptadorSinRespuesta("ATMA no se detuvo")
                     r = Respuesta(r.texto + "\r" + cierre.texto, true)
                 }
+                anotar("ATMA $id → ${legible(r.texto).takeLast(60)}")
+                // El clon por BLE sigue mandando restos (y a veces otro '>') un rato después de detenerse.
+                delay(RESTOS_ATMA_MS)
+                transporte.descartar()
                 Carroceria.ultimaTrama(r.texto)?.let {
                     valores += Carroceria.decodificar(id, it)
                     conTramas++
@@ -188,16 +254,18 @@ class Elm327(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            anotar("testigos: ${e.message}")
             conTramas = 0
         } finally {
-            enviar("ATCRA")
-            enviar("ATCAF1")
+            enviar("ATCRA", valida = ::esOk)
+            enviar("ATCAF1", valida = ::esOk)
         }
         fallosCarroceria = if (conTramas > 0) 0 else fallosCarroceria + 1
         if (fallosCarroceria >= 3) {
             carroceriaActiva = false
             Carroceria.senales.forEach { valores.remove(it) }
             _estado.value = _estado.value.copy(carroceria = false)
+            anotar("testigos desactivados: 3 escuchas sin tramas")
         }
     }
 
@@ -212,5 +280,8 @@ class Elm327(
         if (lh != null && kmh != null && kmh > 5) valores["consumo_l100"] = lh / kmh * 100
     }
 }
+
+private const val LARGO_REGISTRO = 50
+private const val RESTOS_ATMA_MS = 200L
 
 internal fun hex2(valor: Int): String = valor.toString(16).uppercase().padStart(2, '0')

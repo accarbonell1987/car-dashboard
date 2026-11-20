@@ -88,9 +88,10 @@ fun Opcion(texto: String, elegida: Boolean, modifier: Modifier = Modifier, activ
 fun Fila(etiqueta: String, valor: String, colorValor: Color? = null) {
     val p = LocalPaleta.current
     Column {
-        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(etiqueta, color = p.tenue, fontSize = 15.sp, modifier = Modifier.weight(1f))
-            Text(valor, color = colorValor ?: p.texto, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        // Etiqueta y valor en la misma línea base, aunque alguno ocupe dos líneas.
+        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(etiqueta, color = p.tenue, fontSize = 15.sp, modifier = Modifier.weight(1f).alignByBaseline())
+            Text(valor, color = colorValor ?: p.texto, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(p.linea))
     }

@@ -120,8 +120,8 @@ def load_can_rows(scenario, dump_rows):
 class Vehicle:
     """Scenario data plus console overrides, shared by the client session and the console."""
 
-    def __init__(self, scenario, speed):
-        self.scenario, self.speed = scenario, speed
+    def __init__(self, scenario, speed, ble_clone=False):
+        self.scenario, self.speed, self.ble_clone = scenario, speed, ble_clone
         self.mode01, self.mode09 = load_exploration()
         self.supported = supported_pids(self.mode01)
         self.pid_series, self.pid_duration = build_series(load_pid_rows(scenario))
@@ -279,6 +279,11 @@ class Session:
         else:
             lines = [b"?"]
         self.reply(lines)
+        if self.vehicle.ble_clone and command == "ATMA":
+            # The real clone over BLE sends late leftovers and an extra prompt after ATMA stops:
+            # a client that does not resync pairs every later reply with the previous command.
+            time.sleep(0.15)
+            self.send(self.end() + b">")
 
     def at_command(self, argument):
         settings = {"E0": ("echo", False), "E1": ("echo", True), "L0": ("linefeeds", False), "L1": ("linefeeds", True),
@@ -443,8 +448,9 @@ def main():
     parser.add_argument("--velocidad", type=float, default=1.0, help="factor de tiempo de la reproducción")
     parser.add_argument("--latencia", type=float, default=60, help="ms por petición OBD (60 ≈ 16 lecturas/s)")
     parser.add_argument("--pty", action="store_true", help="pseudo-terminal serie en vez de TCP")
+    parser.add_argument("--clon-ble", action="store_true", help="imita al clon por BLE: prompt tardío tras detener ATMA")
     arguments = parser.parse_args()
-    vehicle = Vehicle(arguments.escenario, arguments.velocidad)
+    vehicle = Vehicle(arguments.escenario, arguments.velocidad, arguments.clon_ble)
     threading.Thread(target=console, args=(vehicle,), daemon=True).start()
     try:
         if arguments.pty:

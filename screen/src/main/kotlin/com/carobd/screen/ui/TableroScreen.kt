@@ -56,6 +56,7 @@ import com.carobd.core.tablero.Grilla
 import com.carobd.core.tablero.TipoGauge
 import com.carobd.screen.EstadoTablero
 import com.carobd.screen.obd.DispositivoBle
+import kotlinx.coroutines.flow.StateFlow
 import com.carobd.screen.ModoNoche
 import com.carobd.screen.Seccion
 import com.carobd.screen.gauges.Gauge
@@ -80,6 +81,9 @@ interface AccionesTablero {
     fun usarDemo()
     fun usarEmulador(direccion: String)
     fun usarBle(dispositivo: DispositivoBle)
+    fun fijarTestigos(activos: Boolean)
+    /** Últimos comandos y respuestas del adaptador, para la sección Registro de Ajustes. */
+    val registro: StateFlow<List<String>>
 }
 
 /**

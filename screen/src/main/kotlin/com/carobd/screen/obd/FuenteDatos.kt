@@ -19,6 +19,10 @@ interface FuenteDatos {
     val grabaViajes: Boolean get() = true
     /** Estado del enlace con el adaptador; null en las fuentes sin conexión (demo). */
     val conexion: StateFlow<EstadoConexion>? get() = null
+    /** Últimos comandos y respuestas en crudo del adaptador; null si no hay adaptador. */
+    val registro: StateFlow<List<String>>? get() = null
+    /** Prende o apaga la escucha de testigos de carrocería (no aplica al demo). */
+    fun fijarTestigos(activos: Boolean) {}
     fun lecturas(): Flow<Lectura>
 }
 
@@ -32,5 +36,9 @@ class FuenteDemo : FuenteDatos {
 class FuenteElm327(override val nombre: String, transporte: TransporteElm, override val grabaViajes: Boolean = true) : FuenteDatos {
     private val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent)
     override val conexion: StateFlow<EstadoConexion> = elm.estado
+    override val registro: StateFlow<List<String>> = elm.registro
+    override fun fijarTestigos(activos: Boolean) {
+        elm.testigos = activos
+    }
     override fun lecturas(): Flow<Lectura> = elm.lecturas()
 }

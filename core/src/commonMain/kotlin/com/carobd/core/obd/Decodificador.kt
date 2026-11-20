@@ -76,6 +76,7 @@ object Decodificador {
 
     fun decodificar(respuesta: String, senal: Senal): Double? {
         val bytes = bytesDeDatos(respuesta, senal) ?: return null
+        senal.mascaraSoporte?.let { if (bytes.first() and it == 0) return null }
         val formula = senal.formula ?: return bytes.first().toDouble()
         val vars = mapOf(
             "A" to (bytes.getOrNull(0) ?: 0).toDouble(),

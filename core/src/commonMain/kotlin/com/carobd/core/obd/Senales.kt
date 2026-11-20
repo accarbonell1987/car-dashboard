@@ -10,6 +10,8 @@ enum class Ritmo { RAPIDO, MEDIO, LENTO }
  * `modo` y `pid` en hex (p. ej. "01" y "0C"); `cabecera` solo para PIDs de fabricante (modo 22, "7E0").
  * `formula` usa A, B, C, D como los bytes de datos; es el mismo esquema que Torque.
  * Las señales calculadas no tienen PID y se derivan de otras (`dependeDe`).
+ * `mascaraSoporte`: en PIDs como el 7C, el byte A dice qué sensores existen; si `A and mascaraSoporte` es 0
+ * la lectura no es válida y se descarta (la UI muestra "--").
  */
 @Serializable
 data class Senal(
@@ -25,6 +27,7 @@ data class Senal(
     val max: Double,
     val ritmo: Ritmo,
     val dependeDe: List<String> = emptyList(),
+    val mascaraSoporte: Int? = null,
 )
 
 /** Catálogo estándar (modo 01, SAE J1979). Los PIDs de Hyundai se añaden al descubrirlos con el vLinker. */
@@ -45,7 +48,8 @@ object Catalogo {
         Senal("voltaje", "Voltaje", "V", "01", "42", formula = "(A*256+B)/1000", bytes = 2, min = 0.0, max = 16.0, ritmo = Ritmo.LENTO),
         Senal("temp_ambiente", "Temp. ambiente", "°C", "01", "46", formula = "A-40", min = -40.0, max = 60.0, ritmo = Ritmo.LENTO),
         Senal("barometrica", "Presión barométrica", "kPa", "01", "33", formula = "A", min = 0.0, max = 255.0, ritmo = Ritmo.LENTO),
-        Senal("temp_dpf", "Temp. DPF", "°C", "01", "7C", formula = "(A*256+B)/10-40", bytes = 2, min = 0.0, max = 800.0, ritmo = Ritmo.LENTO),
+        // SAE J1979: A = sensores presentes (bit 0 = entrada del banco 1), B-C = esa temperatura ×0,1 −40.
+        Senal("temp_dpf", "Temp. DPF", "°C", "01", "7C", formula = "(B*256+C)/10-40", bytes = 3, mascaraSoporte = 0x01, min = 0.0, max = 800.0, ritmo = Ritmo.LENTO),
         Senal("tiempo_motor", "Tiempo desde arranque", "s", "01", "1F", formula = "A*256+B", bytes = 2, min = 0.0, max = 65535.0, ritmo = Ritmo.LENTO),
         // Calculadas
         Senal("boost", "Boost", "bar", formula = "(map-barometrica)/100", min = -0.5, max = 1.5, ritmo = Ritmo.RAPIDO, dependeDe = listOf("map", "barometrica")),

@@ -10,6 +10,7 @@ import com.carobd.core.obd.TransporteElm
 import com.carobd.core.obd.TransporteTcp
 import com.carobd.core.sim.Lectura
 import com.carobd.core.sim.SimuladorAccent
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
@@ -71,6 +72,8 @@ private class TransporteFalso(var colgarTrasLecturas: Int = Int.MAX_VALUE) : Tra
             else -> Respuesta(RESPUESTAS[ultimo] ?: "NO DATA\r\r", true)
         }
     }
+
+    override fun descartar() {}
 
     override fun cerrar() {}
 }
@@ -146,33 +149,68 @@ class Elm327Test {
         assertTrue(Catalogo.noSoportadasAccent.none { it in l.valores })
     }
 
-    /** De punta a punta contra obd/emulador por TCP. Se salta si no hay python3. */
-    @Test
-    fun puntaAPuntaContraElEmulador() = runBlocking {
+    /** Lanza obd/emulador en un puerto libre; se salta el test si no hay python3. */
+    private fun conEmulador(vararg opciones: String, bloque: suspend (puerto: Int, consola: (String) -> Unit) -> Unit) = runBlocking<Unit> {
         val script = File("../obd/emulador/elm327_emulador.py")
         assumeTrue(script.exists() && runCatching { ProcessBuilder("python3", "--version").start().waitFor() == 0 }.getOrDefault(false))
-        val proceso = ProcessBuilder("python3", script.path, "--puerto", "0").redirectErrorStream(true).start()
+        val proceso = ProcessBuilder(listOf("python3", script.path, "--puerto", "0") + opciones).redirectErrorStream(true).start()
         try {
-            val puerto = Regex(":(\\d+)$").find(proceso.inputStream.bufferedReader().readLine().trim())!!.groupValues[1].toInt()
-            val consola = proceso.outputStream.bufferedWriter()
-            fun consola(comando: String) = consola.apply { write("$comando\n"); flush() }
-            consola("puerta off"); consola("ac off")
-            val elm = Elm327(TransporteTcp("127.0.0.1", puerto), excluir = Catalogo.noSoportadasAccent)
-            var ultima: Lectura? = null
-            val lector = launch(Dispatchers.IO) { elm.lecturas().collect { ultima = it } }
-            suspend fun esperar(condicion: (Map<String, Double>) -> Boolean) = withTimeout(10_000) {
-                while (ultima?.valores?.let(condicion) != true) kotlinx.coroutines.delay(100)
-            }
-            esperar { it[Carroceria.PUERTA] == 0.0 && it[Carroceria.AIRE] == 0.0 && "rpm" in it && "velocidad" in it && "temp_refrigerante" in it }
-            assertTrue(ultima!!.valores.getValue("rpm") in 500.0..5000.0)
-            consola("puerta on"); consola("ac on")
-            esperar { it[Carroceria.PUERTA] == 1.0 && it[Carroceria.AIRE] == 1.0 }
-            assertEquals("KMHCU41UAGU000000", elm.estado.value.vin)
-            assertNotNull(ultima!!.valores["temp_refrigerante"])
-            lector.cancel()
+            val salida = proceso.inputStream.bufferedReader()
+            val puerto = Regex(":(\\d+)$").find(salida.readLine().trim())!!.groupValues[1].toInt()
+            Thread { salida.forEachLine { } }.apply { isDaemon = true }.start() // que el pipe de stdout no se llene
+            val stdin = proceso.outputStream.bufferedWriter()
+            bloque(puerto) { comando -> stdin.write("$comando\n"); stdin.flush() }
         } finally {
             proceso.destroy()
             proceso.waitFor(5, TimeUnit.SECONDS)
+        }
+    }
+
+    private suspend fun esperar(ultima: () -> Lectura?, segundos: Long = 10, condicion: (Map<String, Double>) -> Boolean) =
+        withTimeout(segundos * 1000) { while (ultima()?.valores?.let(condicion) != true) kotlinx.coroutines.delay(50) }
+
+    /** De punta a punta contra obd/emulador por TCP. */
+    @Test
+    fun puntaAPuntaContraElEmulador() = conEmulador { puerto, consola ->
+        consola("puerta off"); consola("ac off")
+        val elm = Elm327(TransporteTcp("127.0.0.1", puerto), excluir = Catalogo.noSoportadasAccent)
+        var ultima: Lectura? = null
+        val lector = CoroutineScope(Dispatchers.IO).launch { elm.lecturas().collect { ultima = it } }
+        try {
+            esperar({ ultima }) { it[Carroceria.PUERTA] == 0.0 && it[Carroceria.AIRE] == 0.0 && "rpm" in it && "velocidad" in it && "temp_refrigerante" in it }
+            assertTrue(ultima!!.valores.getValue("rpm") in 500.0..5000.0)
+            consola("puerta on"); consola("ac on")
+            esperar({ ultima }) { it[Carroceria.PUERTA] == 1.0 && it[Carroceria.AIRE] == 1.0 }
+            assertEquals("KMHCU41UAGU000000", elm.estado.value.vin)
+        } finally {
+            lector.cancel()
+        }
+    }
+
+    /**
+     * Lo que pasó en el auto: el clon por BLE manda un prompt tardío después de detener ATMA, y sin resincronizar
+     * cada respuesta quedaba emparejada con el comando anterior (PIDs congelados, testigos bien).
+     * Con escucha cada 300 ms, rpm tiene que seguir cada cambio durante [E2E_SEGUNDOS] (8 por defecto).
+     */
+    @Test
+    fun losPidsSiguenConTestigosYPromptsTardios() = conEmulador("--clon-ble", "--latencia", "20") { puerto, consola ->
+        val elm = Elm327(TransporteTcp("127.0.0.1", puerto), excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = 300)
+        var ultima: Lectura? = null
+        val lector = CoroutineScope(Dispatchers.IO).launch { elm.lecturas().collect { ultima = it } }
+        try {
+            val segundos = System.getenv("E2E_SEGUNDOS")?.toIntOrNull() ?: 8
+            val fin = System.nanoTime() + segundos * 1_000_000_000L
+            var paso = 0
+            while (System.nanoTime() < fin) {
+                val rpm = 1000.0 + 100 * (paso++ % 30)
+                consola("rpm ${rpm.toInt()}")
+                esperar({ ultima }, segundos = 3) { it["rpm"] == rpm }
+            }
+            assertTrue(paso >= segundos / 2, "solo $paso cambios de rpm en $segundos s")
+            assertEquals(FaseConexion.CONECTADO, elm.estado.value.fase)
+            assertTrue(elm.estado.value.carroceria, "los testigos se desactivaron")
+        } finally {
+            lector.cancel()
         }
     }
 }

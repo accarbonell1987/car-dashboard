@@ -7,8 +7,8 @@ import java.io.IOException
 /**
  * Junta los bytes que llegan en trozos (notificaciones BLE de ~20 bytes) y entrega respuestas completas
  * hasta el prompt '>', con la misma semántica que [TransporteFlujos.leer]: si vence el tiempo devuelve
- * lo acumulado con `completa = false` y lo consume. [recibir] y [fallar] se llaman desde el hilo de los
- * callbacks de Bluetooth; [leer] desde una corrutina.
+ * lo acumulado con `completa = false` y lo consume; lo que llega después de un '>' queda para la próxima lectura.
+ * [recibir] y [fallar] se llaman desde el hilo de los callbacks de Bluetooth; [leer] desde una corrutina.
  */
 class BufferRespuestas {
     private val pendiente = StringBuilder()
@@ -26,6 +26,11 @@ class BufferRespuestas {
         aviso.trySend(Unit)
     }
 
+    /** Tira lo recibido y no leído (restos de ATMA, prompts tardíos). */
+    fun descartar() {
+        synchronized(this) { pendiente.setLength(0) }
+    }
+
     suspend fun leer(timeoutMs: Long): Respuesta {
         val fin = System.nanoTime() + timeoutMs * 1_000_000
         while (true) {
@@ -33,9 +38,9 @@ class BufferRespuestas {
                 error?.let { throw it }
                 val prompt = pendiente.indexOf(">")
                 if (prompt >= 0) {
-                    // ponytail: lo que llegue después del '>' se descarta, igual que en TransporteFlujos.
+                    // Lo que sigue al '>' queda para la próxima lectura: puede ser la respuesta buena tras un prompt tardío.
                     val texto = pendiente.substring(0, prompt)
-                    pendiente.setLength(0)
+                    pendiente.delete(0, prompt + 1)
                     return Respuesta(texto, true)
                 }
             }

@@ -81,6 +81,8 @@ data class EstadoTablero(
     val adaptadorBle: DispositivoBle? = null,
     /** Estado del enlace con el adaptador; null en modo demo. */
     val conexion: EstadoConexion? = null,
+    /** Escuchar el bus para los testigos de puerta, cinturón y A/C. */
+    val testigos: Boolean = true,
     /** Vehículo, plan de mantenimiento y servicios tal como llegaron del móvil por la nube. */
     val garaje: DatosGaraje? = null,
     /** Último minuto de [SENALES_GRAFICA], una muestra por segundo. */
@@ -103,12 +105,16 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
             seccion = runCatching { Seccion.valueOf(prefs.getString("seccion", "INICIO")!!) }.getOrDefault(Seccion.INICIO),
             brillo = prefs.getFloat("brillo", -1f).takeIf { it > 0f },
             direccionEmulador = prefs.getString("emulador", DIRECCION_EMULADOR)!!,
+            testigos = prefs.getBoolean("testigos", true),
             adaptadorBle = prefs.getString("ble_direccion", null)?.let { DispositivoBle(it, prefs.getString("ble_nombre", null) ?: it, 0) },
         ),
     )
     val estado: StateFlow<EstadoTablero> = _estado.asStateFlow()
     private var lectura: Job? = null
     private var vigilancia: Job? = null
+    private var fuenteActual: FuenteDatos? = null
+    private val _registro = MutableStateFlow<List<String>>(emptyList())
+    override val registro: StateFlow<List<String>> = _registro.asStateFlow()
 
     private val datos = DatosLocales(app)
     private val bitacora = datos.bitacora
@@ -173,6 +179,12 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
         usarFuente(FuenteElm327("ELM327 BLE ${dispositivo.nombre}", TransporteBle(getApplication(), dispositivo.direccion)))
     }
 
+    override fun fijarTestigos(activos: Boolean) {
+        prefs.edit().putBoolean("testigos", activos).apply()
+        _estado.update { it.copy(testigos = activos) }
+        fuenteActual?.fijarTestigos(activos)
+    }
+
     fun usarFuente(fuente: FuenteDatos) {
         lectura?.cancel()
         vigilancia?.cancel()
@@ -180,13 +192,19 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
         _estado.update {
             it.copy(fuente = fuente.nombre, esDemo = fuente is FuenteDemo, conexion = fuente.conexion?.value, valores = emptyMap(), alertas = emptyList(), viajeEnCursoKm = null, series = emptyMap())
         }
-        // Mientras reconecta no hay datos: se vacían los valores para no mostrar lecturas viejas.
-        vigilancia = fuente.conexion?.let { c ->
-            viewModelScope.launch {
-                c.collect { con ->
-                    _estado.update { if (con.fase == FaseConexion.CONECTADO) it.copy(conexion = con) else it.copy(conexion = con, valores = emptyMap(), alertas = emptyList()) }
+        fuenteActual = fuente
+        fuente.fijarTestigos(_estado.value.testigos)
+        _registro.value = emptyList()
+        vigilancia = viewModelScope.launch {
+            // Mientras reconecta no hay datos: se vacían los valores para no mostrar lecturas viejas.
+            fuente.conexion?.let { c ->
+                launch {
+                    c.collect { con ->
+                        _estado.update { if (con.fase == FaseConexion.CONECTADO) it.copy(conexion = con) else it.copy(conexion = con, valores = emptyMap(), alertas = emptyList()) }
+                    }
                 }
             }
+            fuente.registro?.let { r -> launch { r.collect { _registro.value = it } } }
         }
         val reg = if (fuente.grabaViajes) {
             RegistradorViaje(Bitacora.ID_ACCENT, reloj = { Clock.System.now() }, nuevoId = { UUID.randomUUID().toString() })

@@ -110,7 +110,7 @@ private fun TarjetaViaje(e: EstadoTablero, modifier: Modifier) {
     val p = LocalPaleta.current
     Tarjeta(modifier, titulo = "Viaje actual") {
         if (e.esDemo) {
-            Text("El modo demo no graba viajes. Conecta el vLinker para empezar.", color = p.tenue, fontSize = 14.sp)
+            Text("El modo demo no graba viajes. Conecta el adaptador para empezar.", color = p.tenue, fontSize = 14.sp)
         } else if (e.viajeEnCursoKm == null) {
             Text("Sin viaje en curso. Empieza solo al arrancar el motor.", color = p.tenue, fontSize = 14.sp)
             e.ultimoViajeKm?.let { Text("Último: ${dec(it)} km", color = p.texto, fontSize = 15.sp) }
@@ -281,6 +281,6 @@ private fun TarjetaAdaptador(e: EstadoTablero, acciones: AccionesTablero, modifi
         TituloConIcono(Icono.ADAPTADOR, "Adaptador OBD")
         Text(if (e.esDemo) "Simulador del Accent" else e.fuente, color = p.texto, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.weight(1f))
-        Boton(if (e.esDemo) "Conectar vLinker" else "Ver adaptador", Modifier.fillMaxWidth()) { acciones.irA(Seccion.AJUSTES) }
+        Boton(if (e.esDemo) "Conectar adaptador" else "Ver adaptador", Modifier.fillMaxWidth()) { acciones.irA(Seccion.AJUSTES) }
     }
 }

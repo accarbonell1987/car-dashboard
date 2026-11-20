@@ -16,6 +16,8 @@ import java.net.Socket
 abstract class TransporteFlujos : TransporteElm {
     private var entrada: InputStream? = null
     private var salida: OutputStream? = null
+    /** Lo que llegó después del último '>' entregado. */
+    private val pendiente = StringBuilder()
 
     /** Abre la conexión y devuelve sus streams. Bloqueante; corre en Dispatchers.IO. */
     protected abstract fun conectar(): Pair<InputStream, OutputStream>
@@ -35,10 +37,16 @@ abstract class TransporteFlujos : TransporteElm {
 
     override suspend fun leer(timeoutMs: Long): Respuesta = withContext(Dispatchers.IO) {
         val e = entrada ?: throw IOException("transporte cerrado")
-        val texto = StringBuilder()
         val buffer = ByteArray(1024)
         val fin = System.nanoTime() + timeoutMs * 1_000_000
-        while (System.nanoTime() < fin) {
+        while (true) {
+            val prompt = pendiente.indexOf(">")
+            if (prompt >= 0) {
+                val texto = pendiente.substring(0, prompt)
+                pendiente.delete(0, prompt + 1)
+                return@withContext Respuesta(texto, true)
+            }
+            if (System.nanoTime() >= fin) break
             val disponibles = e.available()
             if (disponibles <= 0) {
                 delay(5)
@@ -46,17 +54,21 @@ abstract class TransporteFlujos : TransporteElm {
             }
             val n = e.read(buffer, 0, minOf(disponibles, buffer.size))
             if (n < 0) throw IOException("conexión cerrada por el adaptador")
-            for (i in 0 until n) {
-                val c = (buffer[i].toInt() and 0xFF).toChar()
-                // ponytail: lo que llegue después del '>' se descarta; el ELM no manda nada hasta el próximo comando.
-                if (c == '>') return@withContext Respuesta(texto.toString(), true)
-                texto.append(c)
-            }
+            for (i in 0 until n) pendiente.append((buffer[i].toInt() and 0xFF).toChar())
         }
-        Respuesta(texto.toString(), false)
+        val texto = pendiente.toString()
+        pendiente.setLength(0)
+        Respuesta(texto, false)
+    }
+
+    override fun descartar() {
+        pendiente.setLength(0)
+        val e = entrada ?: return
+        runCatching { while (e.available() > 0) e.skip(e.available().toLong()) }
     }
 
     override fun cerrar() {
+        pendiente.setLength(0)
         entrada = null
         salida = null
         desconectar()

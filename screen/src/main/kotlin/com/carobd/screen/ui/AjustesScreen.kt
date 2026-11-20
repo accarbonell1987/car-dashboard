@@ -51,6 +51,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.runtime.mutableStateListOf
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CancellationException
@@ -184,6 +186,30 @@ private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
             Fila("PIDs soportados", c.pidsSoportados.toString())
             c.vin?.let { Fila("VIN", it) }
             Fila("Testigos de carrocería", if (c.carroceria) "Escuchando el bus" else "Desactivados")
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Opcion("Testigos activados", e.testigos, Modifier.weight(1f)) { acciones.fijarTestigos(true) }
+            Opcion("Sin testigos", !e.testigos, Modifier.weight(1f)) { acciones.fijarTestigos(false) }
+        }
+        Registro(acciones)
+    }
+}
+
+/** Últimos comandos y respuestas en crudo, para diagnosticar en el auto. Plegado por defecto. */
+@Composable
+private fun Registro(acciones: AccionesTablero) {
+    val p = LocalPaleta.current
+    var abierto by rememberSaveable { mutableStateOf(false) }
+    Boton(if (abierto) "Ocultar registro" else "Ver registro") { abierto = !abierto }
+    if (!abierto) return
+    val lineas by acciones.registro.collectAsState()
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(p.fondo).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        if (lineas.isEmpty()) Text("Sin comandos todavía.", color = p.tenue, fontSize = 13.sp)
+        for (linea in lineas.asReversed()) {
+            Text(linea, color = if ("✕" in linea || "sin prompt" in linea) p.atencion else p.texto, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
         }
     }
 }

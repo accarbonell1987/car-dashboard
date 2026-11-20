@@ -145,6 +145,8 @@ class TransporteBle(private val context: Context, private val direccion: String)
 
     override suspend fun leer(timeoutMs: Long): Respuesta = buffer.leer(timeoutMs)
 
+    override fun descartar() = buffer.descartar()
+
     override fun cerrar() {
         gatt?.let { g ->
             runCatching { g.disconnect() }

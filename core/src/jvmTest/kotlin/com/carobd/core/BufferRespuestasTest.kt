@@ -67,6 +67,17 @@ class BufferRespuestasTest {
     }
 
     @Test
+    fun promptTardioYRespuestaEnLaMismaNotificacion() = runBlocking<Unit> {
+        val buffer = BufferRespuestas()
+        notificar(buffer, "\r>410C0C32\r\r>") // el '>' tardío de ATMA y detrás la respuesta buena
+        assertEquals(Respuesta("\r", true), buffer.leer(500))
+        assertEquals(Respuesta("410C0C32\r\r", true), buffer.leer(500))
+        notificar(buffer, "STOPPED\r\r>")
+        buffer.descartar()
+        assertEquals(Respuesta("", false), buffer.leer(30))
+    }
+
+    @Test
     fun timeoutDevuelveLoAcumuladoYLoConsume() = runBlocking<Unit> {
         val buffer = BufferRespuestas()
         notificar(buffer, "0000410000002C00\r4000400000000800\r") // ATMA en curso: no hay prompt
