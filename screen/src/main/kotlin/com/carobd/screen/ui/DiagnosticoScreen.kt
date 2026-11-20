@@ -1,5 +1,11 @@
 package com.carobd.screen.ui
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import com.carobd.screen.ui.comun.IconoTrazo
+import com.carobd.screen.ui.comun.Icono
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,36 +59,27 @@ import kotlin.math.floor
 /** Salud: el estado del motor en vivo, alertas, mantenimiento y el último minuto. */
 @Composable
 fun DiagnosticoScreen(e: EstadoTablero) {
-    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            TiempoReal(e, Modifier.fillMaxWidth().weight(1.3f))
-            CodigosFalla(e, Modifier.fillMaxWidth().weight(1f))
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            EstadoSenales(e, Modifier.weight(1f))
+            EstadoMotor(e, Modifier.weight(1f))
         }
-        AlertasYMantenimiento(e, Modifier.weight(1f).fillMaxHeight())
-        UltimoMinuto(e, Modifier.weight(1f).fillMaxHeight())
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            TiempoReal(e, Modifier.weight(1.3f).fillMaxHeight())
+            AlertasYMantenimiento(e, Modifier.weight(1f).fillMaxHeight())
+            UltimoMinuto(e, Modifier.weight(1f).fillMaxHeight())
+        }
     }
 }
 
 /** Every engine signal as a linear bar with its normal band, so the one out of range stands out. */
 @Composable
 private fun TiempoReal(e: EstadoTablero, modifier: Modifier) {
-    val fuera = SENALES_SALUD.count { id ->
-        val v = e.valores[id]
-        val normal = Alertas.rangoNormal(id)
-        v != null && normal != null && v !in normal
-    }
-    val p = LocalPaleta.current
     Tarjeta(modifier, titulo = "Señales del motor") {
-        Text(
-            if (fuera == 0) "Todo en rango" else "$fuera fuera de rango",
-            color = if (fuera == 0) p.ok else p.atencion,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
         for (fila in SENALES_SALUD.chunked(2)) {
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 for (senal in fila.mapNotNull(Catalogo::porId)) {
-                    Box(Modifier.weight(1f).fillMaxHeight()) { GaugeBarra(senal, e.valores[senal.id], Alertas.nivelDe(senal.id, e.alertas)) }
+                    Box(Modifier.weight(1f).fillMaxHeight()) { GaugeBarra(senal, e.valores[senal.id], Alertas.nivelDe(senal.id, e.alertas), iconoDe(senal.id)) }
                 }
             }
         }
@@ -91,18 +88,70 @@ private fun TiempoReal(e: EstadoTablero, modifier: Modifier) {
 
 private val SENALES_SALUD = listOf("temp_refrigerante", "temp_admision", "voltaje", "presion_riel", "boost", "consumo_l100")
 
+private fun iconoDe(senalId: String) = when (senalId) {
+    "voltaje" -> Icono.BATERIA
+    "presion_riel" -> Icono.INYECTOR
+    "boost" -> Icono.TURBO
+    "consumo_l100" -> Icono.SURTIDOR
+    "rpm" -> Icono.VELOCIMETRO
+    else -> Icono.TERMOMETRO
+}
+
+private fun fueraDeRango(e: EstadoTablero) = SENALES_SALUD.count { id ->
+    val v = e.valores[id]
+    val normal = Alertas.rangoNormal(id)
+    v != null && normal != null && v !in normal
+}
+
+/** A status tile: icon, headline and detail, coloured by state. */
 @Composable
-private fun CodigosFalla(e: EstadoTablero, modifier: Modifier) {
+private fun TarjetaEstado(icono: Icono, titulo: String, detalle: String, color: Color, modifier: Modifier) {
     val p = LocalPaleta.current
-    Tarjeta(modifier, titulo = "Códigos de falla") {
-        Text(
-            "Leer y borrar los códigos de la luz de check (modos 03, 07 y 04) llega en la fase 4, cuando probemos el vLinker en el auto.",
-            color = p.tenue,
-            fontSize = 14.sp,
-        )
-        Box(Modifier.weight(1f))
-        Boton("Leer códigos", Modifier.fillMaxWidth(), activo = false) {}
+    Row(
+        modifier.clip(RoundedCornerShape(16.dp)).background(color.copy(alpha = 0.12f)).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        IconoTrazo(icono, color, 34.dp)
+        Column {
+            Text(titulo, color = color, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            Text(detalle, color = p.tenue, fontSize = 13.sp)
+        }
     }
+}
+
+@Composable
+private fun EstadoSenales(e: EstadoTablero, modifier: Modifier) {
+    val p = LocalPaleta.current
+    val fuera = fueraDeRango(e)
+    val leidas = SENALES_SALUD.count { it in e.valores }
+    TarjetaEstado(
+        Icono.DIAGNOSTICO,
+        if (fuera == 0) "Todo en rango" else "$fuera ${if (fuera == 1) "señal fuera" else "señales fuera"} de rango",
+        "$leidas de ${SENALES_SALUD.size} señales del motor leídas",
+        if (fuera == 0) p.ok else p.atencion,
+        modifier,
+    )
+}
+
+/** Check engine lamp and stored code count, read from the engine (PID 0101). */
+@Composable
+private fun EstadoMotor(e: EstadoTablero, modifier: Modifier) {
+    val p = LocalPaleta.current
+    val mil = e.valores["mil"]
+    val codigos = e.valores["codigos_falla"]?.toInt()
+    val (titulo, color) = when (mil) {
+        null -> "Check engine sin datos" to p.tenue
+        1.0 -> "Check engine encendido" to p.atencion
+        else -> "Check engine apagado" to p.ok
+    }
+    TarjetaEstado(
+        Icono.MOTOR,
+        titulo,
+        when (codigos) { null -> "Conecta el adaptador para leerlo"; 1 -> "1 código guardado"; else -> "$codigos códigos guardados" },
+        color,
+        modifier,
+    )
 }
 
 @Composable
@@ -114,12 +163,16 @@ private fun AlertasYMantenimiento(e: EstadoTablero, modifier: Modifier) {
         } else {
             for (a in e.alertas.take(3)) {
                 val s = Catalogo.porId(a.regla.senalId)
-                Text(
-                    "${a.regla.mensaje} · ${s?.let { formatear(a.valor, it) + " " + it.unidad } ?: ""}",
-                    color = if (a.regla.nivel == NivelAviso.CRITICO) p.peligro else p.atencion,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                val color = if (a.regla.nivel == NivelAviso.CRITICO) p.peligro else p.atencion
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    IconoTrazo(Icono.AVISO, color, 22.dp)
+                    Text(
+                        "${a.regla.mensaje} · ${s?.let { formatear(a.valor, it) + " " + it.unidad } ?: ""}",
+                        color = color,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
         }
         Text("MANTENIMIENTO", color = p.tenue, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 8.dp))
@@ -131,7 +184,14 @@ private fun AlertasYMantenimiento(e: EstadoTablero, modifier: Modifier) {
         } else {
             LazyColumn(Modifier.weight(1f)) {
                 items(pendientes, key = { it.item.id }) { pe ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        val nombre = pe.item.nombre.lowercase()
+                        val icono = when {
+                            "aceite" in nombre -> Icono.GOTA
+                            "filtro" in nombre -> Icono.FILTRO
+                            else -> Icono.LLAVE
+                        }
+                        IconoTrazo(icono, if (pe.vencido) p.atencion else p.tenue, 20.dp)
                         Text(pe.item.nombre, color = p.texto, fontSize = 14.sp, modifier = Modifier.weight(1f))
                         Text(pe.texto(), color = if (pe.vencido) p.atencion else p.tenue, fontSize = 14.sp)
                     }
@@ -157,7 +217,8 @@ private fun UltimoMinuto(e: EstadoTablero, modifier: Modifier) {
                     "boost" -> "Boost"
                     else -> "RPM"
                 }
-                Opcion(nombre, id == elegida, Modifier.weight(1f)) { elegida = id }
+                // Icon only: four labels don't fit the card; the name stays for screen readers.
+                Opcion("", id == elegida, Modifier.weight(1f).semantics { contentDescription = nombre }, icono = iconoDe(id)) { elegida = id }
             }
         }
         val actual = e.valores[elegida]

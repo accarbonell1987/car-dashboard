@@ -7,6 +7,8 @@ import androidx.compose.animation.core.Spring
 import kotlin.math.ceil
 import com.carobd.core.tablero.Alerta
 import com.carobd.core.obd.Catalogo
+import com.carobd.screen.ui.comun.Icono
+import com.carobd.screen.ui.comun.IconoTrazo
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -314,7 +316,7 @@ private fun GaugeNumero(senal: Senal, valor: Double?, nivel: NivelAviso?) {
 
 /** D · linear bar: shaded normal band, the value, and a marker for the highest reading of the last seconds. */
 @Composable
-internal fun GaugeBarra(senal: Senal, valor: Double?, nivel: NivelAviso?) {
+internal fun GaugeBarra(senal: Senal, valor: Double?, nivel: NivelAviso?, icono: Icono? = null) {
     val p = LocalPaleta.current
     val f = fraccionDirecta(valor, senal)
     val normal = Alertas.rangoNormal(senal.id)
@@ -336,7 +338,10 @@ internal fun GaugeBarra(senal: Senal, valor: Double?, nivel: NivelAviso?) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val lado = min(maxWidth.value, maxHeight.value)
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(senal.nombre, color = p.tenue, fontSize = tamTexto(lado, 0.12f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                icono?.let { IconoTrazo(it, p.tenue, 18.dp) }
+                Text(senal.nombre, color = p.tenue, fontSize = tamTexto(lado, 0.12f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Bottom) {
                 Text(formatear(valor, senal), color = if (nivel != null || fuera) color else p.texto, fontSize = (lado * 0.3f).sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 Text(" ${senal.unidad}", color = p.tenue, fontSize = tamTexto(lado, 0.11f), modifier = Modifier.padding(bottom = (lado * 0.04f).dp))
