@@ -92,10 +92,36 @@ class CoreTest {
     }
 
     @Test
-    fun `marchas detecta la tercera`() {
+    fun `marchas reconoce las seis del Accent`() {
         val m = Marchas()
-        assertEquals(3, m.marcha(rpm = 2500.0, kmh = 50.0))
+        // rpm per km/h of each gear of the 6-speed (3rd ~42 used to read as "4", 4th ~31 as "5").
+        assertEquals(1, m.marcha(rpm = 2400.0, kmh = 20.0))
+        assertEquals(2, m.marcha(rpm = 2640.0, kmh = 40.0))
+        assertEquals(3, m.marcha(rpm = 2100.0, kmh = 50.0))
+        assertEquals(4, m.marcha(rpm = 2170.0, kmh = 70.0))
+        assertEquals(5, m.marcha(rpm = 2250.0, kmh = 90.0))
+        assertEquals(6, m.marcha(rpm = 2200.0, kmh = 110.0))
         assertEquals(0, m.marcha(rpm = 800.0, kmh = 0.0))
+    }
+
+    @Test
+    fun `marchas aprende la relacion real manejando estable`() {
+        val m = Marchas()
+        // This car's 3rd turns out to be 40 rpm/km/h: after a steady stretch the table moves toward it.
+        repeat(60) { m.aprender(rpm = 2000.0, kmh = 50.0) }
+        assertEquals(40.0, m.relaciones[2], 0.5)
+        assertEquals(3, m.marcha(rpm = 2000.0, kmh = 50.0))
+        // Still strictly decreasing, so gears never swap places.
+        assertTrue(m.relaciones.zipWithNext().all { (a, b) -> a > b })
+    }
+
+    @Test
+    fun `marchas no aprende con datos inestables`() {
+        val m = Marchas()
+        val antes = m.relaciones.toList()
+        // Clutch slipping: the ratio jumps every sample.
+        repeat(60) { i -> m.aprender(rpm = if (i % 2 == 0) 2000.0 else 2600.0, kmh = 50.0) }
+        assertEquals(antes, m.relaciones)
     }
 
     @Test

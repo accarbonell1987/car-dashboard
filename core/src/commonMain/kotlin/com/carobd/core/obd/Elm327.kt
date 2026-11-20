@@ -275,7 +275,10 @@ class Elm327(
         if (map != null) valores["boost"] = (map - baro) / 100.0
         val rpm = valores["rpm"]
         val kmh = valores["velocidad"]
-        if (rpm != null && kmh != null) valores["marcha"] = marchas.marcha(rpm, kmh).toDouble()
+        if (rpm != null && kmh != null) {
+            marchas.aprender(rpm, kmh)
+            valores["marcha"] = marchas.marcha(rpm, kmh).toDouble()
+        }
         val lh = valores["consumo_lh"]
         if (lh != null && kmh != null && kmh > 5) valores["consumo_l100"] = lh / kmh * 100
     }

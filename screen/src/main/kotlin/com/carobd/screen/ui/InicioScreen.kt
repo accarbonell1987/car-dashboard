@@ -165,7 +165,8 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val vs = e.valores
             Stat("Velocidad", vs["velocidad"]?.let { dec(it, 0) } ?: "--", "km/h", p.texto, Modifier.weight(1f))
-            Stat("Marcha", vs["marcha"]?.toInt()?.takeIf { it > 0 }?.toString() ?: "N", "", p.texto, Modifier.weight(1f))
+            val marcha = vs["marcha"]?.toInt()?.takeIf { it > 0 }
+            Stat("Marcha", marcha?.toString() ?: "N", "", if (marcha == null) p.ok else p.texto, Modifier.weight(1f))
             Stat("Refrigerante", vs["temp_refrigerante"]?.let { dec(it, 0) } ?: "--", "°C", colorNivel(nivelDe("temp_refrigerante")), Modifier.weight(1f))
             Stat("Batería", vs["voltaje"]?.let { dec(it, 1) } ?: "--", "V", colorNivel(nivelDe("voltaje")), Modifier.weight(1f))
         }

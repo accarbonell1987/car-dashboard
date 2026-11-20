@@ -299,7 +299,7 @@ private fun GaugeMarcha(valor: Double?) {
         val m = valor?.roundToInt()
         Text(
             when (m) { null -> "--"; 0 -> "N"; else -> m.toString() },
-            color = p.texto,
+            color = if (m == 0) p.ok else p.texto,
             fontSize = (lado * 0.6f).sp,
             fontWeight = FontWeight.Black,
         )

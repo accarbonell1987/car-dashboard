@@ -78,8 +78,9 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
         kmh < 18 -> 1
         kmh < 35 -> 2
         kmh < 55 -> 3
-        kmh < 80 -> 4
-        else -> 5
+        kmh < 75 -> 4
+        kmh < 95 -> 5
+        else -> 6
     }
 
     private fun rpmPara(kmh: Double): Double = kmh * marchas.relaciones[marchaPara(kmh) - 1]

@@ -56,7 +56,7 @@ object Catalogo {
         Senal("tiempo_motor", "Tiempo desde arranque", "s", "01", "1F", formula = "A*256+B", bytes = 2, min = 0.0, max = 65535.0, ritmo = Ritmo.LENTO),
         // Calculadas
         Senal("boost", "Boost", "bar", formula = "(map-barometrica)/100", min = -0.5, max = 1.5, ritmo = Ritmo.RAPIDO, dependeDe = listOf("map", "barometrica")),
-        Senal("marcha", "Marcha", "", min = 0.0, max = 5.0, ritmo = Ritmo.RAPIDO, dependeDe = listOf("rpm", "velocidad")),
+        Senal("marcha", "Marcha", "", min = 0.0, max = 6.0, ritmo = Ritmo.RAPIDO, dependeDe = listOf("rpm", "velocidad")),
         Senal("consumo_l100", "Consumo", "L/100 km", min = 0.0, max = 30.0, ritmo = Ritmo.MEDIO, dependeDe = listOf("consumo_lh", "velocidad")),
         // Testigos por escucha pasiva del bus (modo "can", `pid` = ID de la trama); 1 = activo. Ver Carroceria.
         Senal(Carroceria.PUERTA, "Puerta del conductor abierta", "", "can", "690", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
