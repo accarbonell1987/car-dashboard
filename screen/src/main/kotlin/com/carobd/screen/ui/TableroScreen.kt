@@ -56,6 +56,7 @@ import com.carobd.screen.obd.DispositivoBle
 import kotlinx.coroutines.flow.StateFlow
 import com.carobd.screen.ModoNoche
 import com.carobd.screen.Seccion
+import com.carobd.screen.gauges.CuadroInstrumentos
 import com.carobd.screen.gauges.Gauge
 import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.gauges.formatear
@@ -211,6 +212,8 @@ private fun GrillaTablero(e: EstadoTablero, acciones: AccionesTablero, onElegir:
                     celda = celda,
                     nivel = Alertas.nivelDe(celda.senalId, e.alertas),
                     valor = e.valores[celda.senalId],
+                    valores = e.valores,
+                    alertas = e.alertas,
                     editando = e.editando,
                     anchoCelda = anchoCelda,
                     altoCelda = altoCelda,
@@ -228,6 +231,8 @@ private fun CeldaTablero(
     celda: Celda,
     nivel: NivelAviso?,
     valor: Double?,
+    valores: Map<String, Double>,
+    alertas: List<Alerta>,
     editando: Boolean,
     anchoCelda: Dp,
     altoCelda: Dp,
@@ -283,7 +288,8 @@ private fun CeldaTablero(
     }
 
     Box(mod) {
-        Gauge(celda, senal, valor, nivel, Modifier.fillMaxSize())
+        if (celda.tipo == TipoGauge.CUADRO) CuadroInstrumentos(valores, alertas, Modifier.fillMaxSize())
+        else Gauge(celda, senal, valor, nivel, Modifier.fillMaxSize())
         if (editando) {
             // Quitar
             Text(

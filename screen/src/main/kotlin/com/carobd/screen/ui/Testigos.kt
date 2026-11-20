@@ -99,7 +99,7 @@ private fun IconoTestigo(t: Testigo, activo: Boolean, insignia: Int? = null) {
     )
     // Only animate while on: a resting dashboard should not burn frames.
     // The loop value is read only while drawing, so each tick redraws this icon and nothing else.
-    // Reading it during composition redrew the whole dashboard every frame (1.4 s frames on the emulator).
+    // Reading it during composition redrew the whole dashboard every frame.
     val ciclo = if (activo && t.periodoMs > 0) {
         rememberInfiniteTransition(label = t.id).animateFloat(
             0f, 1f, infiniteRepeatable(tween(t.periodoMs, easing = LinearEasing), t.repetir), label = "ciclo",

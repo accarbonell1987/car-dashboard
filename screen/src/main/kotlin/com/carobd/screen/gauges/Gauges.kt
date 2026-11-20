@@ -1,9 +1,21 @@
 package com.carobd.screen.gauges
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import kotlin.math.ceil
+import com.carobd.core.tablero.Alerta
+import com.carobd.core.obd.Catalogo
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.State
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -94,6 +106,8 @@ fun Gauge(celda: Celda, senal: Senal, valor: Double?, nivel: NivelAviso?, modifi
             TipoGauge.BARRA -> GaugeBarra(senal, valor, nivel)
             TipoGauge.MARCHA -> GaugeMarcha(valor)
             TipoGauge.AGUJA -> GaugeAguja(senal, valor, nivel)
+            // Drawn by the dashboard with every value (CuadroInstrumentos); alone it falls back to a dial.
+            TipoGauge.CUADRO -> GaugeAguja(senal, valor, nivel)
         }
     }
 }
@@ -104,12 +118,14 @@ private fun fraccion(valor: Double?, senal: Senal): Float =
 // Mínimo 13sp: las etiquetas se leen de reojo, a casi un metro de la pantalla.
 private fun tamTexto(lado: Float, factor: Float) = (lado * factor).coerceAtLeast(13f).sp
 
-/** Smoothed fraction: readings arrive every ~60 ms, a spring keeps the dial from jumping. */
+/** Bars and LED arcs jump to each reading. Read only inside draw blocks, so a change redraws just its own layer. */
 @Composable
-private fun fraccionSuave(valor: Double?, senal: Senal): Float {
-    val f by animateFloatAsState(fraccion(valor, senal), spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow), label = "fraccion")
-    return f
-}
+private fun fraccionDirecta(valor: Double?, senal: Senal): State<Float> = rememberUpdatedState(fraccion(valor, senal))
+
+/** Needles follow a spring: readings arrive every ~60 ms and a jumping needle is hard to read. */
+@Composable
+private fun fraccionSuave(valor: Double?, senal: Senal): State<Float> =
+    animateFloatAsState(fraccion(valor, senal), spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), label = "aguja")
 
 private fun fraccionDe(v: Double, senal: Senal) = ((v - senal.min) / (senal.max - senal.min)).toFloat().coerceIn(0f, 1f)
 
@@ -127,9 +143,25 @@ private fun pasoRedondo(bruto: Double): Double {
     return listOf(1.0, 2.0, 5.0, 10.0).first { it * base >= bruto } * base
 }
 
+/** Static parts (scale, numbers, red zone) go to an offscreen layer: rasterized once, not every frame. */
+private val capaFija = Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+
+private class Dial(size: Size, alto: Float = 0.55f) {
+    val r = min(size.width * 0.46f, size.height * 0.5f)
+    val centro = Offset(size.width / 2, size.height * alto)
+    fun angulo(fr: Float) = -225f + 270f * fr
+    fun punto(fr: Float, radio: Float): Offset {
+        val a = Math.toRadians(angulo(fr).toDouble())
+        return Offset(centro.x + radio * cos(a).toFloat(), centro.y + radio * sin(a).toFloat())
+    }
+}
+
+@Composable
+private fun GaugeAguja(senal: Senal, valor: Double?, nivel: NivelAviso?) = Reloj(senal, valor, nivel, Modifier.fillMaxSize())
+
 /** A · analog dial with major and minor ticks, a fixed red zone and a sprung needle. */
 @Composable
-private fun GaugeAguja(senal: Senal, valor: Double?, nivel: NivelAviso?) {
+internal fun Reloj(senal: Senal, valor: Double?, nivel: NivelAviso?, modifier: Modifier) {
     val p = LocalPaleta.current
     val medidor = rememberTextMeasurer()
     val f = fraccionSuave(valor, senal)
@@ -138,21 +170,16 @@ private fun GaugeAguja(senal: Senal, valor: Double?, nivel: NivelAviso?) {
     val mayor = pasoRedondo(rango / 6)
     val menor = mayor / if (mayor / 10.0.pow(floor(log10(mayor))) == 2.0) 4 else 5
     val miles = senal.max >= 1000
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier.semantics { contentDescription = "${senal.nombre} ${formatear(valor, senal)} ${senal.unidad}" }) {
         val lado = min(maxWidth.value, maxHeight.value)
-        Canvas(Modifier.fillMaxSize().semantics { contentDescription = "${senal.nombre} ${formatear(valor, senal)} ${senal.unidad}" }) {
-            val r = min(size.width * 0.46f, size.height * 0.5f)
-            val centro = Offset(size.width / 2, size.height * 0.55f)
-            fun angulo(fr: Float) = -225f + 270f * fr
-            fun punto(fr: Float, radio: Float): Offset {
-                val a = Math.toRadians(angulo(fr).toDouble())
-                return Offset(centro.x + radio * cos(a).toFloat(), centro.y + radio * sin(a).toFloat())
-            }
+        Canvas(Modifier.fillMaxSize().then(capaFija)) {
+            val dial = Dial(size)
+            val r = dial.r
             if (rojo != null) {
                 val d = r * 1.82f
                 drawArc(
-                    p.peligro, angulo(rojo), 270f * (1f - rojo), false,
-                    Offset(centro.x - d / 2, centro.y - d / 2), Size(d, d), style = Stroke(r * 0.07f),
+                    p.peligro, dial.angulo(rojo), 270f * (1f - rojo), false,
+                    Offset(dial.centro.x - d / 2, dial.centro.y - d / 2), Size(d, d), style = Stroke(r * 0.07f),
                 )
             }
             var v = senal.min
@@ -164,28 +191,68 @@ private fun GaugeAguja(senal: Senal, valor: Double?, nivel: NivelAviso?) {
                     esMayor -> p.texto
                     else -> p.tenue
                 }
-                drawLine(color, punto(fr, r), punto(fr, r * if (esMayor) 0.85f else 0.93f), strokeWidth = if (esMayor) 5f else 2.5f)
+                drawLine(color, dial.punto(fr, r), dial.punto(fr, r * if (esMayor) 0.85f else 0.93f), strokeWidth = if (esMayor) 5f else 2.5f)
                 if (esMayor) {
                     val texto = (if (miles) v / 1000 else v).roundToInt().toString()
                     val medida = medidor.measure(texto, TextStyle(color = p.texto, fontSize = (r * 0.13f).toSp(), fontWeight = FontWeight.SemiBold))
-                    val pos = punto(fr, r * 0.7f)
+                    val pos = dial.punto(fr, r * 0.7f)
                     drawText(medida, topLeft = Offset(pos.x - medida.size.width / 2, pos.y - medida.size.height / 2))
                 }
                 v += menor
             }
-            val enRojo = rojo != null && f >= rojo
+        }
+        Canvas(Modifier.fillMaxSize()) {
+            val dial = Dial(size)
+            val fr = f.value
             drawLine(
-                if (enRojo || nivel == NivelAviso.CRITICO) p.peligro else p.atencion,
-                centro * 2f - punto(f, r * 0.15f),
-                punto(f, r * 0.95f),
-                strokeWidth = (r * 0.035f).coerceAtLeast(4f), cap = StrokeCap.Round,
+                if ((rojo != null && fr >= rojo) || nivel == NivelAviso.CRITICO) p.peligro else p.atencion,
+                dial.centro * 2f - dial.punto(fr, dial.r * 0.15f),
+                dial.punto(fr, dial.r * 0.95f),
+                strokeWidth = (dial.r * 0.035f).coerceAtLeast(4f), cap = StrokeCap.Round,
             )
-            drawCircle(p.pista, r * 0.07f, centro)
-            drawCircle(p.tenue, r * 0.07f, centro, style = Stroke(3f))
+            drawCircle(p.pista, dial.r * 0.07f, dial.centro)
+            drawCircle(p.tenue, dial.r * 0.07f, dial.centro, style = Stroke(3f))
         }
         Column(Modifier.align(Alignment.BottomCenter).padding(bottom = (lado * 0.02f).dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(formatear(valor, senal), color = colorPara(p, f, nivel).takeIf { nivel != null } ?: p.texto, fontSize = (lado * 0.16f).sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(formatear(valor, senal), color = if (nivel != null) colorPara(p, fraccion(valor, senal), nivel) else p.texto, fontSize = (lado * 0.16f).sp, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(if (miles) "${senal.unidad} · escala ×1000" else senal.unidad, color = p.tenue, fontSize = tamTexto(lado, 0.06f))
+        }
+    }
+}
+
+/**
+ * Tachometer and speedometer as one block, the gear in a circle between them over their inner edges.
+ * Takes the place of three cells (two dials and the gear) and frees one for another signal.
+ */
+@Composable
+internal fun CuadroInstrumentos(valores: Map<String, Double>, alertas: List<Alerta>, modifier: Modifier = Modifier) {
+    val p = LocalPaleta.current
+    val rpm = Catalogo.porId("rpm") ?: return
+    val velocidad = Catalogo.porId("velocidad") ?: return
+    BoxWithConstraints(modifier.clip(RoundedCornerShape(14.dp)).background(p.celda).padding(10.dp)) {
+        val diametro = min(maxHeight.value, maxWidth.value * 0.46f).dp
+        val marcha = diametro * 0.36f
+        Reloj(rpm, valores["rpm"], Alertas.nivelDe("rpm", alertas), Modifier.size(diametro).align(Alignment.CenterStart).offset(x = maxWidth * 0.25f - diametro / 2))
+        Reloj(velocidad, valores["velocidad"], Alertas.nivelDe("velocidad", alertas), Modifier.size(diametro).align(Alignment.CenterEnd).offset(x = -(maxWidth * 0.25f - diametro / 2)))
+        val m = valores["marcha"]?.roundToInt()
+        // Low between the dials, where their scales are open: it never covers the red zone.
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .offset(y = -(maxHeight - diametro) / 2 - diametro * 0.08f)
+                .size(marcha)
+                .clip(CircleShape)
+                .background(p.fondo)
+                .border(3.dp, if (m == 0) p.ok else p.pista, CircleShape)
+                .semantics { contentDescription = "Marcha ${if (m == 0) "neutro" else m ?: "sin dato"}" },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                when (m) { null -> "--"; 0 -> "N"; else -> m.toString() },
+                color = if (m == 0) p.ok else p.texto,
+                fontSize = (marcha.value * 0.55f).sp,
+                fontWeight = FontWeight.Black,
+            )
         }
     }
 }
@@ -194,17 +261,21 @@ private fun GaugeAguja(senal: Senal, valor: Double?, nivel: NivelAviso?) {
 @Composable
 private fun GaugeArco(senal: Senal, valor: Double?, nivel: NivelAviso?) {
     val p = LocalPaleta.current
-    val f = fraccionSuave(valor, senal)
+    val f = fraccionDirecta(valor, senal)
     val rojo = inicioRojo(senal)
+    val segmentos = 20
+    val paso = 240f / segmentos
+    fun DrawScope.segmento(i: Int, color: Color, alpha: Float = 1f) {
+        val grosor = size.minDimension * 0.1f
+        val d = size.minDimension * 0.86f - grosor
+        drawArc(color, 150f + i * paso + 1.5f, paso - 3f, false, Offset((size.width - d) / 2, (size.height - d) / 2), Size(d, d), alpha = alpha, style = Stroke(grosor))
+    }
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val lado = min(maxWidth.value, maxHeight.value)
+        Canvas(Modifier.fillMaxSize().then(capaFija)) { for (i in 0 until segmentos) segmento(i, p.pista) }
         Canvas(Modifier.fillMaxSize()) {
-            val segmentos = 20
-            val paso = 240f / segmentos
-            val grosor = size.minDimension * 0.1f
-            val d = size.minDimension * 0.86f - grosor
-            val topLeft = Offset((size.width - d) / 2, (size.height - d) / 2)
-            for (i in 0 until segmentos) {
+            val encendidos = f.value * segmentos
+            for (i in 0 until ceil(encendidos).toInt().coerceAtMost(segmentos)) {
                 val posicion = (i + 0.5f) / segmentos
                 val color = when {
                     nivel == NivelAviso.CRITICO -> p.peligro
@@ -212,14 +283,11 @@ private fun GaugeArco(senal: Senal, valor: Double?, nivel: NivelAviso?) {
                     rojo != null && posicion >= rojo -> p.peligro
                     else -> colorPara(p, posicion, null)
                 }
-                val inicio = 150f + i * paso + 1.5f
-                drawArc(p.pista, inicio, paso - 3f, false, topLeft, Size(d, d), style = Stroke(grosor))
-                val encendido = (f * segmentos - i).coerceIn(0f, 1f)
-                if (encendido > 0f) drawArc(color, inicio, paso - 3f, false, topLeft, Size(d, d), alpha = encendido, style = Stroke(grosor))
+                segmento(i, color, (encendidos - i).coerceIn(0f, 1f))
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(formatear(valor, senal), color = if (nivel != null) colorPara(p, f, nivel) else p.texto, fontSize = (lado * 0.22f).sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(formatear(valor, senal), color = if (nivel != null) colorPara(p, fraccion(valor, senal), nivel) else p.texto, fontSize = (lado * 0.22f).sp, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(senal.unidad, color = p.tenue, fontSize = tamTexto(lado, 0.08f))
         }
         Text(senal.nombre, color = p.tenue, fontSize = tamTexto(lado, 0.08f), modifier = Modifier.align(Alignment.BottomCenter), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -249,7 +317,7 @@ private fun GaugeNumero(senal: Senal, valor: Double?, nivel: NivelAviso?) {
 @Composable
 internal fun GaugeBarra(senal: Senal, valor: Double?, nivel: NivelAviso?) {
     val p = LocalPaleta.current
-    val f = fraccionSuave(valor, senal)
+    val f = fraccionDirecta(valor, senal)
     val normal = Alertas.rangoNormal(senal.id)
     val fuera = valor != null && normal != null && valor !in normal
     var pico by remember { mutableStateOf(0f) }
@@ -262,7 +330,7 @@ internal fun GaugeBarra(senal: Senal, valor: Double?, nivel: NivelAviso?) {
     val actual = fraccion(valor, senal)
     if (actual > pico) pico = actual
     val color = when {
-        nivel != null -> colorPara(p, f, nivel)
+        nivel != null -> colorPara(p, fraccion(valor, senal), nivel)
         fuera -> p.atencion
         else -> p.normal
     }
@@ -284,7 +352,7 @@ internal fun GaugeBarra(senal: Senal, valor: Double?, nivel: NivelAviso?) {
                     drawRect(p.ok.copy(alpha = 0.2f), Offset(size.width * desde, 0f), Size(size.width * (hasta - desde), size.height))
                 }
                 drawRoundRect(p.pista, Offset(0f, y), Size(size.width, alto), radio)
-                drawRoundRect(color, Offset(0f, y), Size((size.width * f).coerceAtLeast(alto), alto), radio)
+                drawRoundRect(color, Offset(0f, y), Size((size.width * f.value).coerceAtLeast(alto), alto), radio)
                 drawLine(p.texto, Offset(size.width * pico, 0f), Offset(size.width * pico, size.height), strokeWidth = 3f)
             }
         }

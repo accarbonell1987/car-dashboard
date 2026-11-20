@@ -5,6 +5,7 @@ import com.carobd.core.obd.Catalogo
 import com.carobd.core.sim.SimuladorAccent
 import com.carobd.core.sync.SyncJson
 import com.carobd.core.tablero.Alertas
+import com.carobd.core.tablero.Celda
 import com.carobd.core.tablero.DefinicionTablero
 import com.carobd.core.tablero.Grilla
 import com.carobd.core.tablero.Tableros
@@ -19,7 +20,25 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class TableroTest {
-    private val manejo = Tableros.manejo
+    // Fixed 6x3 layout for the grid rules, so redesigning the default dashboards doesn't move these tests.
+    private val manejo = DefinicionTablero(
+        id = "manejo",
+        nombre = "Manejo",
+        celdas = listOf(
+            Celda("m1", "rpm", TipoGauge.AGUJA, 0, 0, 2, 2),
+            Celda("m2", "velocidad", TipoGauge.AGUJA, 2, 0, 2, 2),
+            Celda("m3", "marcha", TipoGauge.MARCHA, 4, 0),
+            Celda("m4", "boost", TipoGauge.ARCO, 5, 0),
+            Celda("m5", "temp_refrigerante", TipoGauge.BARRA, 4, 1),
+            Celda("m6", "consumo_l100", TipoGauge.NUMERO, 5, 1),
+            Celda("m7", "carga", TipoGauge.ARCO, 0, 2),
+            Celda("m8", "acelerador", TipoGauge.ARCO, 1, 2),
+            Celda("m9", "temp_admision", TipoGauge.NUMERO, 2, 2),
+            Celda("m10", "presion_riel", TipoGauge.BARRA, 3, 2),
+            Celda("m11", "voltaje", TipoGauge.BARRA, 4, 2),
+            Celda("m12", "temp_ambiente", TipoGauge.NUMERO, 5, 2),
+        ),
+    )
 
     @Test
     fun tablerosPredeterminadosSonValidos() {

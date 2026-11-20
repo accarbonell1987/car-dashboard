@@ -3,6 +3,7 @@ package com.carobd.core.tablero
 import com.carobd.core.tablero.TipoGauge.AGUJA
 import com.carobd.core.tablero.TipoGauge.ARCO
 import com.carobd.core.tablero.TipoGauge.BARRA
+import com.carobd.core.tablero.TipoGauge.CUADRO
 import com.carobd.core.tablero.TipoGauge.MARCHA
 import com.carobd.core.tablero.TipoGauge.NUMERO
 
@@ -18,17 +19,16 @@ object Tableros {
         id = "manejo",
         nombre = "Manejo",
         celdas = listOf(
-            c("m1", "rpm", AGUJA, 0, 0, 2, 2),
-            c("m2", "velocidad", AGUJA, 2, 0, 2, 2),
-            c("m3", "marcha", MARCHA, 4, 0),
-            c("m4", "boost", ARCO, 5, 0),
+            c("m1", "rpm", CUADRO, 0, 0, 4, 2),
+            c("m4", "boost", ARCO, 4, 0),
+            c("m6", "consumo_l100", NUMERO, 5, 0),
             c("m5", "temp_refrigerante", BARRA, 4, 1),
-            c("m6", "consumo_l100", NUMERO, 5, 1),
+            c("m11", "voltaje", BARRA, 5, 1),
             c("m7", "carga", ARCO, 0, 2),
             c("m8", "acelerador", ARCO, 1, 2),
             c("m9", "temp_admision", NUMERO, 2, 2),
             c("m10", "presion_riel", BARRA, 3, 2),
-            c("m11", "voltaje", BARRA, 4, 2),
+            c("m13", "temp_dpf", BARRA, 4, 2),
             c("m12", "temp_ambiente", NUMERO, 5, 2),
         ),
     )
