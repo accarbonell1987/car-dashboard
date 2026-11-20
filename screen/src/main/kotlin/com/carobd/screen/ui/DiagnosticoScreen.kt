@@ -72,7 +72,7 @@ private fun TiempoReal(e: EstadoTablero, modifier: Modifier) {
                 Gauge(Celda("diag-$id", id, TipoGauge.ARCO, 0, 0), senal, e.valores[id], Alertas.nivelDe(id, e.alertas), Modifier.weight(1f).fillMaxHeight())
             }
         }
-        for (senal in listOf("voltaje", "temp_aceite").mapNotNull(Catalogo::porId)) {
+        for (senal in listOf("voltaje", "temp_admision").mapNotNull(Catalogo::porId)) {
             val id = senal.id
             val nivel = Alertas.nivelDe(id, e.alertas)
             val p = LocalPaleta.current

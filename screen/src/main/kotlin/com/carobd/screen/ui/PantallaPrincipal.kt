@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.carobd.core.obd.FaseConexion
 import com.carobd.screen.EstadoTablero
 import com.carobd.screen.Seccion
 import com.carobd.screen.gauges.LocalPaleta
@@ -89,8 +90,9 @@ private fun BarraEstado(e: EstadoTablero, acciones: AccionesTablero) {
             // Derecha: OBD, nube y temperatura exterior
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(if (e.esDemo) p.atencion else p.ok))
-                    Text(if (e.esDemo) "Demo" else "OBD", color = p.texto, fontSize = 14.sp)
+                    val conectado = e.conexion?.fase == FaseConexion.CONECTADO
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(if (!e.esDemo && conectado) p.ok else p.atencion))
+                    Text(if (e.esDemo) "Demo" else if (conectado) "OBD" else "Sin conexión", color = p.texto, fontSize = 14.sp)
                 }
                 Row(
                     Modifier.clip(RoundedCornerShape(8.dp)).clickable { acciones.irA(Seccion.AJUSTES) }.padding(horizontal = 6.dp, vertical = 4.dp),

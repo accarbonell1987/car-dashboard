@@ -53,6 +53,22 @@ usa `nc -c` en macOS o `nc -C` en Linux.
 En el emulador de Android, la dirección `10.0.2.2` apunta al `localhost` del ordenador. La app se conecta a
 `10.0.2.2:35000`.
 
+### Desde la app (`screen`)
+
+1. Arranca el emulador en el ordenador: `python3 obd/emulador/elm327_emulador.py` (escucha en `127.0.0.1:35000`).
+2. Abre la app en el emulador de Android y ve a **Ajustes → Adaptador → Emulador (TCP)**.
+3. La dirección por defecto es `10.0.2.2:35000`. Cámbiala si hace falta y pulsa **Conectar**.
+
+La app arranca el adaptador (`ATZ`, `ATE0`, `ATL0`, `ATS0`, `ATH0`, `ATAT1`, `ATSP6`), lee los bitmaps de PIDs y pide
+solo los soportados. Cada ~2 s escucha las IDs 690 y 350 con `ATMA` para los testigos de puerta, cinturón y A/C, que
+aparecen sobre el tablero. Los comandos de consola `puerta`, `cinturon` y `ac` cambian esos testigos en vivo.
+
+Con `cuelgue`, la app marca **Sin conexión** y reconecta sola cuando das `reset`.
+
+La fuente del emulador no graba viajes, para no ensuciar el odómetro con datos de capturas.
+
+Para un dispositivo físico, arranca el emulador con `--host 0.0.0.0` y usa la IP del ordenador en la red local.
+
 ### Desde los scripts de `scripts/` (puerto serie)
 
 Arranca el emulador con `--pty`. Muestra la ruta del puerto, por ejemplo `/dev/ttys001`. Pásasela a los scripts con
@@ -104,7 +120,7 @@ Mientras corre, el emulador lee comandos por su entrada estándar (la terminal d
 | Comando | Efecto |
 | --- | --- |
 | `puerta on\|off` | Bit 6 de b0 en la ID 690 (puerta del conductor). |
-| `cinturon on\|off` | Bit 0 de b2 en la ID 690. |
+| `cinturon on\|off` | Bit 0 de b2 en la ID 690. `on` = cinturón del conductor **sin abrochar** (polaridad de las capturas). |
 | `ac on\|off` | Bit 0x40 de b1 en la ID 350. |
 | `rpm N` | Fija `010C` y los bytes 2-3 de la ID 316 (little-endian, /4). |
 | `vel N` | Fija `010D` y el byte 6 de la ID 316. |

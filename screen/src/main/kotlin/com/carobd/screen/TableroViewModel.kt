@@ -20,6 +20,10 @@ import com.carobd.core.tablero.TipoGauge
 import com.carobd.screen.obd.FuenteDatos
 import com.carobd.screen.ui.AccionesTablero
 import com.carobd.screen.obd.FuenteDemo
+import com.carobd.screen.obd.FuenteElm327
+import com.carobd.core.obd.EstadoConexion
+import com.carobd.core.obd.FaseConexion
+import com.carobd.core.obd.TransporteTcp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -37,6 +41,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import java.time.LocalTime
 import java.util.UUID
 
+/** Qué fuente de datos eligió el usuario en Ajustes. */
+enum class TipoFuente { DEMO, EMULADOR }
+
 enum class ModoNoche(val etiqueta: String) { AUTO("Auto"), DIA("Día"), NOCHE("Noche") }
 
 /** Las pestañas de la barra inferior. */
@@ -44,6 +51,8 @@ enum class Seccion(val etiqueta: String) { INICIO("Inicio"), TABLERO("Tablero"),
 
 /** Señales que guarda la gráfica del último minuto en Diagnóstico. */
 val SENALES_GRAFICA = listOf("temp_refrigerante", "voltaje", "boost", "rpm")
+
+const val DIRECCION_EMULADOR = "10.0.2.2:35000"
 
 data class EstadoTablero(
     val tableros: List<DefinicionTablero>,
@@ -63,6 +72,11 @@ data class EstadoTablero(
     val viajeEnCursoL100: Double? = null,
     val seccion: Seccion = Seccion.INICIO,
     val esDemo: Boolean = true,
+    val tipoFuente: TipoFuente = TipoFuente.DEMO,
+    /** host:puerto del emulador ELM327 por TCP; 10.0.2.2 es el localhost del ordenador visto desde el emulador de Android. */
+    val direccionEmulador: String = DIRECCION_EMULADOR,
+    /** Estado del enlace con el adaptador; null en modo demo. */
+    val conexion: EstadoConexion? = null,
     /** Vehículo, plan de mantenimiento y servicios tal como llegaron del móvil por la nube. */
     val garaje: DatosGaraje? = null,
     /** Último minuto de [SENALES_GRAFICA], una muestra por segundo. */
@@ -84,10 +98,12 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
             modoNoche = runCatching { ModoNoche.valueOf(prefs.getString("modo_noche", "AUTO")!!) }.getOrDefault(ModoNoche.AUTO),
             seccion = runCatching { Seccion.valueOf(prefs.getString("seccion", "INICIO")!!) }.getOrDefault(Seccion.INICIO),
             brillo = prefs.getFloat("brillo", -1f).takeIf { it > 0f },
+            direccionEmulador = prefs.getString("emulador", DIRECCION_EMULADOR)!!,
         ),
     )
     val estado: StateFlow<EstadoTablero> = _estado.asStateFlow()
     private var lectura: Job? = null
+    private var vigilancia: Job? = null
 
     private val datos = DatosLocales(app)
     private val bitacora = datos.bitacora
@@ -109,7 +125,7 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
                 delay(15 * 60_000L)
             }
         }
-        usarFuente(FuenteDemo())
+        if (prefs.getString("fuente", null) == TipoFuente.EMULADOR.name) usarEmulador(_estado.value.direccionEmulador) else usarDemo()
         // Revisa cada minuto si ya es de noche (modo Auto).
         viewModelScope.launch {
             while (true) {
@@ -119,11 +135,36 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
         }
     }
 
+    override fun usarDemo() {
+        prefs.edit().putString("fuente", TipoFuente.DEMO.name).apply()
+        _estado.update { it.copy(tipoFuente = TipoFuente.DEMO) }
+        usarFuente(FuenteDemo())
+    }
+
+    /** Emulador ELM327 por TCP (obd/emulador). No graba viajes: son datos de capturas, no del auto. */
+    override fun usarEmulador(direccion: String) {
+        val limpia = direccion.trim().ifEmpty { DIRECCION_EMULADOR }
+        val host = limpia.substringBeforeLast(':')
+        val puerto = limpia.substringAfterLast(':', "").toIntOrNull() ?: 35000
+        prefs.edit().putString("fuente", TipoFuente.EMULADOR.name).putString("emulador", limpia).apply()
+        _estado.update { it.copy(tipoFuente = TipoFuente.EMULADOR, direccionEmulador = limpia) }
+        usarFuente(FuenteElm327("Emulador (TCP) $host:$puerto", TransporteTcp(host, puerto), grabaViajes = false))
+    }
+
     fun usarFuente(fuente: FuenteDatos) {
         lectura?.cancel()
+        vigilancia?.cancel()
         historial.limpiar()
         _estado.update {
-            it.copy(fuente = fuente.nombre, esDemo = !fuente.grabaViajes, valores = emptyMap(), alertas = emptyList(), viajeEnCursoKm = null, series = emptyMap())
+            it.copy(fuente = fuente.nombre, esDemo = fuente is FuenteDemo, conexion = fuente.conexion?.value, valores = emptyMap(), alertas = emptyList(), viajeEnCursoKm = null, series = emptyMap())
+        }
+        // Mientras reconecta no hay datos: se vacían los valores para no mostrar lecturas viejas.
+        vigilancia = fuente.conexion?.let { c ->
+            viewModelScope.launch {
+                c.collect { con ->
+                    _estado.update { if (con.fase == FaseConexion.CONECTADO) it.copy(conexion = con) else it.copy(conexion = con, valores = emptyMap(), alertas = emptyList()) }
+                }
+            }
         }
         val reg = if (fuente.grabaViajes) {
             RegistradorViaje(Bitacora.ID_ACCENT, reloj = { Clock.System.now() }, nuevoId = { UUID.randomUUID().toString() })

@@ -51,7 +51,17 @@ object Catalogo {
         Senal("boost", "Boost", "bar", formula = "(map-barometrica)/100", min = -0.5, max = 1.5, ritmo = Ritmo.RAPIDO, dependeDe = listOf("map", "barometrica")),
         Senal("marcha", "Marcha", "", min = 0.0, max = 5.0, ritmo = Ritmo.RAPIDO, dependeDe = listOf("rpm", "velocidad")),
         Senal("consumo_l100", "Consumo", "L/100 km", min = 0.0, max = 30.0, ritmo = Ritmo.MEDIO, dependeDe = listOf("consumo_lh", "velocidad")),
+        // Testigos por escucha pasiva del bus (modo "can", `pid` = ID de la trama); 1 = activo. Ver Carroceria.
+        Senal(Carroceria.PUERTA, "Puerta del conductor abierta", "", "can", "690", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
+        Senal(Carroceria.CINTURON, "Cinturón del conductor sin abrochar", "", "can", "690", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
+        Senal(Carroceria.AIRE, "Aire acondicionado", "", "can", "350", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
     )
+
+    /**
+     * Señales que el Accent 2016 1.6 CRDi no da por OBD aunque estén en el catálogo:
+     * 2F (combustible) no figura en sus bitmaps y 5C (aceite) se declara pero siempre vale 00 (-40 °C).
+     */
+    val noSoportadasAccent: Set<String> = setOf("temp_aceite", "combustible")
 
     fun porId(id: String): Senal? = estandar.firstOrNull { it.id == id }
 }

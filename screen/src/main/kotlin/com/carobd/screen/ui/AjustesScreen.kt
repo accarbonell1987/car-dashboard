@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.carobd.screen.EstadoTablero
 import com.carobd.screen.ModoNoche
+import com.carobd.screen.TipoFuente
+import com.carobd.core.obd.FaseConexion
 import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.ui.comun.Boton
 import com.carobd.screen.ui.comun.Fila
@@ -84,7 +86,7 @@ fun AjustesScreen(e: EstadoTablero, acciones: AccionesTablero) {
                 Text(seccion.nombre, color = p.texto, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 when (seccion) {
                     SeccionAjustes.PANTALLA -> AjustesPantalla(e, acciones)
-                    SeccionAjustes.ADAPTADOR -> AjustesAdaptador(e)
+                    SeccionAjustes.ADAPTADOR -> AjustesAdaptador(e, acciones)
                     SeccionAjustes.CUENTA -> AjustesCuenta(e, acciones)
                     SeccionAjustes.ACERCA -> AjustesAcerca()
                 }
@@ -116,19 +118,64 @@ private fun AjustesPantalla(e: EstadoTablero, acciones: AccionesTablero) {
 }
 
 @Composable
-private fun AjustesAdaptador(e: EstadoTablero) {
+private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
     val p = LocalPaleta.current
+    var direccion by remember(e.direccionEmulador) { mutableStateOf(e.direccionEmulador) }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Opcion("Modo demo", e.esDemo, Modifier.weight(1f)) {}
-        Opcion("vLinker BM", !e.esDemo, Modifier.weight(1f), activo = false) {}
+        Opcion("Modo demo", e.tipoFuente == TipoFuente.DEMO, Modifier.weight(1f)) { acciones.usarDemo() }
+        Opcion("Emulador (TCP)", e.tipoFuente == TipoFuente.EMULADOR, Modifier.weight(1f)) { acciones.usarEmulador(direccion) }
+        Opcion("vLinker BM", false, Modifier.weight(1f), activo = false) {}
     }
     Fila("Fuente de datos", if (e.esDemo) "Simulador del Accent" else e.fuente)
-    Fila("Conexión", "Bluetooth clásico, ELM327")
-    Text(
-        "Conectar el vLinker llega en la fase 1, cuando tengas el adaptador: se empareja en el Bluetooth de Android y se elige aquí.",
-        color = p.tenue,
-        fontSize = 14.sp,
-    )
+    if (e.tipoFuente == TipoFuente.EMULADOR) {
+        OutlinedTextField(
+            value = direccion,
+            onValueChange = { direccion = it },
+            label = { Text("Emulador (host:puerto)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = p.texto,
+                unfocusedTextColor = p.texto,
+                focusedBorderColor = p.normal,
+                unfocusedBorderColor = p.linea,
+                focusedLabelColor = p.normal,
+                unfocusedLabelColor = p.tenue,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Boton("Conectar", principal = true, activo = direccion.isNotBlank()) { acciones.usarEmulador(direccion) }
+        Text(
+            "Arranca el emulador en el ordenador con python3 obd/emulador/elm327_emulador.py. Desde el emulador de Android, 10.0.2.2 es el ordenador.",
+            color = p.tenue,
+            fontSize = 14.sp,
+        )
+    }
+    e.conexion?.let { c ->
+        Fila(
+            "Estado",
+            when (c.fase) {
+                FaseConexion.CONECTADO -> "Conectado"
+                FaseConexion.CONECTANDO -> "Conectando…"
+                FaseConexion.RECONECTANDO -> "Reconectando (intento ${c.intento})" + c.detalle.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()
+                FaseConexion.DESCONECTADO -> "Desconectado"
+            },
+            if (c.fase == FaseConexion.CONECTADO) null else p.atencion,
+        )
+        c.adaptador?.let { Fila("Adaptador", it) }
+        if (c.fase == FaseConexion.CONECTADO) {
+            Fila("PIDs soportados", c.pidsSoportados.toString())
+            c.vin?.let { Fila("VIN", it) }
+            Fila("Testigos de carrocería", if (c.carroceria) "Escuchando el bus" else "Desactivados")
+        }
+    }
+    if (e.tipoFuente == TipoFuente.DEMO) {
+        Text(
+            "Conectar el vLinker llega cuando tengas el adaptador: se empareja en el Bluetooth de Android y se elige aquí.",
+            color = p.tenue,
+            fontSize = 14.sp,
+        )
+    }
 }
 
 @Composable

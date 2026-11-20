@@ -39,12 +39,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.carobd.core.model.NivelAviso
+import com.carobd.core.obd.Carroceria
 import com.carobd.core.obd.Catalogo
 import com.carobd.core.tablero.Alerta
 import com.carobd.core.tablero.Alertas
@@ -73,6 +76,8 @@ interface AccionesTablero {
     fun irA(s: Seccion)
     fun elegirModoNoche(m: ModoNoche)
     fun fijarBrillo(b: Float?)
+    fun usarDemo()
+    fun usarEmulador(direccion: String)
 }
 
 /**
@@ -92,6 +97,7 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
     Column(Modifier.fillMaxSize().background(p.fondo)) {
         BarraTableros(e, acciones, onAgregar = { agregando = true })
         if (!e.editando && e.alertas.isNotEmpty()) BannerAlerta(e.alertas.first())
+        if (!e.editando) Testigos(e.valores)
         Spacer(Modifier.height(6.dp))
         GrillaTablero(e, acciones, onElegir = { eligiendo = it })
     }
@@ -367,4 +373,37 @@ private fun DialogoSenal(
             }
         },
     )
+}
+
+/** Testigos de carrocería (escucha pasiva del bus): solo aparecen si el adaptador los está leyendo. */
+@Composable
+private fun Testigos(valores: Map<String, Double>) {
+    val p = LocalPaleta.current
+    val testigos = listOf(
+        Carroceria.PUERTA to "Puerta abierta",
+        Carroceria.CINTURON to "Cinturón sin abrochar",
+        Carroceria.AIRE to "A/C",
+    ).filter { valores[it.first] != null }
+    if (testigos.isEmpty()) return
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for ((id, texto) in testigos) {
+            val activo = valores[id] == 1.0
+            val color = when {
+                !activo -> p.tenue
+                id == Carroceria.AIRE -> p.normal
+                else -> p.atencion
+            }
+            Text(
+                texto,
+                color = if (activo) p.fondo else color,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (activo) color else p.pista)
+                    .semantics { stateDescription = if (activo) "encendido" else "apagado" }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+    }
 }
