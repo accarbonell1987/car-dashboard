@@ -53,20 +53,6 @@ class BitacoraTest {
     }
 
     @Test
-    fun elOdometroRealDelTableroReemplazaAlInicialAunqueSeaMenor() = runTest {
-        val b = bitacora()
-        b.vehiculo()
-        b.guardarViaje(viaje(12.0)) // on top of the 90.600 placeholder
-        ahora += 1.hours
-        b.fijarOdometroReal(84_250)
-        assertEquals(84_250.0, b.odometroKm(), 1e-9)
-        b.guardarViaje(viaje(5.5))
-        assertEquals(84_255.5, b.odometroKm(), 1e-9)
-        // The vehicle carries the new reading, so it syncs to the phone too.
-        assertEquals(84_250, b.vehiculo().odometroInicialKm)
-    }
-
-    @Test
     fun unServicioQuedaGuardadoYPendienteDeSubir() = runTest {
         val disco = arrayOf<String?>(null)
         val b = bitacora(disco)

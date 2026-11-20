@@ -179,13 +179,6 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
         usarFuente(FuenteElm327("ELM327 BLE ${dispositivo.nombre}", TransporteBle(getApplication(), dispositivo.direccion)))
     }
 
-    override fun fijarOdometro(km: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
-            bitacora.fijarOdometroReal(km)
-            actualizarOdometro()
-        }
-    }
-
     override fun fijarTestigos(activos: Boolean) {
         prefs.edit().putBoolean("testigos", activos).apply()
         _estado.update { it.copy(testigos = activos) }
