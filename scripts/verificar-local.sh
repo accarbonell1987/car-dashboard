@@ -37,7 +37,7 @@ case "${1:-todo}" in
       docker compose -f server/deploy/docker-compose.local.yml up -d --build
     echo "Esperando la API..."
     for _ in $(seq 1 30); do
-      if curl -fs http://localhost:8080/salud >/dev/null; then echo "API arriba: http://localhost:8080/salud (token: local)"; exit 0; fi
+      if curl -fs http://localhost:8080/health >/dev/null; then echo "API arriba: http://localhost:8080/health (token: local)"; exit 0; fi
       sleep 2
     done
     echo "La API no respondió; mira: docker compose -f server/deploy/docker-compose.local.yml logs api" >&2

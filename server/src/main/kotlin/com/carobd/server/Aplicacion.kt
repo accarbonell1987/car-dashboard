@@ -24,8 +24,8 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 
 /**
- * Servidor CAROBD: un solo endpoint de sincronización más salud.
- * Configuración por variables de entorno (ver deploy/docker-compose.yml).
+ * Servidor CAROBD: un solo endpoint de sincronización más /health.
+ * Configuración por variables de entorno (ver deploy/vps/compose.vps.yml).
  */
 fun main() {
     val puerto = System.getenv("PORT")?.toIntOrNull() ?: 8080
@@ -47,6 +47,8 @@ fun Application.modulo(almacen: Almacen, tokens: Tokens) {
         }
     }
     routing {
+        get("/health") { call.respondText("ok") }
+        // Alias temporal: el deploy-vps.sh instalado en el VPS todavía prueba /salud. Se quita cuando se actualice.
         get("/salud") { call.respondText("ok") }
         authenticate("dispositivo") {
             post("/sync") {
