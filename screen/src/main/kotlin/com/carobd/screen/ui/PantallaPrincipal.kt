@@ -88,20 +88,20 @@ private fun BarraEstado(e: EstadoTablero, acciones: AccionesTablero) {
         Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             // Izquierda: marca y vehículo
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("CAROBD", color = p.texto, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Text(nombreVehiculo(e), color = p.tenue, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("CAROBD", color = p.texto, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(nombreVehiculo(e), color = p.tenue, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             // Centro: hora y fecha
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(ahora.format(formatoHora), color = p.texto, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Text(ahora.format(formatoFecha), color = p.tenue, fontSize = 12.sp)
+                Text(ahora.format(formatoHora), color = p.texto, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                Text(ahora.format(formatoFecha), color = p.tenue, fontSize = 14.sp)
             }
             // Derecha: OBD, nube y temperatura exterior
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     val conectado = e.conexion?.fase == FaseConexion.CONECTADO
                     Box(Modifier.size(8.dp).clip(CircleShape).background(if (!e.esDemo && conectado) p.ok else p.atencion))
-                    Text(if (e.esDemo) "Demo" else if (conectado) "OBD" else "Sin conexión", color = p.texto, fontSize = 14.sp)
+                    Text(if (e.esDemo) "Demo" else if (conectado) "OBD" else "Sin conexión", color = p.texto, fontSize = 16.sp)
                 }
                 Row(
                     Modifier.clip(RoundedCornerShape(8.dp)).clickable { acciones.irA(Seccion.AJUSTES) }.padding(horizontal = 6.dp, vertical = 4.dp),
@@ -115,7 +115,7 @@ private fun BarraEstado(e: EstadoTablero, acciones: AccionesTablero) {
                         n.pendientes > 0 -> p.texto
                         else -> p.ok
                     }
-                    IconoTrazo(Icono.NUBE, color, 18.dp)
+                    IconoTrazo(Icono.NUBE, color, 22.dp)
                     Text(
                         when {
                             !n.configurada -> "Sin nube"
@@ -124,12 +124,12 @@ private fun BarraEstado(e: EstadoTablero, acciones: AccionesTablero) {
                             else -> "Sync"
                         },
                         color = color,
-                        fontSize = 14.sp,
+                        fontSize = 16.sp,
                     )
                 }
                 // Outside temperature from the weather: the engine's "ambient" PID reads the hot air under the bonnet.
                 val clima by ClimaActual.clima.collectAsState()
-                clima?.let { Text("${dec(it.temperatura, 0)} °C", color = p.texto, fontSize = 14.sp) }
+                clima?.let { Text("${dec(it.temperatura, 0)} °C", color = p.texto, fontSize = 16.sp) }
             }
         }
         Spacer(Modifier.fillMaxWidth().height(1.dp).background(p.linea))
@@ -158,7 +158,7 @@ private fun BarraPestanas(actual: Seccion, acciones: AccionesTablero) {
                     verticalArrangement = Arrangement.Center,
                 ) {
                     IconoTrazo(iconoDe(s), color, 26.dp)
-                    Text(s.etiqueta, color = color, fontSize = 13.sp, fontWeight = if (activa) FontWeight.SemiBold else FontWeight.Normal)
+                    Text(s.etiqueta, color = color, fontSize = 15.sp, fontWeight = if (activa) FontWeight.SemiBold else FontWeight.Normal)
                 }
             }
         }
@@ -195,7 +195,7 @@ private fun AvisoActualizacion() {
         Modifier.fillMaxWidth().background(p.normal.copy(alpha = 0.18f)).padding(horizontal = 20.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(texto, color = p.texto, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text(texto, color = p.texto, fontSize = 17.sp, modifier = Modifier.weight(1f))
         val s = estado
         if (s is EstadoActualizacion.Disponible) {
             Boton("Actualizar", principal = true) { alcance.launch { Actualizador.instalar(context, s.apk) } }

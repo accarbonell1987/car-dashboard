@@ -115,11 +115,11 @@ internal fun TarjetaClima(modifier: Modifier) {
         val c = clima
         when {
             !permiso -> {
-                Text("Permite la ubicación para ver el clima donde está el auto.", color = p.tenue, fontSize = 14.sp)
+                Text("Permite la ubicación para ver el clima donde está el auto.", color = p.tenue, fontSize = 16.sp)
                 Spacer(Modifier.weight(1f))
                 Boton("Permitir ubicación", Modifier.fillMaxWidth()) { pedir.launch(PERMISO) }
             }
-            c == null -> Text("Buscando el clima…", color = p.tenue, fontSize = 14.sp)
+            c == null -> Text("Buscando el clima…", color = p.tenue, fontSize = 16.sp)
             else -> Row(
                 Modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
@@ -128,8 +128,8 @@ internal fun TarjetaClima(modifier: Modifier) {
                 IconoCielo(c.cielo, if (c.cielo == Cielo.DESPEJADO) p.atencion else p.texto, 64.dp, c.descripcion)
                 Column {
                     Text("${dec(c.temperatura, 0)}°", color = p.texto, fontSize = 40.sp, fontWeight = FontWeight.Bold)
-                    Text(c.descripcion, color = p.texto, fontSize = 15.sp)
-                    Text("mín ${dec(c.minima, 0)}° · máx ${dec(c.maxima, 0)}°", color = p.tenue, fontSize = 13.sp)
+                    Text(c.descripcion, color = p.texto, fontSize = 17.sp)
+                    Text("mín ${dec(c.minima, 0)}° · máx ${dec(c.maxima, 0)}°", color = p.tenue, fontSize = 15.sp)
                 }
             }
         }

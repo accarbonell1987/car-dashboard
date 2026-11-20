@@ -112,10 +112,10 @@ private fun TarjetaEstado(icono: Icono, titulo: String, detalle: String, color: 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        IconoTrazo(icono, color, 34.dp)
+        IconoTrazo(icono, color, 40.dp)
         Column {
-            Text(titulo, color = color, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-            Text(detalle, color = p.tenue, fontSize = 13.sp)
+            Text(titulo, color = color, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            Text(detalle, color = p.tenue, fontSize = 15.sp)
         }
     }
 }
@@ -159,28 +159,28 @@ private fun AlertasYMantenimiento(e: EstadoTablero, modifier: Modifier) {
     val p = LocalPaleta.current
     Tarjeta(modifier, titulo = "Alertas en vivo") {
         if (e.alertas.isEmpty()) {
-            Text("Todo en rango", color = p.ok, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text("Todo en rango", color = p.ok, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         } else {
             for (a in e.alertas.take(3)) {
                 val s = Catalogo.porId(a.regla.senalId)
                 val color = if (a.regla.nivel == NivelAviso.CRITICO) p.peligro else p.atencion
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    IconoTrazo(Icono.AVISO, color, 22.dp)
+                    IconoTrazo(Icono.AVISO, color, 26.dp)
                     Text(
                         "${a.regla.mensaje} · ${s?.let { formatear(a.valor, it) + " " + it.unidad } ?: ""}",
                         color = color,
-                        fontSize = 15.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
         }
-        Text("MANTENIMIENTO", color = p.tenue, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 8.dp))
+        Text("MANTENIMIENTO", color = p.tenue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 8.dp))
         val g = e.garaje
         val odometro = maxOf(g?.odometroKm ?: 0, floor(e.odometroKm).toInt())
         val pendientes = g?.let { Mantenimiento.pendientes(it.items, odometro, Clock.System.now(), TimeZone.currentSystemDefault()) }.orEmpty()
         if (pendientes.isEmpty()) {
-            Text("El plan se carga desde la app del móvil al sincronizar.", color = p.tenue, fontSize = 14.sp)
+            Text("El plan se carga desde la app del móvil al sincronizar.", color = p.tenue, fontSize = 16.sp)
         } else {
             LazyColumn(Modifier.weight(1f)) {
                 items(pendientes, key = { it.item.id }) { pe ->
@@ -192,13 +192,13 @@ private fun AlertasYMantenimiento(e: EstadoTablero, modifier: Modifier) {
                             else -> Icono.LLAVE
                         }
                         IconoTrazo(icono, if (pe.vencido) p.atencion else p.tenue, 20.dp)
-                        Text(pe.item.nombre, color = p.texto, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                        Text(pe.texto(), color = if (pe.vencido) p.atencion else p.tenue, fontSize = 14.sp)
+                        Text(pe.item.nombre, color = p.texto, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Text(pe.texto(), color = if (pe.vencido) p.atencion else p.tenue, fontSize = 16.sp)
                     }
                 }
             }
         }
-        Text("Odómetro ${miles(odometro)} km", color = p.tenue, fontSize = 13.sp)
+        Text("Odómetro ${miles(odometro)} km", color = p.tenue, fontSize = 15.sp)
     }
 }
 
@@ -224,13 +224,13 @@ private fun UltimoMinuto(e: EstadoTablero, modifier: Modifier) {
         val actual = e.valores[elegida]
         Row(verticalAlignment = Alignment.Bottom) {
             Text(senal?.let { formatear(actual, it) } ?: "--", color = p.texto, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
-            Text(" ${senal?.unidad.orEmpty()}", color = p.tenue, fontSize = 14.sp, modifier = Modifier.padding(bottom = 6.dp))
+            Text(" ${senal?.unidad.orEmpty()}", color = p.tenue, fontSize = 16.sp, modifier = Modifier.padding(bottom = 6.dp))
         }
         Grafica(serie, Modifier.fillMaxWidth().weight(1f))
         if (serie.size >= 2 && senal != null) {
             Row(Modifier.fillMaxWidth()) {
-                Text("mín ${formatear(serie.min(), senal)}", color = p.tenue, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                Text("máx ${formatear(serie.max(), senal)}", color = p.tenue, fontSize = 13.sp)
+                Text("mín ${formatear(serie.min(), senal)}", color = p.tenue, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                Text("máx ${formatear(serie.max(), senal)}", color = p.tenue, fontSize = 15.sp)
             }
         }
     }

@@ -88,13 +88,13 @@ fun AjustesScreen(e: EstadoTablero, acciones: AccionesTablero) {
     var seccion by rememberSaveable { mutableStateOf(SeccionAjustes.PANTALLA) }
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Same side rail as the dashboard, so the whole app is driven the same way.
-        Column(Modifier.width(76.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.width(88.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (s in SeccionAjustes.entries) ItemRiel(s.icono, s.corto, activo = s == seccion) { seccion = s }
         }
         // Se desplaza: en horizontal el teclado tapa la mitad de la pantalla.
         Tarjeta(Modifier.weight(1f).fillMaxHeight()) {
             Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(seccion.nombre, color = p.texto, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(seccion.nombre, color = p.texto, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 when (seccion) {
                     SeccionAjustes.PANTALLA -> AjustesPantalla(e, acciones)
                     SeccionAjustes.ADAPTADOR -> AjustesAdaptador(e, acciones)
@@ -109,8 +109,8 @@ fun AjustesScreen(e: EstadoTablero, acciones: AccionesTablero) {
 @Composable
 private fun AjustesPantalla(e: EstadoTablero, acciones: AccionesTablero) {
     val p = LocalPaleta.current
-    Text("Modo noche", color = p.texto, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-    Text("Baja el brillo de todos los colores para no encandilar. En Auto cambia solo de 19:00 a 7:00.", color = p.tenue, fontSize = 14.sp)
+    Text("Modo noche", color = p.texto, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+    Text("Baja el brillo de todos los colores para no encandilar. En Auto cambia solo de 19:00 a 7:00.", color = p.tenue, fontSize = 16.sp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (m in ModoNoche.entries) {
             val icono = when (m) {
@@ -122,10 +122,10 @@ private fun AjustesPantalla(e: EstadoTablero, acciones: AccionesTablero) {
         }
     }
     Spacer(Modifier.height(8.dp))
-    Text("Brillo", color = p.texto, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    Text("Brillo", color = p.texto, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Opcion("Del sistema", e.brillo == null) { acciones.fijarBrillo(null) }
-        IconoTrazo(Icono.SOL, p.tenue, 18.dp)
+        IconoTrazo(Icono.SOL, p.tenue, 22.dp)
         Slider(
             value = e.brillo ?: 0.8f,
             onValueChange = { acciones.fijarBrillo(it.coerceIn(0.1f, 1f)) },
@@ -133,7 +133,7 @@ private fun AjustesPantalla(e: EstadoTablero, acciones: AccionesTablero) {
             modifier = Modifier.weight(1f),
             colors = SliderDefaults.colors(thumbColor = p.normal, activeTrackColor = p.normal, inactiveTrackColor = p.pista),
         )
-        IconoTrazo(Icono.SOL, p.texto, 28.dp)
+        IconoTrazo(Icono.SOL, p.texto, 34.dp)
     }
 }
 
@@ -173,7 +173,7 @@ private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
         Text(
             "Arranca el emulador en el ordenador con python3 obd/emulador/elm327_emulador.py. Desde el emulador de Android, 10.0.2.2 es el ordenador.",
             color = p.tenue,
-            fontSize = 14.sp,
+            fontSize = 16.sp,
         )
     }
     e.conexion?.let { c ->
@@ -213,9 +213,9 @@ private fun Registro(acciones: AccionesTablero) {
         Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(p.fondo).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        if (lineas.isEmpty()) Text("Sin comandos todavía.", color = p.tenue, fontSize = 13.sp)
+        if (lineas.isEmpty()) Text("Sin comandos todavía.", color = p.tenue, fontSize = 15.sp)
         for (linea in lineas.asReversed()) {
-            Text(linea, color = if ("✕" in linea || "sin prompt" in linea) p.atencion else p.texto, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+            Text(linea, color = if ("✕" in linea || "sin prompt" in linea) p.atencion else p.texto, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
         }
     }
 }
@@ -275,9 +275,9 @@ private fun SelectorBle(e: EstadoTablero, acciones: AccionesTablero) {
             (if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) " y de ubicación (en Android 11 o anterior lo exige para buscar)" else "") +
             ". La app no usa tu ubicación.",
         color = p.tenue,
-        fontSize = 14.sp,
+        fontSize = 16.sp,
     )
-    aviso?.let { Text(it, color = p.atencion, fontSize = 14.sp) }
+    aviso?.let { Text(it, color = p.atencion, fontSize = 16.sp) }
     for (d in encontrados.sortedByDescending { it.rssi }) {
         Opcion("${d.nombre} · ${d.direccion} · ${d.rssi} dBm", e.tipoFuente == TipoFuente.BLE && d.direccion == e.adaptadorBle?.direccion, Modifier.fillMaxWidth()) {
             acciones.usarBle(d)
@@ -298,7 +298,7 @@ private fun AjustesCuenta(e: EstadoTablero, acciones: AccionesTablero) {
             "${it.date} ${it.hour.toString().padStart(2, '0')}:${it.minute.toString().padStart(2, '0')}"
         } ?: "Nunca",
     )
-    n.error?.let { Text("Error: $it", color = p.atencion, fontSize = 14.sp) }
+    n.error?.let { Text("Error: $it", color = p.atencion, fontSize = 16.sp) }
     val colores = OutlinedTextFieldDefaults.colors(
         focusedTextColor = p.texto,
         unfocusedTextColor = p.texto,
@@ -352,7 +352,7 @@ private fun AjustesAcerca() {
             is EstadoActualizacion.Error -> s.mensaje
         },
         color = if (estado is EstadoActualizacion.Error) p.atencion else p.tenue,
-        fontSize = 14.sp,
+        fontSize = 16.sp,
     )
     val s = estado
     if (s is EstadoActualizacion.Disponible) {

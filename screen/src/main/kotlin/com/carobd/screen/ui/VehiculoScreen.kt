@@ -36,8 +36,8 @@ fun VehiculoScreen(e: EstadoTablero, @Suppress("UNUSED_PARAMETER") acciones: Acc
     val vin = e.conexion?.vin
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Tarjeta(Modifier.weight(1.4f).fillMaxHeight()) {
-            Text(nombreVehiculo(e), color = p.texto, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-            Text("${v?.motor ?: "1.6 CRDi"} · diésel · manual 6", color = p.tenue, fontSize = 15.sp)
+            Text(nombreVehiculo(e), color = p.texto, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text("${v?.motor ?: "1.6 CRDi"} · diésel · manual 6", color = p.tenue, fontSize = 17.sp)
             Silueta(Color(0xFFB8BEC6), Modifier.fillMaxWidth().weight(1f))
         }
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -71,10 +71,10 @@ private fun DatoVehiculo(icono: Icono, nombre: String, valor: String, modifier: 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconoTrazo(icono, p.normal, 30.dp)
+        IconoTrazo(icono, p.normal, 44.dp)
         Column {
-            Text(nombre, color = p.tenue, fontSize = 13.sp)
-            Text(valor, color = p.texto, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(nombre, color = p.tenue, fontSize = 15.sp)
+            Text(valor, color = p.texto, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

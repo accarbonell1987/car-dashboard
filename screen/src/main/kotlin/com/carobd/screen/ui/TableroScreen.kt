@@ -154,7 +154,7 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
 @Composable
 private fun RielTableros(e: EstadoTablero, acciones: AccionesTablero, onAgregar: () -> Unit) {
     val p = LocalPaleta.current
-    Column(Modifier.width(76.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.width(88.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         e.tableros.forEachIndexed { i, t ->
             val icono = when (t.id) {
                 "manejo" -> Icono.VOLANTE
@@ -180,7 +180,7 @@ internal fun BotonTexto(texto: String, color: androidx.compose.ui.graphics.Color
     Text(
         texto,
         color = color,
-        fontSize = 16.sp,
+        fontSize = 18.sp,
         modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 6.dp),
     )
 }
@@ -200,8 +200,8 @@ internal fun BannerAlerta(a: Alerta) {
             .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("⚠ ${a.regla.mensaje}", color = color, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        if (senal != null) Text("${senal.nombre}: ${formatear(a.valor, senal)} ${senal.unidad}", color = p.texto, fontSize = 15.sp)
+        Text("⚠ ${a.regla.mensaje}", color = color, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        if (senal != null) Text("${senal.nombre}: ${formatear(a.valor, senal)} ${senal.unidad}", color = p.texto, fontSize = 17.sp)
     }
 }
 
@@ -301,7 +301,7 @@ private fun CeldaTablero(
             Text(
                 "×",
                 color = p.texto,
-                fontSize = 22.sp,
+                fontSize = 24.sp,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(4.dp)
@@ -339,7 +339,7 @@ private fun CeldaTablero(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("⤡", color = p.fondo, fontSize = 18.sp)
+                Text("⤡", color = p.fondo, fontSize = 20.sp)
             }
         }
     }

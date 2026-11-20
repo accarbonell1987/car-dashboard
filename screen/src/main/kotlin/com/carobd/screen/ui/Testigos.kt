@@ -108,7 +108,7 @@ private fun IconoTestigo(t: Testigo, activo: Boolean, insignia: Int? = null) {
 
     Box(
         Modifier
-            .size(44.dp)
+            .size(52.dp)
             .graphicsLayer { scaleX = escala; scaleY = escala }
             .clip(RoundedCornerShape(12.dp))
             .background(fondo)
@@ -118,7 +118,7 @@ private fun IconoTestigo(t: Testigo, activo: Boolean, insignia: Int? = null) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(28.dp)) {
+        Canvas(Modifier.size(34.dp)) {
             // Icons are authored on a 24x24 grid, like web SVG icons.
             scale(size.minDimension / 24f, pivot = Offset.Zero) { t.dibujar(this, color, encendido, ciclo?.value ?: 0f) }
         }
@@ -126,7 +126,7 @@ private fun IconoTestigo(t: Testigo, activo: Boolean, insignia: Int? = null) {
             Text(
                 "$insignia",
                 color = p.fondo,
-                fontSize = 11.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).clip(CircleShape).background(t.color).padding(horizontal = 5.dp),
             )

@@ -46,7 +46,7 @@ fun Tarjeta(modifier: Modifier = Modifier, titulo: String? = null, contenido: @C
         modifier.clip(RoundedCornerShape(16.dp)).background(p.celda).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (titulo != null) Text(titulo.uppercase(), color = p.tenue, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+        if (titulo != null) Text(titulo.uppercase(), color = p.tenue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
         contenido()
     }
 }
@@ -65,7 +65,7 @@ fun Boton(texto: String, modifier: Modifier = Modifier, principal: Boolean = fal
             .padding(horizontal = 18.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(texto, color = if (activo) p.texto else p.tenue, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(texto, color = if (activo) p.texto else p.tenue, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -86,7 +86,7 @@ fun Opcion(texto: String, elegida: Boolean, modifier: Modifier = Modifier, activ
         val color = if (!activo) p.tenue.copy(alpha = 0.6f) else if (elegida) p.texto else p.tenue
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             icono?.let { IconoTrazo(it, if (elegida) p.normal else color, 22.dp) }
-            Text(texto, color = color, fontSize = 16.sp)
+            Text(texto, color = color, fontSize = 18.sp)
         }
     }
 }
@@ -106,8 +106,8 @@ fun Interruptor(texto: String, activo: Boolean, detalle: String? = null, onCambi
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(texto, color = p.texto, fontSize = 16.sp)
-            detalle?.let { Text(it, color = p.tenue, fontSize = 13.sp) }
+            Text(texto, color = p.texto, fontSize = 18.sp)
+            detalle?.let { Text(it, color = p.tenue, fontSize = 15.sp) }
         }
         Switch(
             checked = activo,
@@ -133,8 +133,8 @@ fun ItemRiel(icono: Icono, nombre: String, activo: Boolean = false, habilitado: 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        IconoTrazo(icono, color, 28.dp)
-        Text(nombre, color = if (activo) p.texto else p.tenue, fontSize = 12.sp, fontWeight = if (activo) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+        IconoTrazo(icono, color, 34.dp)
+        Text(nombre, color = if (activo) p.texto else p.tenue, fontSize = 14.sp, fontWeight = if (activo) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
     }
 }
 
@@ -145,8 +145,8 @@ fun Fila(etiqueta: String, valor: String, colorValor: Color? = null) {
     Column {
         // Etiqueta y valor en la misma línea base, aunque alguno ocupe dos líneas.
         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(etiqueta, color = p.tenue, fontSize = 15.sp, modifier = Modifier.weight(1f).alignByBaseline())
-            Text(valor, color = colorValor ?: p.texto, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
+            Text(etiqueta, color = p.tenue, fontSize = 17.sp, modifier = Modifier.weight(1f).alignByBaseline())
+            Text(valor, color = colorValor ?: p.texto, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.alignByBaseline())
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(p.linea))
     }

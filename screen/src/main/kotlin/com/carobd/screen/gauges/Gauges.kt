@@ -339,7 +339,7 @@ internal fun GaugeBarra(senal: Senal, valor: Double?, nivel: NivelAviso?, icono:
         val lado = min(maxWidth.value, maxHeight.value)
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                icono?.let { IconoTrazo(it, p.tenue, 18.dp) }
+                icono?.let { IconoTrazo(it, p.tenue, 22.dp) }
                 Text(senal.nombre, color = p.tenue, fontSize = tamTexto(lado, 0.12f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Bottom) {

@@ -80,8 +80,8 @@ fun InicioScreen(e: EstadoTablero, acciones: AccionesTablero) {
 internal fun TituloConIcono(icono: Icono, texto: String) {
     val p = LocalPaleta.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        IconoTrazo(icono, p.tenue, 18.dp)
-        Text(texto.uppercase(), color = p.tenue, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+        IconoTrazo(icono, p.tenue, 22.dp)
+        Text(texto.uppercase(), color = p.tenue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
     }
 }
 
@@ -126,13 +126,13 @@ private fun IconoApp(paquete: String, nombre: String) {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (icono != null) {
-            Image(icono, contentDescription = null, modifier = Modifier.size(52.dp))
+            Image(icono, contentDescription = null, modifier = Modifier.size(60.dp))
         } else {
-            Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(p.pista), contentAlignment = Alignment.Center) {
-                IconoTrazo(Icono.NAVEGACION, p.tenue, 30.dp)
+            Box(Modifier.size(60.dp).clip(RoundedCornerShape(14.dp)).background(p.pista), contentAlignment = Alignment.Center) {
+                IconoTrazo(Icono.NAVEGACION, p.tenue, 36.dp)
             }
         }
-        Text(nombre, color = if (icono != null) p.texto else p.tenue, fontSize = 14.sp)
+        Text(nombre, color = if (icono != null) p.texto else p.tenue, fontSize = 16.sp)
     }
 }
 
@@ -141,10 +141,10 @@ private fun TarjetaViaje(e: EstadoTablero, modifier: Modifier) {
     val p = LocalPaleta.current
     Tarjeta(modifier, titulo = "Viaje actual") {
         if (e.esDemo) {
-            Text("El modo demo no graba viajes. Conecta el adaptador para empezar.", color = p.tenue, fontSize = 14.sp)
+            Text("El modo demo no graba viajes. Conecta el adaptador para empezar.", color = p.tenue, fontSize = 16.sp)
         } else if (e.viajeEnCursoKm == null) {
-            Text("Sin viaje en curso. Empieza solo al arrancar el motor.", color = p.tenue, fontSize = 14.sp)
-            e.ultimoViajeKm?.let { Text("Último: ${dec(it)} km", color = p.texto, fontSize = 15.sp) }
+            Text("Sin viaje en curso. Empieza solo al arrancar el motor.", color = p.tenue, fontSize = 16.sp)
+            e.ultimoViajeKm?.let { Text("Último: ${dec(it)} km", color = p.texto, fontSize = 17.sp) }
         } else {
             val seg = e.viajeEnCursoSeg
             Dato("Distancia", dec(e.viajeEnCursoKm), "km")
@@ -158,9 +158,9 @@ private fun TarjetaViaje(e: EstadoTablero, modifier: Modifier) {
 private fun Dato(nombre: String, valor: String, unidad: String) {
     val p = LocalPaleta.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-        Text(nombre, color = p.tenue, fontSize = 14.sp, modifier = Modifier.weight(1f))
-        Text(valor, color = p.texto, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-        if (unidad.isNotEmpty()) Text(" $unidad", color = p.tenue, fontSize = 13.sp)
+        Text(nombre, color = p.tenue, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Text(valor, color = p.texto, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+        if (unidad.isNotEmpty()) Text(" $unidad", color = p.tenue, fontSize = 15.sp)
     }
 }
 
@@ -178,8 +178,8 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
     Tarjeta(modifier) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
-                Text(nombreVehiculo(e), color = p.texto, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text("${v?.motor ?: "1.6 CRDi"} · manual", color = p.tenue, fontSize = 14.sp)
+                Text(nombreVehiculo(e), color = p.texto, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text("${v?.motor ?: "1.6 CRDi"} · manual", color = p.tenue, fontSize = 16.sp)
             }
             val (texto, color) = if (alerta == null) "Todo en orden" to p.ok else alerta.regla.mensaje to colorNivel(alerta.regla.nivel)
             Row(
@@ -188,7 +188,7 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-                Text(texto, color = color, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(texto, color = color, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
         Silueta(Color(0xFFB8BEC6), Modifier.fillMaxWidth().weight(1f))
@@ -218,11 +218,11 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
             Text(
                 if (proximo == null) "Plan de mantenimiento: se carga desde el móvil" else "Próximo servicio: ${proximo.item.nombre} · ${proximo.texto()}",
                 color = if (proximo?.vencido == true) p.atencion else p.texto,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
-            IconoTrazo(Icono.FLECHA, p.tenue, 18.dp)
+            IconoTrazo(Icono.FLECHA, p.tenue, 22.dp)
         }
     }
 }
@@ -231,10 +231,10 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
 private fun Stat(nombre: String, valor: String, unidad: String, color: Color, modifier: Modifier) {
     val p = LocalPaleta.current
     Column(modifier.clip(RoundedCornerShape(12.dp)).background(p.pista).padding(10.dp)) {
-        Text(nombre, color = p.tenue, fontSize = 12.sp, maxLines = 1)
+        Text(nombre, color = p.tenue, fontSize = 14.sp, maxLines = 1)
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(valor, color = color, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
-            if (unidad.isNotEmpty()) Text(" $unidad", color = p.tenue, fontSize = 12.sp, modifier = Modifier.padding(bottom = 3.dp))
+            Text(valor, color = color, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+            if (unidad.isNotEmpty()) Text(" $unidad", color = p.tenue, fontSize = 14.sp, modifier = Modifier.padding(bottom = 3.dp))
         }
     }
 }
@@ -282,7 +282,7 @@ private fun TarjetaMusica(modifier: Modifier) {
     val context = LocalContext.current
     Tarjeta(modifier) {
         TituloConIcono(Icono.MUSICA, "Música")
-        Text("Controla la app de música que esté sonando.", color = p.tenue, fontSize = 14.sp)
+        Text("Controla la app de música que esté sonando.", color = p.tenue, fontSize = 16.sp)
         Spacer(Modifier.weight(1f))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             BotonMedia(Icono.ANTERIOR, "Anterior") { teclaMultimedia(context, KeyEvent.KEYCODE_MEDIA_PREVIOUS) }
@@ -332,10 +332,10 @@ private fun TarjetaAdaptador(e: EstadoTablero, acciones: AccionesTablero, modifi
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            IconoTrazo(Icono.ADAPTADOR, color, 40.dp)
+            IconoTrazo(Icono.ADAPTADOR, color, 48.dp)
             Column(Modifier.weight(1f)) {
-                Text(titulo, color = color, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(detalle, color = p.tenue, fontSize = 13.sp, maxLines = 2)
+                Text(titulo, color = color, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(detalle, color = p.tenue, fontSize = 15.sp, maxLines = 2)
             }
             Box(Modifier.size(12.dp).clip(CircleShape).background(color))
         }
