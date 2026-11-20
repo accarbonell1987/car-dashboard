@@ -1,5 +1,11 @@
 package com.carobd.screen.ui
 
+import com.carobd.screen.ui.comun.IconoTrazo
+import com.carobd.screen.ui.comun.Icono
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -98,12 +104,14 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
     var agregando by remember { mutableStateOf(false) }
     var lleno by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().background(p.fondo)) {
-        BarraTableros(e, acciones, onAgregar = { agregando = true })
-        if (!e.editando && e.alertas.isNotEmpty()) BannerAlerta(e.alertas.first())
-        if (!e.editando) Testigos(e.valores)
-        Spacer(Modifier.height(6.dp))
-        GrillaTablero(e, acciones, onElegir = { eligiendo = it })
+    Row(Modifier.fillMaxSize().background(p.fondo), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        RielTableros(e, acciones, onAgregar = { agregando = true })
+        Column(Modifier.weight(1f).fillMaxHeight()) {
+            if (!e.editando && e.alertas.isNotEmpty()) BannerAlerta(e.alertas.first())
+            if (!e.editando) Testigos(e.valores)
+            Spacer(Modifier.height(6.dp))
+            GrillaTablero(e, acciones, onElegir = { eligiendo = it })
+        }
     }
 
     eligiendo?.let { celda ->
@@ -138,34 +146,51 @@ fun TableroScreen(e: EstadoTablero, acciones: AccionesTablero) {
     }
 }
 
+/**
+ * Dashboards as a rail of icons on the left: a big target that can be hit without looking,
+ * and the full height stays for the gauges. Edit tools live at the bottom of the rail.
+ */
 @Composable
-private fun BarraTableros(e: EstadoTablero, acciones: AccionesTablero, onAgregar: () -> Unit) {
+private fun RielTableros(e: EstadoTablero, acciones: AccionesTablero, onAgregar: () -> Unit) {
     val p = LocalPaleta.current
-    Row(
-        Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
+    Column(Modifier.width(76.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         e.tableros.forEachIndexed { i, t ->
-            val activo = i == e.indice
-            Text(
-                t.nombre,
-                color = if (activo) p.texto else p.tenue,
-                fontSize = 16.sp,
-                fontWeight = if (activo) FontWeight.Bold else FontWeight.Normal,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (activo) p.celda else p.fondo)
-                    .clickable(enabled = !e.editando) { acciones.seleccionar(i) }
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-            )
+            val icono = when (t.id) {
+                "manejo" -> Icono.VOLANTE
+                "motor" -> Icono.MOTOR
+                "diesel" -> Icono.TURBO
+                else -> Icono.TABLERO
+            }
+            ItemRiel(icono, t.nombre, activo = i == e.indice, habilitado = !e.editando) { acciones.seleccionar(i) }
         }
         Spacer(Modifier.weight(1f))
         if (e.editando) {
-            BotonTexto("+ Agregar", p.normal, onAgregar)
-            BotonTexto("Restaurar", p.tenue) { acciones.restaurar() }
+            ItemRiel(Icono.MAS, "Agregar", onClick = onAgregar)
+            ItemRiel(Icono.RESTAURAR, "Restaurar") { acciones.restaurar() }
+            ItemRiel(Icono.LISTO, "Listo", activo = true) { acciones.alternarEdicion() }
+        } else {
+            ItemRiel(Icono.EDITAR, "Editar") { acciones.alternarEdicion() }
         }
-        BotonTexto(if (e.editando) "Listo" else "Editar", p.normal) { acciones.alternarEdicion() }
+    }
+}
+
+@Composable
+private fun ItemRiel(icono: Icono, nombre: String, activo: Boolean = false, habilitado: Boolean = true, onClick: () -> Unit) {
+    val p = LocalPaleta.current
+    val color = if (activo) p.normal else p.tenue
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (activo) p.celda else p.fondo)
+            .clickable(enabled = habilitado, role = Role.Tab, onClick = onClick)
+            .semantics { selected = activo }
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        IconoTrazo(icono, color, 28.dp)
+        Text(nombre, color = if (activo) p.texto else p.tenue, fontSize = 12.sp, fontWeight = if (activo) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
     }
 }
 

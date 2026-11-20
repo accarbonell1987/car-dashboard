@@ -230,16 +230,15 @@ internal fun CuadroInstrumentos(valores: Map<String, Double>, alertas: List<Aler
     val rpm = Catalogo.porId("rpm") ?: return
     val velocidad = Catalogo.porId("velocidad") ?: return
     BoxWithConstraints(modifier.clip(RoundedCornerShape(14.dp)).background(p.celda).padding(10.dp)) {
-        val diametro = min(maxHeight.value, maxWidth.value * 0.46f).dp
-        val marcha = diametro * 0.36f
-        Reloj(rpm, valores["rpm"], Alertas.nivelDe("rpm", alertas), Modifier.size(diametro).align(Alignment.CenterStart).offset(x = maxWidth * 0.25f - diametro / 2))
-        Reloj(velocidad, valores["velocidad"], Alertas.nivelDe("velocidad", alertas), Modifier.size(diametro).align(Alignment.CenterEnd).offset(x = -(maxWidth * 0.25f - diametro / 2)))
+        // Dials against the outer edges; the gear fits in the gap between them, so it never covers a scale.
+        val diametro = min(maxHeight.value, maxWidth.value * 0.42f).dp
+        val marcha = min((maxWidth - diametro * 2 - 12.dp).value, diametro.value * 0.4f).coerceAtLeast(40f).dp
+        Reloj(rpm, valores["rpm"], Alertas.nivelDe("rpm", alertas), Modifier.size(diametro).align(Alignment.CenterStart))
+        Reloj(velocidad, valores["velocidad"], Alertas.nivelDe("velocidad", alertas), Modifier.size(diametro).align(Alignment.CenterEnd))
         val m = valores["marcha"]?.roundToInt()
-        // Low between the dials, where their scales are open: it never covers the red zone.
         Box(
             Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = -(maxHeight - diametro) / 2 - diametro * 0.08f)
+                .align(Alignment.Center)
                 .size(marcha)
                 .clip(CircleShape)
                 .background(p.fondo)
