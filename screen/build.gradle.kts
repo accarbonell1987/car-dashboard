@@ -11,8 +11,8 @@ android {
 
     defaultConfig {
         applicationId = "com.carobd.screen"
-        // La pantalla del auto es Android 15; minSdk 29 cubre otras pantallas Android 10+.
-        minSdk = 29
+        // Android 7.0+: muchas pantallas de auto declaran una versión y corren otra más vieja.
+        minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
@@ -26,6 +26,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // java.time (y kotlinx-datetime, que lo usa en JVM) exige API 26; el desugaring lo trae a 24-25.
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -36,6 +38,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(project(":core"))
     implementation(libs.coroutines.android)
     implementation(libs.ktor.client.okhttp)
