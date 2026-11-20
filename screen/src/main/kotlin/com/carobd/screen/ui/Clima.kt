@@ -58,6 +58,7 @@ import com.carobd.screen.ui.comun.Tarjeta
 import com.carobd.screen.ui.comun.dec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -83,6 +84,11 @@ private suspend fun ubicacion(context: Context): Location? {
     }
 }
 
+/** Last weather fetched, also shown in the status bar as the outside temperature. */
+internal object ClimaActual {
+    val clima = MutableStateFlow<Clima?>(null)
+}
+
 /** Weather at the car's position, refreshed every 15 minutes. */
 @Composable
 internal fun TarjetaClima(modifier: Modifier) {
@@ -96,7 +102,10 @@ internal fun TarjetaClima(modifier: Modifier) {
             ubicacion(context)?.let { lugar ->
                 runCatching {
                     withContext(Dispatchers.IO) { OpenMeteo.leer(URL(OpenMeteo.url(lugar.latitude, lugar.longitude)).readText()) }
-                }.onSuccess { value = it }
+                }.onSuccess {
+                    value = it
+                    ClimaActual.clima.value = it
+                }
             }
             delay(if (value == null) 30_000 else 15 * 60_000)
         }

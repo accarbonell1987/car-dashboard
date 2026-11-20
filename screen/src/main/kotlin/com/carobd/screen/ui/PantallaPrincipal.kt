@@ -127,7 +127,9 @@ private fun BarraEstado(e: EstadoTablero, acciones: AccionesTablero) {
                         fontSize = 14.sp,
                     )
                 }
-                e.valores["temp_ambiente"]?.let { Text("${dec(it, 0)} °C", color = p.texto, fontSize = 14.sp) }
+                // Outside temperature from the weather: the engine's "ambient" PID reads the hot air under the bonnet.
+                val clima by ClimaActual.clima.collectAsState()
+                clima?.let { Text("${dec(it.temperatura, 0)} °C", color = p.texto, fontSize = 14.sp) }
             }
         }
         Spacer(Modifier.fillMaxWidth().height(1.dp).background(p.linea))

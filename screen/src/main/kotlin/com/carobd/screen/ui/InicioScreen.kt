@@ -1,5 +1,9 @@
 package com.carobd.screen.ui
 
+import com.carobd.core.obd.FaseConexion
+import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.Image
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
@@ -61,8 +65,8 @@ fun InicioScreen(e: EstadoTablero, acciones: AccionesTablero) {
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             TarjetaClima(Modifier.fillMaxWidth().weight(1f))
-            TarjetaNavegacion(Modifier.fillMaxWidth().weight(0.8f))
-            TarjetaViaje(e, Modifier.fillMaxWidth().weight(1f))
+            TarjetaNavegacion(Modifier.fillMaxWidth().weight(1f))
+            TarjetaViaje(e, Modifier.fillMaxWidth().weight(0.8f))
         }
         TarjetaAuto(e, acciones, Modifier.weight(1.5f).fillMaxHeight())
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -97,12 +101,38 @@ private fun TarjetaNavegacion(modifier: Modifier) {
     val context = LocalContext.current
     Tarjeta(modifier) {
         TituloConIcono(Icono.NAVEGACION, "Navegación")
-        Text("Abre la app de mapas instalada en la pantalla.", color = p.tenue, fontSize = 14.sp)
-        Spacer(Modifier.weight(1f))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Boton("Maps", Modifier.weight(1f), principal = true) { abrirApp(context, "com.google.android.apps.maps", "Google Maps") }
-            Boton("Waze", Modifier.weight(1f)) { abrirApp(context, "com.waze", "Waze") }
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            IconoApp("com.google.android.apps.maps", "Maps")
+            IconoApp("com.waze", "Waze")
         }
+    }
+}
+
+/** The app's own launcher icon from the system (no logo is redrawn); greyed out when it isn't installed. */
+@Composable
+private fun IconoApp(paquete: String, nombre: String) {
+    val p = LocalPaleta.current
+    val context = LocalContext.current
+    val icono = remember(paquete) {
+        runCatching { context.packageManager.getApplicationIcon(paquete).toBitmap(144, 144).asImageBitmap() }.getOrNull()
+    }
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(role = Role.Button) { abrirApp(context, paquete, nombre) }
+            .padding(8.dp)
+            .semantics { contentDescription = "Abrir $nombre" },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (icono != null) {
+            Image(icono, contentDescription = null, modifier = Modifier.size(52.dp))
+        } else {
+            Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(p.pista), contentAlignment = Alignment.Center) {
+                IconoTrazo(Icono.NAVEGACION, p.tenue, 30.dp)
+            }
+        }
+        Text(nombre, color = if (icono != null) p.texto else p.tenue, fontSize = 14.sp)
     }
 }
 
@@ -165,8 +195,8 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val vs = e.valores
             Stat("Velocidad", vs["velocidad"]?.let { dec(it, 0) } ?: "--", "km/h", p.texto, Modifier.weight(1f))
-            val marcha = vs["marcha"]?.toInt()?.takeIf { it > 0 }
-            Stat("Marcha", marcha?.toString() ?: "N", "", if (marcha == null) p.ok else p.texto, Modifier.weight(1f))
+            val marcha = vs["marcha"]?.toInt()
+            Stat("Marcha", when (marcha) { null -> "--"; 0 -> "N"; else -> marcha.toString() }, "", if (marcha == 0) p.ok else p.texto, Modifier.weight(1f))
             Stat("Refrigerante", vs["temp_refrigerante"]?.let { dec(it, 0) } ?: "--", "°C", colorNivel(nivelDe("temp_refrigerante")), Modifier.weight(1f))
             Stat("Batería", vs["voltaje"]?.let { dec(it, 1) } ?: "--", "V", colorNivel(nivelDe("voltaje")), Modifier.weight(1f))
         }
@@ -183,6 +213,8 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            IconoTrazo(Icono.LLAVE, if (proximo?.vencido == true) p.atencion else p.tenue, 20.dp)
+            Spacer(Modifier.size(10.dp))
             Text(
                 if (proximo == null) "Plan de mantenimiento: se carga desde el móvil" else "Próximo servicio: ${proximo.item.nombre} · ${proximo.texto()}",
                 color = if (proximo?.vencido == true) p.atencion else p.texto,
@@ -276,13 +308,36 @@ private fun BotonMedia(icono: Icono, descripcion: String, principal: Boolean = f
     }
 }
 
+/** One status button for the adapter: green connected, amber connecting, grey disconnected (tap to connect). */
 @Composable
 private fun TarjetaAdaptador(e: EstadoTablero, acciones: AccionesTablero, modifier: Modifier) {
     val p = LocalPaleta.current
+    val fase = e.conexion?.fase
+    val (color, titulo, detalle) = when {
+        e.esDemo -> Triple(p.tenue, "Toca para conectar", "Modo demo: simulador del Accent")
+        fase == FaseConexion.CONECTADO -> Triple(p.ok, "Conectado", e.fuente)
+        fase == FaseConexion.CONECTANDO || fase == FaseConexion.RECONECTANDO -> Triple(p.atencion, "Conectando…", e.fuente)
+        else -> Triple(p.tenue, "Toca para conectar", "Desconectado")
+    }
     Tarjeta(modifier) {
         TituloConIcono(Icono.ADAPTADOR, "Adaptador OBD")
-        Text(if (e.esDemo) "Simulador del Accent" else e.fuente, color = p.texto, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.weight(1f))
-        Boton(if (e.esDemo) "Conectar adaptador" else "Ver adaptador", Modifier.fillMaxWidth()) { acciones.irA(Seccion.AJUSTES) }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(color.copy(alpha = 0.12f))
+                .clickable(role = Role.Button) { acciones.irA(Seccion.AJUSTES) }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            IconoTrazo(Icono.ADAPTADOR, color, 40.dp)
+            Column(Modifier.weight(1f)) {
+                Text(titulo, color = color, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(detalle, color = p.tenue, fontSize = 13.sp, maxLines = 2)
+            }
+            Box(Modifier.size(12.dp).clip(CircleShape).background(color))
+        }
     }
 }

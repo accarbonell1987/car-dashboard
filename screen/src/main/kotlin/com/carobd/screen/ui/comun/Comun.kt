@@ -1,5 +1,9 @@
 package com.carobd.screen.ui.comun
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,7 +71,7 @@ fun Boton(texto: String, modifier: Modifier = Modifier, principal: Boolean = fal
 
 /** Opción de un grupo (Auto / Día / Noche, Demo / vLinker...). */
 @Composable
-fun Opcion(texto: String, elegida: Boolean, modifier: Modifier = Modifier, activo: Boolean = true, onClick: () -> Unit) {
+fun Opcion(texto: String, elegida: Boolean, modifier: Modifier = Modifier, activo: Boolean = true, icono: Icono? = null, onClick: () -> Unit) {
     val p = LocalPaleta.current
     Box(
         modifier
@@ -79,7 +83,58 @@ fun Opcion(texto: String, elegida: Boolean, modifier: Modifier = Modifier, activ
             .padding(horizontal = 18.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(texto, color = if (!activo) p.tenue.copy(alpha = 0.6f) else if (elegida) p.texto else p.tenue, fontSize = 16.sp)
+        val color = if (!activo) p.tenue.copy(alpha = 0.6f) else if (elegida) p.texto else p.tenue
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            icono?.let { IconoTrazo(it, if (elegida) p.normal else color, 22.dp) }
+            Text(texto, color = color, fontSize = 16.sp)
+        }
+    }
+}
+
+/** On/off setting: a label and a switch, instead of a pair of text buttons. */
+@Composable
+fun Interruptor(texto: String, activo: Boolean, detalle: String? = null, onCambio: (Boolean) -> Unit) {
+    val p = LocalPaleta.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, p.linea, RoundedCornerShape(12.dp))
+            .clickable(role = Role.Switch) { onCambio(!activo) }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(texto, color = p.texto, fontSize = 16.sp)
+            detalle?.let { Text(it, color = p.tenue, fontSize = 13.sp) }
+        }
+        Switch(
+            checked = activo,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(checkedTrackColor = p.ok, checkedThumbColor = p.texto, uncheckedTrackColor = p.pista, uncheckedThumbColor = p.tenue, uncheckedBorderColor = p.linea),
+        )
+    }
+}
+
+/** One entry of a side rail (dashboards, settings sections): icon over a short name. */
+@Composable
+fun ItemRiel(icono: Icono, nombre: String, activo: Boolean = false, habilitado: Boolean = true, onClick: () -> Unit) {
+    val p = LocalPaleta.current
+    val color = if (activo) p.normal else p.tenue
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (activo) p.celda else p.fondo)
+            .clickable(enabled = habilitado, role = Role.Tab, onClick = onClick)
+            .semantics { selected = activo }
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        IconoTrazo(icono, color, 28.dp)
+        Text(nombre, color = if (activo) p.texto else p.tenue, fontSize = 12.sp, fontWeight = if (activo) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
     }
 }
 
@@ -119,6 +174,15 @@ enum class Icono(val trazo: String) {
     MAS("M12 5 L12 19 M5 12 L19 12"),
     RESTAURAR("M4 12 A8 8 0 1 0 7 6 M4 4 L4 9 L9 9"),
     LISTO("M5 12 L10 17 L19 7"),
+    SOL("M12 8 A4 4 0 1 1 11.99 8 Z M12 2 L12 4 M12 20 L12 22 M2 12 L4 12 M20 12 L22 12 M5 5 L6.5 6.5 M17.5 17.5 L19 19 M5 19 L6.5 17.5 M17.5 6.5 L19 5"),
+    LUNA("M20 14 A8 8 0 1 1 10 4 A6 6 0 0 0 20 14 Z"),
+    AUTO("M12 3 A9 9 0 1 1 11.99 3 Z M12 3 L12 21"),
+    MONITOR("M3 5 L21 5 L21 16 L3 16 Z M8 20 L16 20 M12 16 L12 20"),
+    BLUETOOTH("M7 7 L17 17 L12 22 L12 2 L17 7 L7 17"),
+    INFO("M12 3 A9 9 0 1 1 11.99 3 Z M12 11 L12 17 M12 7.5 L12 8"),
+    LLAVE("M14 6 A4 4 0 1 0 18 10 L21 13 L19 15 L17 13 L15 15 L13 13 L10 16 A3 3 0 1 1 7 13 Z"),
+    TERMINAL("M3 4 L21 4 L21 20 L3 20 Z M7 9 L10 12 L7 15 M12 15 L17 15"),
+    UBICACION("M12 21 C12 21 5 14.5 5 9 A7 7 0 0 1 19 9 C19 14.5 12 21 12 21 Z M12 6.5 A2.5 2.5 0 1 1 11.99 6.5 Z"),
 }
 
 @Composable

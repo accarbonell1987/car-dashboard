@@ -29,7 +29,7 @@ object Tableros {
             c("m9", "temp_admision", NUMERO, 2, 2),
             c("m10", "presion_riel", BARRA, 3, 2),
             c("m13", "temp_dpf", BARRA, 4, 2),
-            c("m12", "temp_ambiente", NUMERO, 5, 2),
+            c("m12", "maf", NUMERO, 5, 2),
         ),
     )
 

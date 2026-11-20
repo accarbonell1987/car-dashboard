@@ -49,7 +49,8 @@ object Catalogo {
         // Engine status (PID 0101): bit 7 of A is the check engine lamp, bits 0-6 the stored code count.
         Senal("mil", "Check engine", "", "01", "01", formula = "{A:7}", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
         Senal("codigos_falla", "Códigos de falla", "", "01", "01", formula = "A-{A:7}*128", min = 0.0, max = 127.0, ritmo = Ritmo.LENTO),
-        Senal("temp_ambiente", "Temp. ambiente", "°C", "01", "46", formula = "A-40", min = -40.0, max = 60.0, ritmo = Ritmo.LENTO),
+        // The Accent answers PID 46 with the air under the bonnet (52 °C at idle, next to intake 53 °C), not the outside air.
+        Senal("temp_ambiente", "Aire en el motor", "°C", "01", "46", formula = "A-40", min = -40.0, max = 60.0, ritmo = Ritmo.LENTO),
         Senal("barometrica", "Presión barométrica", "kPa", "01", "33", formula = "A", min = 0.0, max = 255.0, ritmo = Ritmo.LENTO),
         // SAE J1979: A = sensores presentes (bit 0 = entrada del banco 1), B-C = esa temperatura ×0,1 −40.
         Senal("temp_dpf", "Temp. DPF", "°C", "01", "7C", formula = "(B*256+C)/10-40", bytes = 3, mascaraSoporte = 0x01, min = 0.0, max = 800.0, ritmo = Ritmo.LENTO),

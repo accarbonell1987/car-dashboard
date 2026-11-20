@@ -1,5 +1,10 @@
 package com.carobd.screen.ui
 
+import androidx.compose.foundation.layout.width
+import com.carobd.screen.ui.comun.ItemRiel
+import com.carobd.screen.ui.comun.Interruptor
+import com.carobd.screen.ui.comun.IconoTrazo
+import com.carobd.screen.ui.comun.Icono
 import kotlinx.coroutines.launch
 import com.carobd.screen.EstadoActualizacion
 import com.carobd.screen.Actualizador
@@ -70,8 +75,11 @@ import com.carobd.screen.ui.comun.Tarjeta
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
-private enum class SeccionAjustes(val nombre: String) {
-    PANTALLA("Pantalla"), ADAPTADOR("Adaptador"), CUENTA("Cuenta y sync"), ACERCA("Acerca de")
+private enum class SeccionAjustes(val nombre: String, val corto: String, val icono: Icono) {
+    PANTALLA("Pantalla", "Pantalla", Icono.SOL),
+    ADAPTADOR("Adaptador", "Adaptador", Icono.ADAPTADOR),
+    CUENTA("Cuenta y sync", "Sync", Icono.NUBE),
+    ACERCA("Acerca de", "Acerca", Icono.INFO),
 }
 
 @Composable
@@ -79,24 +87,9 @@ fun AjustesScreen(e: EstadoTablero, acciones: AccionesTablero) {
     val p = LocalPaleta.current
     var seccion by rememberSaveable { mutableStateOf(SeccionAjustes.PANTALLA) }
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.weight(0.35f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (s in SeccionAjustes.entries) {
-                val activa = s == seccion
-                Text(
-                    s.nombre,
-                    color = if (activa) p.texto else p.tenue,
-                    fontSize = 17.sp,
-                    fontWeight = if (activa) FontWeight.SemiBold else FontWeight.Normal,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 52.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (activa) p.pista else p.fondo)
-                        .semantics { selected = activa }
-                        .clickable(role = Role.Tab) { seccion = s }
-                        .padding(horizontal = 16.dp, vertical = 15.dp),
-                )
-            }
+        // Same side rail as the dashboard, so the whole app is driven the same way.
+        Column(Modifier.width(76.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (s in SeccionAjustes.entries) ItemRiel(s.icono, s.corto, activo = s == seccion) { seccion = s }
         }
         // Se desplaza: en horizontal el teclado tapa la mitad de la pantalla.
         Tarjeta(Modifier.weight(1f).fillMaxHeight()) {
@@ -119,12 +112,20 @@ private fun AjustesPantalla(e: EstadoTablero, acciones: AccionesTablero) {
     Text("Modo noche", color = p.texto, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     Text("Baja el brillo de todos los colores para no encandilar. En Auto cambia solo de 19:00 a 7:00.", color = p.tenue, fontSize = 14.sp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (m in ModoNoche.entries) Opcion(m.etiqueta, m == e.modoNoche, Modifier.weight(1f)) { acciones.elegirModoNoche(m) }
+        for (m in ModoNoche.entries) {
+            val icono = when (m) {
+                ModoNoche.AUTO -> Icono.AUTO
+                ModoNoche.DIA -> Icono.SOL
+                ModoNoche.NOCHE -> Icono.LUNA
+            }
+            Opcion(m.etiqueta, m == e.modoNoche, Modifier.weight(1f), icono = icono) { acciones.elegirModoNoche(m) }
+        }
     }
     Spacer(Modifier.height(8.dp))
     Text("Brillo", color = p.texto, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Opcion("Del sistema", e.brillo == null) { acciones.fijarBrillo(null) }
+        IconoTrazo(Icono.SOL, p.tenue, 18.dp)
         Slider(
             value = e.brillo ?: 0.8f,
             onValueChange = { acciones.fijarBrillo(it.coerceIn(0.1f, 1f)) },
@@ -132,6 +133,7 @@ private fun AjustesPantalla(e: EstadoTablero, acciones: AccionesTablero) {
             modifier = Modifier.weight(1f),
             colors = SliderDefaults.colors(thumbColor = p.normal, activeTrackColor = p.normal, inactiveTrackColor = p.pista),
         )
+        IconoTrazo(Icono.SOL, p.texto, 28.dp)
     }
 }
 
@@ -141,9 +143,9 @@ private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
     var direccion by remember(e.direccionEmulador) { mutableStateOf(e.direccionEmulador) }
     var eligiendoBle by rememberSaveable { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Opcion("Modo demo", e.tipoFuente == TipoFuente.DEMO && !eligiendoBle, Modifier.weight(1f)) { eligiendoBle = false; acciones.usarDemo() }
-        Opcion("Emulador (TCP)", e.tipoFuente == TipoFuente.EMULADOR && !eligiendoBle, Modifier.weight(1f)) { eligiendoBle = false; acciones.usarEmulador(direccion) }
-        Opcion("ELM327 BLE (MOCATEC)", e.tipoFuente == TipoFuente.BLE || eligiendoBle, Modifier.weight(1f)) {
+        Opcion("Demo", e.tipoFuente == TipoFuente.DEMO && !eligiendoBle, Modifier.weight(1f), icono = Icono.PLAY) { eligiendoBle = false; acciones.usarDemo() }
+        Opcion("Emulador", e.tipoFuente == TipoFuente.EMULADOR && !eligiendoBle, Modifier.weight(1f), icono = Icono.MONITOR) { eligiendoBle = false; acciones.usarEmulador(direccion) }
+        Opcion("ELM327 BLE", e.tipoFuente == TipoFuente.BLE || eligiendoBle, Modifier.weight(1f), icono = Icono.BLUETOOTH) {
             val elegido = e.adaptadorBle
             if (elegido != null) acciones.usarBle(elegido) else eligiendoBle = true
         }
@@ -189,12 +191,12 @@ private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
         if (c.fase == FaseConexion.CONECTADO) {
             Fila("PIDs soportados", c.pidsSoportados.toString())
             c.vin?.let { Fila("VIN", it) }
-            Fila("Testigos de carrocería", if (c.carroceria) "Escuchando el bus" else "Desactivados")
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Opcion("Testigos activados", e.testigos, Modifier.weight(1f)) { acciones.fijarTestigos(true) }
-            Opcion("Sin testigos", !e.testigos, Modifier.weight(1f)) { acciones.fijarTestigos(false) }
-        }
+        Interruptor(
+            "Testigos de carrocería",
+            e.testigos,
+            detalle = if (c.fase != FaseConexion.CONECTADO) null else if (c.carroceria) "Escuchando el bus" else "Desactivados",
+        ) { acciones.fijarTestigos(it) }
         Registro(acciones)
     }
 }
@@ -204,7 +206,7 @@ private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
 private fun Registro(acciones: AccionesTablero) {
     val p = LocalPaleta.current
     var abierto by rememberSaveable { mutableStateOf(false) }
-    Boton(if (abierto) "Ocultar registro" else "Ver registro") { abierto = !abierto }
+    Opcion(if (abierto) "Ocultar registro" else "Registro de comandos", abierto, icono = Icono.TERMINAL) { abierto = !abierto }
     if (!abierto) return
     val lineas by acciones.registro.collectAsState()
     Column(

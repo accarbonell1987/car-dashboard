@@ -1,6 +1,7 @@
 package com.carobd.screen.ui
 
 import com.carobd.screen.ui.comun.IconoTrazo
+import com.carobd.screen.ui.comun.ItemRiel
 import com.carobd.screen.ui.comun.Icono
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
@@ -171,26 +172,6 @@ private fun RielTableros(e: EstadoTablero, acciones: AccionesTablero, onAgregar:
         } else {
             ItemRiel(Icono.EDITAR, "Editar") { acciones.alternarEdicion() }
         }
-    }
-}
-
-@Composable
-private fun ItemRiel(icono: Icono, nombre: String, activo: Boolean = false, habilitado: Boolean = true, onClick: () -> Unit) {
-    val p = LocalPaleta.current
-    val color = if (activo) p.normal else p.tenue
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (activo) p.celda else p.fondo)
-            .clickable(enabled = habilitado, role = Role.Tab, onClick = onClick)
-            .semantics { selected = activo }
-            .padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        IconoTrazo(icono, color, 28.dp)
-        Text(nombre, color = if (activo) p.texto else p.tenue, fontSize = 12.sp, fontWeight = if (activo) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
     }
 }
 
