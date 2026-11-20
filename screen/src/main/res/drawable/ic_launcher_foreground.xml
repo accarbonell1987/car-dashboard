@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gauge icon: 270° dial with a blue active arc, amber/red redline and a needle. 108dp canvas; the dial (radius 29 + half stroke) stays inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M33.494,74.506 A29,29 0 1 1 74.506,74.506"
+        android:strokeColor="#262B33" android:strokeWidth="7" android:strokeLineCap="round" />
+    <path android:pathData="M33.494,74.506 A29,29 0 0 1 68.5,28.885"
+        android:strokeColor="#3FA7FF" android:strokeWidth="7" android:strokeLineCap="round" />
+    <path android:pathData="M82.012,61.506 A29,29 0 0 1 74.506,74.506"
+        android:strokeColor="#FF4D4F" android:strokeWidth="7" android:strokeLineCap="round" />
+    <path android:pathData="M56.598,55.5 L66.5,32.35 L51.402,52.5 Z" android:fillColor="#ECEFF4" />
+    <path android:pathData="M54,54 m-6,0 a6,6 0 1 0 12,0 a6,6 0 1 0 -12,0" android:fillColor="#3FA7FF" />
+</vector>
