@@ -37,3 +37,8 @@ reiniciar el auto.
 | `elm327-ralenti.csv` | PIDs en ralentí. |
 | `elm327-guiada.csv`, `.txt`, `-marcas.txt` | Captura guiada (aceleraciones) y marcas de cada paso. |
 | `elm327-carroceria.csv`, `.txt`, `-marcas.txt` | Captura de carrocería y marcas de cada paso. |
+
+## Emulador
+
+`emulador/` emula el adaptador a partir de estas capturas para desarrollar sin el auto (TCP `127.0.0.1:35000` o
+pseudo-terminal serie). Ver `emulador/README.md`.
