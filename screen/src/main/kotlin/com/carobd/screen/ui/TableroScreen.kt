@@ -348,7 +348,7 @@ private fun DialogoSenal(
         text = {
             Column {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for ((t, nombre) in listOf(TipoGauge.ARCO to "Arco", TipoGauge.NUMERO to "Número", TipoGauge.BARRA to "Barra")) {
+                    for ((t, nombre) in listOf(TipoGauge.AGUJA to "Aguja", TipoGauge.ARCO to "Arco", TipoGauge.NUMERO to "Número", TipoGauge.BARRA to "Barra")) {
                         val activo = t == tipo
                         Text(
                             nombre,

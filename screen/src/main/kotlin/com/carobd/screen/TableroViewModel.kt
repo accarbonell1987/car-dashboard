@@ -49,7 +49,7 @@ enum class TipoFuente { DEMO, EMULADOR, BLE }
 enum class ModoNoche(val etiqueta: String) { AUTO("Auto"), DIA("Día"), NOCHE("Noche") }
 
 /** Las pestañas de la barra inferior. */
-enum class Seccion(val etiqueta: String) { INICIO("Inicio"), TABLERO("Tablero"), DIAGNOSTICO("Diagnóstico"), VEHICULO("Vehículo"), AJUSTES("Ajustes") }
+enum class Seccion(val etiqueta: String) { INICIO("Inicio"), TABLERO("Tablero"), DIAGNOSTICO("Salud"), VEHICULO("Vehículo"), AJUSTES("Ajustes") }
 
 /** Señales que guarda la gráfica del último minuto en Diagnóstico. */
 val SENALES_GRAFICA = listOf("temp_refrigerante", "voltaje", "boost", "rpm")

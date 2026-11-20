@@ -3,7 +3,8 @@ package com.carobd.core.tablero
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class TipoGauge { ARCO, NUMERO, BARRA, MARCHA }
+/** AGUJA: analog dial with a needle. ARCO: segmented LED arc. BARRA: linear bar with the normal band. */
+enum class TipoGauge { ARCO, NUMERO, BARRA, MARCHA, AGUJA }
 
 /** Una celda de la grilla: qué señal muestra, cómo, y dónde (columna, fila, ancho y alto en celdas). */
 @Serializable

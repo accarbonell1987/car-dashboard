@@ -52,6 +52,18 @@ object Alertas {
             .sortedByDescending { it.regla.nivel.ordinal }
     }
 
+    /**
+     * Normal band of a signal, taken from its alert thresholds: above every `menorQue`, below every `mayorQue`.
+     * Null when the signal has no rules. Gauges shade it so an out-of-range value is seen at a glance.
+     */
+    fun rangoNormal(senalId: String, reglas: List<ReglaAlerta> = accentCrdi): ClosedFloatingPointRange<Double>? {
+        val propias = reglas.filter { it.senalId == senalId }
+        if (propias.isEmpty()) return null
+        val desde = propias.mapNotNull { it.menorQue }.maxOrNull() ?: Double.NEGATIVE_INFINITY
+        val hasta = propias.mapNotNull { it.mayorQue }.minOrNull() ?: Double.POSITIVE_INFINITY
+        return desde..hasta
+    }
+
     /** Nivel de alerta de una señal concreta, para pintar su gauge. */
     fun nivelDe(senalId: String, activas: List<Alerta>): NivelAviso? =
         activas.firstOrNull { it.regla.senalId == senalId }?.regla?.nivel

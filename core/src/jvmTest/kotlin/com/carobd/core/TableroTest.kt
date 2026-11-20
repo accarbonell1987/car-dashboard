@@ -102,4 +102,14 @@ class TableroTest {
         val conAlerta = lecturas.filter { l -> Alertas.evaluar(l.valores).any { it.regla.senalId != "combustible" } }
         assertTrue(conAlerta.isEmpty(), "alertas en modo demo: ${conAlerta.firstOrNull()?.let { Alertas.evaluar(it.valores) }}")
     }
+
+    @Test
+    fun rangoNormalSaleDeLasAlertas() {
+        // Voltage: above the highest "menorQue" (13.2) and below the "mayorQue" (15.2).
+        assertEquals(13.2..15.2, Alertas.rangoNormal("voltaje"))
+        // Coolant only has upper limits: the lowest one wins.
+        assertEquals(Double.NEGATIVE_INFINITY..105.0, Alertas.rangoNormal("temp_refrigerante"))
+        // No rules, no band.
+        assertNull(Alertas.rangoNormal("rpm"))
+    }
 }

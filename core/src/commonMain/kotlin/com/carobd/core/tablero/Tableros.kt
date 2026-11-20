@@ -1,5 +1,6 @@
 package com.carobd.core.tablero
 
+import com.carobd.core.tablero.TipoGauge.AGUJA
 import com.carobd.core.tablero.TipoGauge.ARCO
 import com.carobd.core.tablero.TipoGauge.BARRA
 import com.carobd.core.tablero.TipoGauge.MARCHA
@@ -17,17 +18,17 @@ object Tableros {
         id = "manejo",
         nombre = "Manejo",
         celdas = listOf(
-            c("m1", "rpm", ARCO, 0, 0, 2, 2),
-            c("m2", "velocidad", ARCO, 2, 0, 2, 2),
+            c("m1", "rpm", AGUJA, 0, 0, 2, 2),
+            c("m2", "velocidad", AGUJA, 2, 0, 2, 2),
             c("m3", "marcha", MARCHA, 4, 0),
             c("m4", "boost", ARCO, 5, 0),
-            c("m5", "temp_refrigerante", ARCO, 4, 1),
+            c("m5", "temp_refrigerante", BARRA, 4, 1),
             c("m6", "consumo_l100", NUMERO, 5, 1),
-            c("m7", "carga", BARRA, 0, 2),
-            c("m8", "acelerador", BARRA, 1, 2),
+            c("m7", "carga", ARCO, 0, 2),
+            c("m8", "acelerador", ARCO, 1, 2),
             c("m9", "temp_admision", NUMERO, 2, 2),
-            c("m10", "presion_riel", NUMERO, 3, 2),
-            c("m11", "voltaje", NUMERO, 4, 2),
+            c("m10", "presion_riel", BARRA, 3, 2),
+            c("m11", "voltaje", BARRA, 4, 2),
             c("m12", "temp_ambiente", NUMERO, 5, 2),
         ),
     )
@@ -37,12 +38,12 @@ object Tableros {
         id = "motor",
         nombre = "Motor",
         celdas = listOf(
-            c("o1", "temp_refrigerante", ARCO, 0, 0, 2, 2),
-            c("o2", "temp_admision", ARCO, 2, 0, 2, 2),
-            c("o3", "voltaje", ARCO, 4, 0, 2, 2),
+            c("o1", "temp_refrigerante", BARRA, 0, 0, 2, 2),
+            c("o2", "temp_admision", BARRA, 2, 0, 2, 2),
+            c("o3", "voltaje", BARRA, 4, 0, 2, 2),
             c("o4", "map", NUMERO, 0, 2),
             c("o5", "temp_ambiente", NUMERO, 1, 2),
-            c("o6", "carga", BARRA, 2, 2),
+            c("o6", "carga", ARCO, 2, 2),
             c("o7", "rpm", NUMERO, 3, 2),
             c("o8", "tiempo_motor", NUMERO, 4, 2),
             c("o9", "barometrica", NUMERO, 5, 2),
@@ -55,13 +56,13 @@ object Tableros {
         nombre = "Diésel",
         celdas = listOf(
             c("d1", "boost", ARCO, 0, 0, 2, 2),
-            c("d2", "presion_riel", ARCO, 2, 0, 2, 2),
-            c("d3", "temp_dpf", ARCO, 4, 0, 2, 2),
+            c("d2", "presion_riel", BARRA, 2, 0, 2, 2),
+            c("d3", "temp_dpf", BARRA, 4, 0, 2, 2),
             c("d4", "maf", NUMERO, 0, 2),
             c("d5", "map", NUMERO, 1, 2),
             c("d6", "consumo_lh", NUMERO, 2, 2),
             c("d7", "consumo_l100", NUMERO, 3, 2),
-            c("d8", "acelerador", BARRA, 4, 2),
+            c("d8", "acelerador", ARCO, 4, 2),
             c("d9", "temp_admision", NUMERO, 5, 2),
         ),
     )

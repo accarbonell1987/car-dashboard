@@ -39,7 +39,7 @@ import com.carobd.core.tablero.Celda
 import com.carobd.core.tablero.TipoGauge
 import com.carobd.screen.EstadoTablero
 import com.carobd.screen.SENALES_GRAFICA
-import com.carobd.screen.gauges.Gauge
+import com.carobd.screen.gauges.GaugeBarra
 import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.gauges.formatear
 import com.carobd.screen.ui.comun.Boton
@@ -50,7 +50,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlin.math.floor
 
-/** Diagnóstico: el estado del motor en vivo, alertas, mantenimiento y el último minuto. */
+/** Salud: el estado del motor en vivo, alertas, mantenimiento y el último minuto. */
 @Composable
 fun DiagnosticoScreen(e: EstadoTablero) {
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -63,27 +63,33 @@ fun DiagnosticoScreen(e: EstadoTablero) {
     }
 }
 
+/** Every engine signal as a linear bar with its normal band, so the one out of range stands out. */
 @Composable
 private fun TiempoReal(e: EstadoTablero, modifier: Modifier) {
-    Tarjeta(modifier, titulo = "En tiempo real") {
-        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (senal in listOf("rpm", "temp_refrigerante").mapNotNull(Catalogo::porId)) {
-                val id = senal.id
-                Gauge(Celda("diag-$id", id, TipoGauge.ARCO, 0, 0), senal, e.valores[id], Alertas.nivelDe(id, e.alertas), Modifier.weight(1f).fillMaxHeight())
+    val fuera = SENALES_SALUD.count { id ->
+        val v = e.valores[id]
+        val normal = Alertas.rangoNormal(id)
+        v != null && normal != null && v !in normal
+    }
+    val p = LocalPaleta.current
+    Tarjeta(modifier, titulo = "Señales del motor") {
+        Text(
+            if (fuera == 0) "Todo en rango" else "$fuera fuera de rango",
+            color = if (fuera == 0) p.ok else p.atencion,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        for (fila in SENALES_SALUD.chunked(2)) {
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                for (senal in fila.mapNotNull(Catalogo::porId)) {
+                    Box(Modifier.weight(1f).fillMaxHeight()) { GaugeBarra(senal, e.valores[senal.id], Alertas.nivelDe(senal.id, e.alertas)) }
+                }
             }
-        }
-        for (senal in listOf("voltaje", "temp_admision").mapNotNull(Catalogo::porId)) {
-            val id = senal.id
-            val nivel = Alertas.nivelDe(id, e.alertas)
-            val p = LocalPaleta.current
-            Fila(
-                senal.nombre,
-                "${formatear(e.valores[id], senal)} ${senal.unidad}",
-                when (nivel) { NivelAviso.CRITICO -> p.peligro; NivelAviso.ATENCION -> p.atencion; else -> null },
-            )
         }
     }
 }
+
+private val SENALES_SALUD = listOf("temp_refrigerante", "temp_admision", "voltaje", "presion_riel", "boost", "consumo_l100")
 
 @Composable
 private fun CodigosFalla(e: EstadoTablero, modifier: Modifier) {
