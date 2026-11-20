@@ -21,6 +21,8 @@ import com.carobd.screen.obd.FuenteDatos
 import com.carobd.screen.ui.AccionesTablero
 import com.carobd.screen.obd.FuenteDemo
 import com.carobd.screen.obd.FuenteElm327
+import com.carobd.screen.obd.DispositivoBle
+import com.carobd.screen.obd.TransporteBle
 import com.carobd.core.obd.EstadoConexion
 import com.carobd.core.obd.FaseConexion
 import com.carobd.core.obd.TransporteTcp
@@ -42,7 +44,7 @@ import java.time.LocalTime
 import java.util.UUID
 
 /** Qué fuente de datos eligió el usuario en Ajustes. */
-enum class TipoFuente { DEMO, EMULADOR }
+enum class TipoFuente { DEMO, EMULADOR, BLE }
 
 enum class ModoNoche(val etiqueta: String) { AUTO("Auto"), DIA("Día"), NOCHE("Noche") }
 
@@ -75,6 +77,8 @@ data class EstadoTablero(
     val tipoFuente: TipoFuente = TipoFuente.DEMO,
     /** host:puerto del emulador ELM327 por TCP; 10.0.2.2 es el localhost del ordenador visto desde el emulador de Android. */
     val direccionEmulador: String = DIRECCION_EMULADOR,
+    /** Adaptador ELM327 BLE elegido en Ajustes (dirección MAC y nombre), o null si nunca se eligió. */
+    val adaptadorBle: DispositivoBle? = null,
     /** Estado del enlace con el adaptador; null en modo demo. */
     val conexion: EstadoConexion? = null,
     /** Vehículo, plan de mantenimiento y servicios tal como llegaron del móvil por la nube. */
@@ -99,6 +103,7 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
             seccion = runCatching { Seccion.valueOf(prefs.getString("seccion", "INICIO")!!) }.getOrDefault(Seccion.INICIO),
             brillo = prefs.getFloat("brillo", -1f).takeIf { it > 0f },
             direccionEmulador = prefs.getString("emulador", DIRECCION_EMULADOR)!!,
+            adaptadorBle = prefs.getString("ble_direccion", null)?.let { DispositivoBle(it, prefs.getString("ble_nombre", null) ?: it, 0) },
         ),
     )
     val estado: StateFlow<EstadoTablero> = _estado.asStateFlow()
@@ -125,7 +130,13 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
                 delay(15 * 60_000L)
             }
         }
-        if (prefs.getString("fuente", null) == TipoFuente.EMULADOR.name) usarEmulador(_estado.value.direccionEmulador) else usarDemo()
+        val ble = _estado.value.adaptadorBle
+        when (prefs.getString("fuente", null)) {
+            TipoFuente.EMULADOR.name -> usarEmulador(_estado.value.direccionEmulador)
+            // Al abrir la app se reconecta al último adaptador BLE elegido.
+            TipoFuente.BLE.name -> if (ble != null) usarBle(ble) else usarDemo()
+            else -> usarDemo()
+        }
         // Revisa cada minuto si ya es de noche (modo Auto).
         viewModelScope.launch {
             while (true) {
@@ -149,6 +160,17 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
         prefs.edit().putString("fuente", TipoFuente.EMULADOR.name).putString("emulador", limpia).apply()
         _estado.update { it.copy(tipoFuente = TipoFuente.EMULADOR, direccionEmulador = limpia) }
         usarFuente(FuenteElm327("Emulador (TCP) $host:$puerto", TransporteTcp(host, puerto), grabaViajes = false))
+    }
+
+    /** Adaptador ELM327 real por BLE (el MOCATEC "OBDII"). Graba viajes: son datos del auto. */
+    override fun usarBle(dispositivo: DispositivoBle) {
+        prefs.edit()
+            .putString("fuente", TipoFuente.BLE.name)
+            .putString("ble_direccion", dispositivo.direccion)
+            .putString("ble_nombre", dispositivo.nombre)
+            .apply()
+        _estado.update { it.copy(tipoFuente = TipoFuente.BLE, adaptadorBle = dispositivo) }
+        usarFuente(FuenteElm327("ELM327 BLE ${dispositivo.nombre}", TransporteBle(getApplication(), dispositivo.direccion)))
     }
 
     fun usarFuente(fuente: FuenteDatos) {

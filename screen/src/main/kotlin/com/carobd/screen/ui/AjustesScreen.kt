@@ -43,6 +43,18 @@ import androidx.compose.ui.unit.sp
 import com.carobd.screen.EstadoTablero
 import com.carobd.screen.ModoNoche
 import com.carobd.screen.TipoFuente
+import com.carobd.screen.obd.DispositivoBle
+import com.carobd.screen.obd.escanearBle
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 import com.carobd.core.obd.FaseConexion
 import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.ui.comun.Boton
@@ -121,12 +133,17 @@ private fun AjustesPantalla(e: EstadoTablero, acciones: AccionesTablero) {
 private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
     val p = LocalPaleta.current
     var direccion by remember(e.direccionEmulador) { mutableStateOf(e.direccionEmulador) }
+    var eligiendoBle by rememberSaveable { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Opcion("Modo demo", e.tipoFuente == TipoFuente.DEMO, Modifier.weight(1f)) { acciones.usarDemo() }
-        Opcion("Emulador (TCP)", e.tipoFuente == TipoFuente.EMULADOR, Modifier.weight(1f)) { acciones.usarEmulador(direccion) }
-        Opcion("vLinker BM", false, Modifier.weight(1f), activo = false) {}
+        Opcion("Modo demo", e.tipoFuente == TipoFuente.DEMO && !eligiendoBle, Modifier.weight(1f)) { eligiendoBle = false; acciones.usarDemo() }
+        Opcion("Emulador (TCP)", e.tipoFuente == TipoFuente.EMULADOR && !eligiendoBle, Modifier.weight(1f)) { eligiendoBle = false; acciones.usarEmulador(direccion) }
+        Opcion("ELM327 BLE (MOCATEC)", e.tipoFuente == TipoFuente.BLE || eligiendoBle, Modifier.weight(1f)) {
+            val elegido = e.adaptadorBle
+            if (elegido != null) acciones.usarBle(elegido) else eligiendoBle = true
+        }
     }
     Fila("Fuente de datos", if (e.esDemo) "Simulador del Accent" else e.fuente)
+    if (e.tipoFuente == TipoFuente.BLE || eligiendoBle) SelectorBle(e, acciones)
     if (e.tipoFuente == TipoFuente.EMULADOR) {
         OutlinedTextField(
             value = direccion,
@@ -169,12 +186,70 @@ private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
             Fila("Testigos de carrocería", if (c.carroceria) "Escuchando el bus" else "Desactivados")
         }
     }
-    if (e.tipoFuente == TipoFuente.DEMO) {
-        Text(
-            "Conectar el vLinker llega cuando tengas el adaptador: se empareja en el Bluetooth de Android y se elige aquí.",
-            color = p.tenue,
-            fontSize = 14.sp,
-        )
+}
+
+/** Permisos para escanear y conectar por BLE: Android 12+ tiene los suyos; antes, escanear exigía ubicación. */
+private fun permisosBle(): Array<String> =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+    else arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+
+/** Busca adaptadores ELM327 BLE durante 10 s y deja elegir uno; la elección se guarda y se reconecta al abrir la app. */
+@Composable
+private fun SelectorBle(e: EstadoTablero, acciones: AccionesTablero) {
+    val p = LocalPaleta.current
+    val context = LocalContext.current
+    val encontrados = remember { mutableStateListOf<DispositivoBle>() }
+    var escaneando by remember { mutableStateOf(false) }
+    var aviso by remember { mutableStateOf<String?>(null) }
+    val pedirPermisos = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
+        if (r.values.all { it }) {
+            aviso = null
+            escaneando = true
+        } else {
+            aviso = "Sin el permiso de Bluetooth" + (if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) " (y ubicación)" else "") +
+                " no puedo buscar ni conectar el adaptador. Puedes darlo en los ajustes de Android."
+        }
+    }
+    LaunchedEffect(escaneando) {
+        if (!escaneando) return@LaunchedEffect
+        encontrados.clear()
+        try {
+            withTimeoutOrNull(10_000) {
+                escanearBle(context).collect { d ->
+                    val i = encontrados.indexOfFirst { it.direccion == d.direccion }
+                    if (i >= 0) encontrados[i] = d else encontrados += d
+                }
+            }
+            if (encontrados.isEmpty()) aviso = "No encontré ningún adaptador. Revisa que esté enchufado y con el contacto puesto."
+        } catch (ex: CancellationException) {
+            throw ex
+        } catch (ex: Exception) {
+            aviso = ex.message ?: "Falló la búsqueda por Bluetooth"
+        }
+        escaneando = false
+    }
+    e.adaptadorBle?.let { Fila("Adaptador elegido", "${it.nombre} (${it.direccion})") }
+    Boton(if (escaneando) "Buscando…" else "Buscar adaptadores", principal = true, activo = !escaneando) {
+        val faltan = permisosBle().filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
+        if (faltan.isEmpty()) {
+            aviso = null
+            escaneando = true
+        } else {
+            pedirPermisos.launch(faltan.toTypedArray())
+        }
+    }
+    Text(
+        "Busca adaptadores que se anuncian como \"OBDII\" o con el servicio FFF0. Android pide permiso de Bluetooth" +
+            (if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) " y de ubicación (en Android 11 o anterior lo exige para buscar)" else "") +
+            ". La app no usa tu ubicación.",
+        color = p.tenue,
+        fontSize = 14.sp,
+    )
+    aviso?.let { Text(it, color = p.atencion, fontSize = 14.sp) }
+    for (d in encontrados.sortedByDescending { it.rssi }) {
+        Opcion("${d.nombre} · ${d.direccion} · ${d.rssi} dBm", e.tipoFuente == TipoFuente.BLE && d.direccion == e.adaptadorBle?.direccion, Modifier.fillMaxWidth()) {
+            acciones.usarBle(d)
+        }
     }
 }
 

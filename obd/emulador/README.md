@@ -69,6 +69,22 @@ La fuente del emulador no graba viajes, para no ensuciar el odómetro con datos 
 
 Para un dispositivo físico, arranca el emulador con `--host 0.0.0.0` y usa la IP del ordenador en la red local.
 
+### Con el adaptador real por BLE (sin probar en el auto todavía)
+
+El MOCATEC del Accent es un ELM327 v1.5 por Bluetooth Low Energy. Se anuncia como "OBDII", con el servicio FFF0 y la
+característica FFF1 (escritura + notify). La app usa el mismo protocolo que con el emulador; solo cambia el transporte
+(`TransporteBle`).
+
+1. Enchufa el adaptador y pon el contacto.
+2. En la app, ve a **Ajustes → Adaptador → ELM327 BLE (MOCATEC)** y pulsa **Buscar adaptadores**.
+3. Acepta los permisos que pide Android: Bluetooth (en Android 12 o posterior) o ubicación (en Android 11 o anterior,
+   que la exige para buscar dispositivos BLE).
+4. Elige el adaptador en la lista. La app guarda su dirección y se reconecta sola al abrirse.
+
+**Esto no se probó todavía contra el adaptador ni el auto**: solo compila y la lógica del buffer tiene tests de JVM.
+No hace falta emparejarlo en los ajustes de Bluetooth de Android. Si el clon se cuelga, la app reintenta con espera
+creciente; si no vuelve, desenchúfalo y vuelve a enchufarlo.
+
 ### Desde los scripts de `scripts/` (puerto serie)
 
 Arranca el emulador con `--pty`. Muestra la ruta del puerto, por ejemplo `/dev/ttys001`. Pásasela a los scripts con
