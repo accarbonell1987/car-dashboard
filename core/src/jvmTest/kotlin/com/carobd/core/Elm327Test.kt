@@ -44,7 +44,7 @@ private val RESPUESTAS = mapOf(
 )
 
 /** ELM327 falso: contesta como el emulador y cuenta lo que se le pide. */
-private class TransporteFalso(var colgarTrasLecturas: Int = Int.MAX_VALUE) : TransporteElm {
+private class TransporteFalso(var colgarTrasLecturas: Int = Int.MAX_VALUE, val sordoAlEscuchar: Boolean = false) : TransporteElm {
     val enviados = mutableListOf<String>()
     var aperturas = 0
     var lecturas = 0
@@ -54,6 +54,8 @@ private class TransporteFalso(var colgarTrasLecturas: Int = Int.MAX_VALUE) : Tra
 
     override suspend fun abrir() {
         aperturas++
+        // AssertionError is not an Exception: it escapes the retry loop instead of reconnecting forever.
+        if (sordoAlEscuchar && aperturas > 1) throw AssertionError("reconectó por culpa de los testigos")
         elm?.let { fasesAlAbrir += it.estado.value.fase }
         if (aperturas > 1) colgarTrasLecturas = Int.MAX_VALUE // tras reconectar responde de nuevo
     }
@@ -65,6 +67,8 @@ private class TransporteFalso(var colgarTrasLecturas: Int = Int.MAX_VALUE) : Tra
 
     override suspend fun leer(timeoutMs: Long): Respuesta {
         if (++lecturas > colgarTrasLecturas) return Respuesta("", false)
+        // Like the BLE clone in the car: the filter commands around ATMA get no prompt back.
+        if (sordoAlEscuchar && (ultimo == "ATCAF0" || ultimo == "ATCAF1" || ultimo.startsWith("ATCRA"))) return Respuesta("", false)
         return when {
             ultimo == "ATMA" -> Respuesta(if (enviados.last { it.startsWith("ATCRA") } == "ATCRA690") "0000410000002C00\r4000400000000800\r" else "0050C592990000DE\r", false)
             ultimo.isEmpty() -> Respuesta("\rSTOPPED\r\r", true) // el espacio que detiene ATMA
@@ -140,6 +144,17 @@ class Elm327Test {
         assertEquals(3, lecturas.size)
         assertEquals(2, transporte.aperturas)
         assertEquals(listOf(FaseConexion.CONECTANDO, FaseConexion.RECONECTANDO), transporte.fasesAlAbrir)
+        assertEquals(FaseConexion.CONECTADO, elm.estado.value.fase)
+    }
+
+    @Test
+    fun siLaEscuchaFallaSeApaganLosTestigosSinReconectar() = runTest {
+        val transporte = TransporteFalso(sordoAlEscuchar = true)
+        val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = 0)
+        val lecturas = elm.lecturas().take(5).toList()
+        assertEquals(1, transporte.aperturas, "reconectó por culpa de los testigos")
+        assertFalse(elm.estado.value.carroceria, "los testigos siguen prendidos aunque fallan")
+        assertEquals(780.5, lecturas.last().valores["rpm"])
         assertEquals(FaseConexion.CONECTADO, elm.estado.value.fase)
     }
 

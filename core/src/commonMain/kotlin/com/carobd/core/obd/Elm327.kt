@@ -55,7 +55,8 @@ class Elm327(
     private val excluir: Set<String> = emptySet(),
     private val timeoutMs: Long = 1500,
     private val intentos: Int = 3,
-    private val periodoCarroceriaMs: Long = 2000,
+    // Each listen pauses the PIDs about a second over BLE: every 5 s keeps the gauges live.
+    private val periodoCarroceriaMs: Long = 5000,
     private val ventanaEscuchaMs: Long = 300,
 ) {
     private val _estado = MutableStateFlow(EstadoConexion(FaseConexion.DESCONECTADO))
@@ -209,7 +210,7 @@ class Elm327(
             Carroceria.senales.forEach { valores.remove(it) }
             _estado.value = _estado.value.copy(carroceria = false)
         }
-        if (testigos && !_estado.value.carroceria && fallosCarroceria < 3) {
+        if (testigos && !_estado.value.carroceria && fallosCarroceria < MAX_FALLOS_CARROCERIA) {
             carroceriaActiva = true
             _estado.value = _estado.value.copy(carroceria = true)
         }
@@ -256,12 +257,18 @@ class Elm327(
         } catch (e: Exception) {
             anotar("testigos: ${e.message}")
             conTramas = 0
-        } finally {
-            enviar("ATCRA", valida = ::esOk)
-            enviar("ATCAF1", valida = ::esOk)
+        }
+        // Listening must never take the adapter down: its failures don't count toward a reconnect.
+        // If the filters can't be restored, the telltales switch off; the PIDs alone decide a reconnect.
+        val restaurado = runCatching { esOk(enviar("ATCRA", valida = ::esOk)) && esOk(enviar("ATCAF1", valida = ::esOk)) }.getOrDefault(false)
+        fallosSeguidos = 0
+        if (!restaurado) {
+            anotar("testigos: el adaptador no confirmó ATCRA/ATCAF1")
+            conTramas = 0
+            fallosCarroceria = MAX_FALLOS_CARROCERIA - 1
         }
         fallosCarroceria = if (conTramas > 0) 0 else fallosCarroceria + 1
-        if (fallosCarroceria >= 3) {
+        if (fallosCarroceria >= MAX_FALLOS_CARROCERIA) {
             carroceriaActiva = false
             Carroceria.senales.forEach { valores.remove(it) }
             _estado.value = _estado.value.copy(carroceria = false)
@@ -286,5 +293,6 @@ class Elm327(
 
 private const val LARGO_REGISTRO = 50
 private const val RESTOS_ATMA_MS = 200L
+private const val MAX_FALLOS_CARROCERIA = 3
 
 internal fun hex2(valor: Int): String = valor.toString(16).uppercase().padStart(2, '0')

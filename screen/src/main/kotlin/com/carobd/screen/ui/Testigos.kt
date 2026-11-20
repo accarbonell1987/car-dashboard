@@ -98,11 +98,13 @@ private fun IconoTestigo(t: Testigo, activo: Boolean, insignia: Int? = null) {
         label = "escala",
     )
     // Only animate while on: a resting dashboard should not burn frames.
+    // The loop value is read only while drawing, so each tick redraws this icon and nothing else.
+    // Reading it during composition redrew the whole dashboard every frame (1.4 s frames on the emulator).
     val ciclo = if (activo && t.periodoMs > 0) {
         rememberInfiniteTransition(label = t.id).animateFloat(
             0f, 1f, infiniteRepeatable(tween(t.periodoMs, easing = LinearEasing), t.repetir), label = "ciclo",
-        ).value
-    } else 0f
+        )
+    } else null
 
     Box(
         Modifier
@@ -118,7 +120,7 @@ private fun IconoTestigo(t: Testigo, activo: Boolean, insignia: Int? = null) {
     ) {
         Canvas(Modifier.size(28.dp)) {
             // Icons are authored on a 24x24 grid, like web SVG icons.
-            scale(size.minDimension / 24f, pivot = Offset.Zero) { t.dibujar(this, color, encendido, ciclo) }
+            scale(size.minDimension / 24f, pivot = Offset.Zero) { t.dibujar(this, color, encendido, ciclo?.value ?: 0f) }
         }
         if (insignia != null) {
             Text(
