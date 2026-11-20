@@ -60,7 +60,8 @@ import kotlinx.datetime.TimeZone
 fun InicioScreen(e: EstadoTablero, acciones: AccionesTablero) {
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            TarjetaNavegacion(Modifier.fillMaxWidth().weight(1f))
+            TarjetaClima(Modifier.fillMaxWidth().weight(1f))
+            TarjetaNavegacion(Modifier.fillMaxWidth().weight(0.8f))
             TarjetaViaje(e, Modifier.fillMaxWidth().weight(1f))
         }
         TarjetaAuto(e, acciones, Modifier.weight(1.5f).fillMaxHeight())
@@ -72,7 +73,7 @@ fun InicioScreen(e: EstadoTablero, acciones: AccionesTablero) {
 }
 
 @Composable
-private fun TituloConIcono(icono: Icono, texto: String) {
+internal fun TituloConIcono(icono: Icono, texto: String) {
     val p = LocalPaleta.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         IconoTrazo(icono, p.tenue, 18.dp)
