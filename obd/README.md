@@ -39,6 +39,7 @@ reiniciar el auto.
 | `elm327-carroceria.csv`, `.txt`, `-marcas.txt` | Captura de carrocería y marcas de cada paso. |
 
 Los IDs del bus decodificados y lo que documenta la comunidad están en `codigos-can.md`.
+Los testigos, sensores y alertas críticas (con la acción del conductor) están en `testigos-y-alertas.md`.
 
 ## Emulador
 
