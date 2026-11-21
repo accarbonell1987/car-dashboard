@@ -66,7 +66,10 @@ Bits en formato Intel (little-endian), contando desde el bit 0 del byte 0, como 
 | `0x5A0` | ACU11 | 1 | Airbag: falla, cinturones | 28-31, 34-35 | todo 0 | Ver nota |
 | `0x5A1` | ACU12 | 1 | Número de serie del airbag | 0-63 | constante | Sin uso (no publicar) |
 | `0x400` | CLU_CFG11 | — | Tipo de vehículo | 0-15 | — | Visto solo en una captura |
-| `0x081`, `0x2C0`, `0x543`, `0x5A2` | — | — | — | — | casi constantes | Sin definición en ningún DBC |
+| `0x081` | EMS_DCT2 | 48 | Temp. de aire (`CR_Ems_IndAirTemp`) | 16-23, ×0,75 −48 °C | 44 °C | Validado (igual a `0x2A0`) |
+| `0x081` | EMS_DCT2 | 48 | Freno (`BRAKE_ACT`) | 6-7 | 1 | Probar pisando el freno |
+| `0x2C0`, `0x5A2` | — | 10 / 1 | — | — | constantes | Sin definición; en un Kia Rio 2013 siguen con el motor desconectado: no son del motor |
+| `0x543` | — | 4 | — | — | siempre 0 | Sin definición en ninguna fuente; quizá propio del diésel (hipótesis) |
 
 Nota sobre `0x5A0`: en el DBC moderno los cinturones y la falla del airbag van en bits 28-35. Aquí
 siempre vale 0, incluso con el cinturón del conductor desabrochado. El cinturón sale de `0x690`.
@@ -111,6 +114,25 @@ Las de otras marcas con EDC17 (Renault `22242C` hollín, Mazda `2228F4`) no sirv
 En 7C6 (tablero) el barrido del 2026-11-20 encontró bloques `210C`, `210E`, `211A`, `2147`
 con bytes que varían, pero fue el barrido que dejó los relojes sin funcionar. No repetir.
 
+## Comunidad rusa (Solaris) y otras fuentes
+
+- **Alarma StarLine A93 en Solaris 2014-16:** lee puertas, baúl, cierre centralizado, freno de mano
+  y pedal de freno por CAN, pero la toma en el **conector 4 del tablero** (CAN-H amarillo, CAN-L
+  negro), no en el OBD. El nivel de combustible no figura. Es probable que ese sea el bus de
+  carrocería (B-CAN), que no llega al OBD: explicaría por qué el tablero enciende el testigo de la
+  puerta del acompañante y `0x690` no cambia. Leerlo sería **pasivo**, pero requiere un segundo
+  adaptador cableado al tablero.
+- **Kia Ceed JD (misma generación):** C-CAN 500 kbps en OBD 6/14; B-CAN 100 kbps solo en un
+  conector interno. Refuerza lo anterior.
+- **Nivel de combustible en el Solaris:** los paneles digitales (SmartGauges) lo leen del
+  aforador por entrada analógica, no por CAN. Pandora lo muestra en %, sin ID publicado.
+- **Solaris AT 2013 (drive2):** confirma `0x316` RPM, `0x0A0` refrigerante, `0x0A1` MAP.
+- **Car Scanner tiene un perfil "Hyundai: Accent IV RB 1.6 CRDI".** Es la vía más corta para
+  descubrir los DIDs del motor: capturar las peticiones con cabecera 7E0. **⚠ Cuidado:** el
+  perfil puede consultar ABS, airbag o tablero. No correrlo completo sin filtrar por módulo.
+- **DPF Monitor PRO** (comercial) lee hollín, presión diferencial y última regeneración en el
+  i30 GD / Ceed JD 1.6 CRDi por OBD: los datos existen en el motor, pero no publica los comandos.
+
 ## Fuentes
 
 - opendbc, `hyundai_i30_2014.dbc` y `generator/hyundai/hyundai_can.dbc`:
@@ -122,6 +144,17 @@ con bytes que varían, pero fue el barrido que dejó los relojes sin funcionar. 
 - Hilo de Torque sobre DPF en Kia Cee'd 1.6 2016 (sin PIDs confirmados):
   https://torque-bhp.com/community/main-forum/2016-kia-ceed-1-6-dpf-readings/
 
+- Guía de instalación StarLine A93, Solaris 2014-16:
+  https://support.starline.ru/uploaded/file/13469/9/35988/bbcbcfd5422ec7e5fbaec5029c22e93b.pdf
+- Solaris AT 2013, IDs CAN: https://www.drive2.ru/b/522073135831319435/
+- Combustible por CAN con Pandora: https://www.drive2.ru/l/497060620688949933/
+- Panel SmartGauges (entradas analógicas): https://www.drive2.ru/b/482631454719737905/
+- Buses del Kia Ceed JD: https://www.drive2.ru/l/632370919649581943/
+- Trazas CAN de Kia Rio 2013 con y sin ECU (rusEFI):
+  https://github.com/rusefi/rusefi_documentation/tree/master/OEM-Docs/Kia/2013-CAN-logs
+- Perfiles de Car Scanner: https://www.carscanner.info/profile-database-changelog/
+- DPF Monitor PRO: https://matway-electronics.pl/dpf-monitor-pro-dpf-fap-regeneration-monitor-obd2
+
 ## Pruebas pendientes (todas pasivas)
 
 1. Odómetro: escuchar `0x4F0` y comparar con el tablero (anotar el número que muestra).
@@ -130,3 +163,4 @@ con bytes que varían, pero fue el barrido que dejó los relojes sin funcionar. 
 4. Reserva: escuchar `0x4F1` con el testigo de combustible encendido.
 5. Consumo: comparar la derivada de FCO (`0x545`) con `015E`.
 6. Bujías: escuchar `0x260` en un arranque en frío.
+7. Freno de pie: escuchar `0x081` (bits 6-7) pisando y soltando el pedal.
