@@ -1,6 +1,7 @@
 package com.carobd.screen.gauges
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.draw.drawWithContent
@@ -247,32 +248,26 @@ internal fun CuadroInstrumentos(valores: Map<String, Double>, alertas: List<Aler
         Reloj(velocidad, valores["velocidad"], Alertas.nivelDe("velocidad", alertas), Modifier.size(diametro).align(Alignment.CenterEnd))
         val m = valores["marcha"]?.roundToInt()
         val pisado = valores[MotorExtendido.EMBRAGUE] == 1.0
-        val embrague by animateFloatAsState(if (pisado) 1f else 0f, tween(if (pisado) 80 else 300), label = "embrague")
+        // Clutch down: the whole circle turns warning yellow and the gear inverts to the background colour.
+        val fondo by animateColorAsState(if (pisado) p.atencion else p.fondo, tween(if (pisado) 80 else 300), label = "fondoMarcha")
+        val tinta by animateColorAsState(
+            when { pisado -> p.fondo; m == 0 -> p.ok; else -> p.texto },
+            tween(if (pisado) 80 else 300),
+            label = "tintaMarcha",
+        )
         Box(
             Modifier
                 .align(Alignment.Center)
                 .size(marcha)
                 .clip(CircleShape)
-                .background(p.fondo)
-                .border(3.dp, if (m == 0) p.ok else p.pista, CircleShape)
-                // Clutch: a yellow crescent hugging the top of the ring while the pedal is down.
-                .drawWithContent {
-                    drawContent()
-                    if (embrague > 0f) {
-                        val grosor = 6.dp.toPx()
-                        val d = size.minDimension - grosor
-                        drawArc(
-                            p.atencion.copy(alpha = embrague), 200f, 140f, false,
-                            Offset(grosor / 2, grosor / 2), Size(d, d), style = Stroke(grosor, cap = StrokeCap.Round),
-                        )
-                    }
-                }
+                .background(fondo)
+                .border(3.dp, if (pisado) p.atencion else if (m == 0) p.ok else p.pista, CircleShape)
                 .semantics { contentDescription = "Marcha ${if (m == 0) "neutro" else m ?: "sin dato"}${if (pisado) ", embrague pisado" else ""}" },
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 when (m) { null -> "--"; 0 -> "N"; else -> m.toString() },
-                color = if (m == 0) p.ok else p.texto,
+                color = tinta,
                 fontSize = (marcha.value * 0.55f).sp,
                 fontWeight = FontWeight.Black,
             )
