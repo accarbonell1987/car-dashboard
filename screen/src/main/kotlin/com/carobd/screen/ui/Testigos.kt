@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import com.carobd.core.obd.Carroceria
+import com.carobd.core.obd.MotorExtendido
 import com.carobd.screen.ui.comun.Icono
 import com.carobd.screen.gauges.LocalPaleta
 
@@ -73,6 +74,7 @@ internal fun Testigos(valores: Map<String, Double>) {
         Testigo("mil", "Check engine", p.atencion, 0, RepeatMode.Restart, DrawScope::motor),
         // ponytail: 60° per period is seamless because the snowflake has six-fold symmetry.
         Testigo(Carroceria.AIRE, "Aire acondicionado", p.normal, 1200, RepeatMode.Restart, DrawScope::copoDeNieve),
+        Testigo(MotorExtendido.FRENO, "Freno pisado", p.peligro, 0, RepeatMode.Restart, DrawScope::freno),
         Testigo(Carroceria.RESERVA, "Reserva de combustible", p.atencion, 0, RepeatMode.Restart, fijo(Icono.SURTIDOR)),
         Testigo(Carroceria.DIRECCION, "Falla de dirección asistida", p.peligro, 0, RepeatMode.Restart, fijo(Icono.VOLANTE)),
         Testigo(Carroceria.LUNETA, "Luneta térmica", p.atencion, 1500, RepeatMode.Reverse, DrawScope::luneta),
@@ -191,4 +193,13 @@ private val calor = svg("M9 9.5v5 M12 9v5.5 M15 9.5v5")
 private fun DrawScope.luneta(color: Color, encendido: Float, ciclo: Float) {
     drawPath(ventana, color, style = trazo)
     drawPath(calor, color, alpha = 1f - encendido * 0.6f * ciclo, style = trazo)
+}
+
+// Brake light: a lamp seen from behind, with rays while the pedal is down.
+private val lampara = svg("M7 9h10a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-2a2 2 0 0 1 2 -2z")
+private val rayos = svg("M12 4v2.5 M5 5.5l1.5 2 M19 5.5l-1.5 2 M12 17.5v2.5 M5 18.5l1.5 -2 M19 18.5l-1.5 -2")
+
+private fun DrawScope.freno(color: Color, encendido: Float, ciclo: Float) {
+    drawPath(lampara, color, style = trazo)
+    drawPath(rayos, color, alpha = encendido, style = trazo)
 }

@@ -63,6 +63,10 @@ object Catalogo {
         Senal("boost", "Boost", "bar", formula = "(map-barometrica)/100", min = -0.5, max = 1.5, ritmo = Ritmo.RAPIDO, dependeDe = listOf("map", "barometrica")),
         Senal("marcha", "Marcha", "", min = 0.0, max = 6.0, ritmo = Ritmo.CRITICO, dependeDe = listOf("rpm", "velocidad")),
         Senal("consumo_l100", "Consumo", "L/100 km", min = 0.0, max = 30.0, ritmo = Ritmo.MEDIO, dependeDe = listOf("consumo_lh", "velocidad")),
+        // Engine extended block 22ED01 (7E0), polled once a second. See MotorExtendido.
+        Senal(MotorExtendido.FRENO, "Freno pisado", "", "22", "ED01", cabecera = "7E0", min = 0.0, max = 1.0, ritmo = Ritmo.MEDIO),
+        Senal(MotorExtendido.EMBRAGUE, "Embrague pisado", "", "22", "ED01", cabecera = "7E0", min = 0.0, max = 1.0, ritmo = Ritmo.MEDIO),
+        Senal(MotorExtendido.PUNTO_MUERTO, "Punto muerto", "", "22", "ED01", cabecera = "7E0", min = 0.0, max = 1.0, ritmo = Ritmo.MEDIO),
         // Testigos por escucha pasiva del bus (modo "can", `pid` = ID de la trama); 1 = activo. Ver Carroceria.
         Senal(Carroceria.PUERTA, "Puerta del conductor abierta", "", "can", "690", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
         Senal(Carroceria.CINTURON, "Cinturón del conductor sin abrochar", "", "can", "690", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),

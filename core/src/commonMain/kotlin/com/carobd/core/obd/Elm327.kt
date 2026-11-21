@@ -72,6 +72,8 @@ class Elm327(
     private var fallosCarroceria = 0
     private var proximaEscucha = reloj.markNow()
     private var escuchas = 0
+    private var extendidoActivo = true
+    private var proximoExtendido = reloj.markNow()
 
     /** Testigos de carrocería (escucha ATMA). Se puede apagar en caliente si molestan en algún adaptador. */
     var testigos: Boolean = true
@@ -168,6 +170,8 @@ class Elm327(
         banner ?: throw AdaptadorSinRespuesta("ATZ no devolvió el banner ELM327")
         // Protocolo fijo del Accent (ISO 15765-4 CAN 11/500): evita el SEARCHING... de ATSP0.
         for (c in listOf("ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP6")) enviar(c, valida = ::esOk)
+        // Physical address of the engine (7E0): only the engine is asked, never the other modules.
+        enviar("ATSH7E0", valida = ::esOk)
         val soportados = leerSoportados()
         val vin = Decodificador.vin(enviar("0902", 3000, responde("4902")))
         senales = Catalogo.estandar.filter {
@@ -175,6 +179,7 @@ class Elm327(
         }
         valores.clear()
         ciclo = 0
+        extendidoActivo = true
         carroceriaActiva = testigos
         fallosCarroceria = 0
         proximaEscucha = reloj.markNow()
@@ -207,6 +212,15 @@ class Elm327(
                 val respuesta = enviar(senal.modo + senal.pid, valida = responde("41" + senal.pid))
                 Decodificador.decodificar(respuesta, senal)?.let { valores[senal.id] = it }
             }
+        }
+        if (extendidoActivo && proximoExtendido.hasPassedNow()) {
+            proximoExtendido = reloj.markNow() + PERIODO_EXTENDIDO_MS.milliseconds
+            // A negative answer (7F 22) counts as the reply, or enviar would wait it out as a late one.
+            val r = enviar(MotorExtendido.COMANDO) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
+            val leidos = MotorExtendido.decodificar(r)
+            if (leidos != null) valores += leidos
+            // An engine without the block refuses it: stop asking. NO DATA or a truncated reply is just skipped.
+            else if ("7F22" in limpio(r)) extendidoActivo = false
         }
         if (!testigos && _estado.value.carroceria) {
             Carroceria.senales.forEach { valores.remove(it) }
@@ -285,8 +299,11 @@ class Elm327(
         val rpm = valores["rpm"]
         val kmh = valores["velocidad"]
         if (rpm != null && kmh != null) {
-            marchas.aprender(rpm, kmh)
-            valores["marcha"] = marchas.marcha(rpm, kmh).toDouble()
+            val embrague = valores[MotorExtendido.EMBRAGUE] == 1.0
+            val neutro = valores[MotorExtendido.PUNTO_MUERTO] == 1.0
+            // With the clutch down the ratio slips: learning from it would skew the gear table.
+            if (!embrague) marchas.aprender(rpm, kmh)
+            valores["marcha"] = if (neutro) 0.0 else marchas.marcha(rpm, kmh).toDouble()
         }
         val lh = valores["consumo_lh"]
         if (lh != null && kmh != null && kmh > 5) valores["consumo_l100"] = lh / kmh * 100
@@ -295,6 +312,8 @@ class Elm327(
 
 private const val LARGO_REGISTRO = 50
 private const val RESTOS_ATMA_MS = 200L
+// The research capture cut off after ~1 min of back-to-back requests: at most one extended request a second.
+private const val PERIODO_EXTENDIDO_MS = 1000L
 private const val MAX_FALLOS_CARROCERIA = 3
 
 internal fun hex2(valor: Int): String = valor.toString(16).uppercase().padStart(2, '0')

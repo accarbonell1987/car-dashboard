@@ -5,6 +5,7 @@ import com.carobd.core.obd.Catalogo
 import com.carobd.core.obd.Decodificador
 import com.carobd.core.obd.Elm327
 import com.carobd.core.obd.FaseConexion
+import com.carobd.core.obd.MotorExtendido
 import com.carobd.core.obd.Respuesta
 import com.carobd.core.obd.TransporteElm
 import com.carobd.core.obd.TransporteTcp
@@ -40,6 +41,7 @@ private val RESPUESTAS = mapOf(
     "010C" to "410C0C32\r\r",
     "010D" to "410D00\r\r",
     "0105" to "41057B\r\r",
+    "22ED01" to "025\r0:62ED01FFFF7E\r1:F8000112007F48\r2:656380082513CB\r3:0F009900FF0000\r4:00469B64FF0001\r5:000019\r\r",
     "0902" to "014\r0:4902014B4D48\r1:43553431554147\r2:55303030303030\r\r",
 )
 
@@ -164,6 +166,35 @@ class Elm327Test {
         assertEquals(6, transporte.enviados.count { it == "010D" }, "velocidad no se leyó en cada ciclo")
         assertEquals(2, transporte.enviados.count { it == "0104" }, "carga no se leyó cada 3 ciclos")
         assertEquals(1, transporte.enviados.count { it == "0105" }, "refrigerante no esperó 20 ciclos")
+    }
+
+    /** ATH0 multi-frame reply as the ELM327 prints it: length line, then "n:" frames of 6 then 7 bytes. */
+    private fun multitrama(hex: String): String {
+        val b = hex.chunked(2)
+        val tramas = listOf(b.take(6)) + b.drop(6).chunked(7)
+        return "%03X\r".format(b.size) + tramas.mapIndexed { i, t -> "${i % 16}:" + t.joinToString("") }.joinToString("\r") + "\r\r"
+    }
+
+    @Test
+    fun bloqueExtendidoDelMotor() {
+        // Real 22ED01 replies from obd/capturas/elm327-motor22-pedales-*.csv.
+        fun d(datos: String) = MotorExtendido.decodificar(multitrama("62ED01$datos"))
+        val reposo = "FFFF7EF8000112007F48656380082513CB0F009900FF000000469B64FF0001000019"
+        assertEquals(mapOf(MotorExtendido.FRENO to 0.0, MotorExtendido.EMBRAGUE to 0.0, MotorExtendido.PUNTO_MUERTO to 1.0), d(reposo))
+        assertEquals(1.0, d("FFFF7EF8000112007F48656381482513CB0F009800FF000000469B64FF0001000019")!![MotorExtendido.FRENO])
+        assertEquals(1.0, d("FFFF7EF8000112007F48656380092513CB0F009900FF000000469B64FF0001000019")!![MotorExtendido.EMBRAGUE])
+        assertEquals(0.0, d("FFFF7EF8000112007F48656380002513CB0F009900FF000000469B64FF0001000019")!![MotorExtendido.PUNTO_MUERTO])
+        assertNull(d(reposo.take(40)), "aceptó una respuesta truncada")
+        assertNull(MotorExtendido.decodificar("7F2231\r\r"))
+    }
+
+    @Test
+    fun soloSeLePreguntaAlMotorYElBloqueVaUnaVezPorSegundo() = runTest {
+        val transporte = TransporteFalso()
+        val lecturas = Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = Long.MAX_VALUE).lecturas().take(6).toList()
+        assertEquals("ATSH7E0", transporte.enviados[7], "no fijó la cabecera del motor")
+        assertEquals(1, transporte.enviados.count { it == "22ED01" })
+        assertEquals(1.0, lecturas.last().valores[MotorExtendido.PUNTO_MUERTO])
     }
 
     @Test
