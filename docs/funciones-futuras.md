@@ -15,6 +15,13 @@ adb shell cat /proc/meminfo | head -1        # RAM
 adb shell pm list packages | rg -i "syu|bt|launcher|microntek"   # apps del fabricante
 ```
 
+**Dato del 2026-11-21 (foto de "About Car Device"):** plataforma `CYA`, sistema
+`UJC201-V1.1.22R8`, MCU `JCST_Q8_8T7`, dice Android 15, 4 GB de RAM y 64 GB. Sin canbox conectado
+("Protocol Disconnected"). Según hilos de XDA, las UJC201 son un **MediaTek AC8257 de 4 núcleos**
+y la versión de Android y la RAM que muestran suelen ser falsas (el Android real suele ser 10).
+Falta verificar con CPU-Z o Device Info HW: nivel de API real, RAM real y GPU.
+Fuente: https://xdaforums.com/t/ujc201-ac8257sv-latest-firmware.4792700/
+
 Con eso se decide: si el 3D es viable (hace falta OpenGL ES 3.0), cómo se hacen las llamadas
 (depende de la app Bluetooth del fabricante) y cómo se comporta el launcher.
 
