@@ -37,8 +37,8 @@ data class Senal(
 /** Catálogo estándar (modo 01, SAE J1979). Los PIDs de Hyundai se añaden al descubrirlos con el vLinker. */
 object Catalogo {
     val estandar: List<Senal> = listOf(
-        Senal("rpm", "RPM", "rpm", "01", "0C", formula = "(A*256+B)/4", bytes = 2, min = 0.0, max = 5000.0, ritmo = Ritmo.CRITICO),
-        Senal("velocidad", "Velocidad", "km/h", "01", "0D", formula = "A", min = 0.0, max = 200.0, ritmo = Ritmo.CRITICO),
+        Senal("rpm", "RPM", "rpm", "01", "0C", formula = "(A*256+B)/4", bytes = 2, min = 0.0, max = 6000.0, ritmo = Ritmo.CRITICO),
+        Senal("velocidad", "Velocidad", "km/h", "01", "0D", formula = "A", min = 0.0, max = 220.0, ritmo = Ritmo.CRITICO),
         Senal("carga", "Carga del motor", "%", "01", "04", formula = "A*100/255", min = 0.0, max = 100.0, ritmo = Ritmo.RAPIDO),
         Senal("acelerador", "Acelerador", "%", "01", "11", formula = "A*100/255", min = 0.0, max = 100.0, ritmo = Ritmo.RAPIDO),
         Senal("map", "Presión de admisión", "kPa", "01", "0B", formula = "A", min = 0.0, max = 255.0, ritmo = Ritmo.RAPIDO),
