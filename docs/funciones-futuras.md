@@ -22,6 +22,19 @@ y la versión de Android y la RAM que muestran suelen ser falsas (el Android rea
 Falta verificar con CPU-Z o Device Info HW: nivel de API real, RAM real y GPU.
 Fuente: https://xdaforums.com/t/ujc201-ac8257sv-latest-firmware.4792700/
 
+**Confirmado con CPU-Z (2026-11-21):** MediaTek **AC8257**, 4 núcleos Cortex-A53 a 2,0 GHz, GPU
+**PowerVR GE8300**, **OpenGL ES 3.2**, 1280x720, 64 GB. CPU-Z informa 4096 MB de RAM (1756 MB
+libres). La versión de Android es incoherente: Ajustes dice 15, CPU-Z dice 12 con **nivel de API
+35**, kernel 4.9 y parche de seguridad de 2021-10. El firmware falsea el nivel de API, así que el
+Android real es más viejo de lo que declara (probablemente 10 u 11).
+
+Consecuencias:
+
+- **3D:** cumple el requisito de Filament (OpenGL ES 3.0), pero la GE8300 es una GPU de gama de
+  entrada. Viable con un modelo liviano; sigue haciendo falta la prueba de cuadros por segundo.
+- **API falseada:** el código que pregunta `SDK_INT >= N` puede elegir un camino que el sistema
+  real no tiene. Cualquier API de Android 12 o posterior debe ir envuelta para no cerrar la app.
+
 Con eso se decide: si el 3D es viable (hace falta OpenGL ES 3.0), cómo se hacen las llamadas
 (depende de la app Bluetooth del fabricante) y cómo se comporta el launcher.
 
