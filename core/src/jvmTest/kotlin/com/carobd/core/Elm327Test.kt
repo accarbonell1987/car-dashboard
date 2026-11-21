@@ -97,6 +97,8 @@ private class TransporteFalso(
         return when {
             ultimo == "ATMA" -> Respuesta(if (enviados.last { it.startsWith("ATCRA") } == "ATCRA690") "0000410000002C00\r4000400000000800\r" else "0050C592990000DE\r", false)
             ultimo.isEmpty() -> Respuesta("\rSTOPPED\r\r", true) // el espacio que detiene ATMA
+            // Like the BLE clone in the car: a bare ATCRA (filter reset) is not supported.
+            ultimo == "ATCRA" -> Respuesta("?\r\r", true)
             ultimo.startsWith("AT") && ultimo != "ATZ" -> Respuesta("OK\r\r", true)
             else -> Respuesta(RESPUESTAS[ultimo] ?: "NO DATA\r\r", true)
         }
@@ -185,7 +187,8 @@ class Elm327Test {
         assertEquals(listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP6"), transporte.enviados.take(7))
         assertFalse("012F" in transporte.enviados, "pidió combustible, que no está en los bitmaps")
         assertFalse("015C" in transporte.enviados, "pidió aceite, excluido en el Accent")
-        assertTrue(transporte.enviados.takeLast(2) == listOf("ATCRA", "ATCAF1"), "no restauró los filtros tras ATMA")
+        assertTrue(transporte.enviados.lastIndexOf("ATCAF1") > transporte.enviados.lastIndexOf("ATMA"), "no restauró los filtros tras ATMA")
+        assertTrue(elm.estado.value.carroceria, "apagó los testigos porque el clon no acepta ATCRA solo")
         val e = elm.estado.value
         assertEquals(FaseConexion.CONECTADO, e.fase)
         assertEquals("ELM327 v1.5", e.adaptador)

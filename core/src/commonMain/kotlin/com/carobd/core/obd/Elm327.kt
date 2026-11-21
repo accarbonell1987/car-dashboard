@@ -296,7 +296,7 @@ class Elm327(
 
     /**
      * Escucha pasiva de un ID: ATCAF0 (tramas crudas), ATCRA<id> + ATMA unos ms; se detiene con un byte, se drena
-     * hasta el prompt y se tiran los restos tardíos. Al final restaura ATCRA y ATCAF1 esperando OK, para volver a
+     * hasta el prompt y se tiran los restos tardíos. Al final vuelve el filtro al motor (ATCRA7E8) y ATCAF1 esperando OK, para volver a
      * pedir PIDs. Tras 3 escuchas seguidas sin tramas o con error se desactiva sola; los PIDs siguen igual.
      */
     private suspend fun escucharId(id: String) {
@@ -334,7 +334,11 @@ class Elm327(
         }
         // Listening must never take the adapter down: its failures don't count toward a reconnect.
         // If the filters can't be restored, the telltales switch off; the PIDs alone decide a reconnect.
-        val restaurado = runCatching { esOk(enviar("ATCRA", valida = ::esOk)) && esOk(enviar("ATCAF1", valida = ::esOk)) }.getOrDefault(false)
+        // The BLE clone answers "?" to a bare ATCRA (reset), which left the 690 filter on: every later PID reply
+        // was 690 traffic and the app reconnected. Point the filter back at the engine (7E8) instead; ATAR as backup.
+        val restaurado = runCatching {
+            (esOk(enviar("ATCRA7E8", valida = ::esOk)) || esOk(enviar("ATAR", valida = ::esOk))) && esOk(enviar("ATCAF1", valida = ::esOk))
+        }.getOrDefault(false)
         fallosSeguidos = 0
         if (!restaurado) {
             anotar("testigos: el adaptador no confirmó ATCRA/ATCAF1")
