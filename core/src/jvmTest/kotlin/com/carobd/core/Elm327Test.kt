@@ -140,7 +140,8 @@ class Elm327Test {
     fun protocoloContraRespuestasReales() = runTest {
         val transporte = TransporteFalso()
         val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent)
-        val l = elm.lecturas().first()
+        // Secondary data arrives one per turn: wait until the body listen and the coolant have had theirs.
+        val l = elm.lecturas().first { "temp_refrigerante" in it.valores && Carroceria.AIRE in it.valores }
         assertEquals(780.5, l.valores["rpm"])
         assertEquals(0.0, l.valores["velocidad"])
         assertEquals(83.0, l.valores["temp_refrigerante"])
@@ -159,13 +160,17 @@ class Elm327Test {
     }
 
     @Test
-    fun lasCriticasSeLeenCadaCicloYLasRapidasCadaTres() = runTest {
+    fun cadaTurnoLeeLasCriticasYUnSoloDatoSecundario() = runTest {
         val transporte = TransporteFalso()
-        Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = Long.MAX_VALUE).lecturas().take(6).toList()
-        assertEquals(6, transporte.enviados.count { it == "010C" }, "RPM no se leyó en cada ciclo")
-        assertEquals(6, transporte.enviados.count { it == "010D" }, "velocidad no se leyó en cada ciclo")
-        assertEquals(2, transporte.enviados.count { it == "0104" }, "carga no se leyó cada 3 ciclos")
-        assertEquals(1, transporte.enviados.count { it == "0105" }, "refrigerante no esperó 20 ciclos")
+        Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = Long.MAX_VALUE).lecturas().take(8).toList()
+        val turnos = transporte.enviados.dropWhile { it != "010C" }.joinToString(" ").split("010C").drop(1)
+        assertEquals(8, turnos.size, "RPM no se leyó en cada turno")
+        assertTrue(turnos.all { "010D" in it }, "velocidad no se leyó en cada turno")
+        for (t in turnos) {
+            val secundarios = t.split(" ").filter { (it.startsWith("01") || it.startsWith("22")) && it != "010D" && it != "0111" }
+            assertTrue(secundarios.size <= 1, "más de un dato secundario en un turno: $t")
+        }
+        assertEquals("22ED01", turnos.first().split(" ").first { it.startsWith("01") && it !in listOf("010D", "0111") || it.startsWith("22") }, "freno y embrague no van primero")
     }
 
     /** ATH0 multi-frame reply as the ELM327 prints it: length line, then "n:" frames of 6 then 7 bytes. */
@@ -208,7 +213,7 @@ class Elm327Test {
 
     @Test
     fun adaptadorColgadoReconectaSinCortarElFlujo() = runTest {
-        val transporte = TransporteFalso(colgarTrasLecturas = 40)
+        val transporte = TransporteFalso(colgarTrasLecturas = 20)
         val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent)
         transporte.elm = elm
         val lecturas = elm.lecturas().take(3).toList()
@@ -222,7 +227,7 @@ class Elm327Test {
     fun siLaEscuchaFallaSeApaganLosTestigosSinReconectar() = runTest {
         val transporte = TransporteFalso(sordoAlEscuchar = true)
         val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = 0)
-        val lecturas = elm.lecturas().take(5).toList()
+        val lecturas = elm.lecturas().take(40).toList()
         assertEquals(1, transporte.aperturas, "reconectó por culpa de los testigos")
         assertFalse(elm.estado.value.carroceria, "los testigos siguen prendidos aunque fallan")
         assertEquals(780.5, lecturas.last().valores["rpm"])

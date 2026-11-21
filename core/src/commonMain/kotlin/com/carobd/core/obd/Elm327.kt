@@ -3,11 +3,13 @@ package com.carobd.core.obd
 import com.carobd.core.sim.Lectura
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlin.time.TimeMark
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
@@ -46,8 +48,8 @@ class AdaptadorSinRespuesta(mensaje: String) : Exception(mensaje)
 
 /**
  * Protocolo ELM327 sobre cualquier [TransporteElm]. Arranca el adaptador, lee qué PIDs soporta el motor
- * y los pide en ciclos según su [Ritmo]: críticas siempre, rápidas cada 3 ciclos, medias cada 20 y lentas cada 100. Cada [periodoCarroceriaMs]
- * escucha el bus unos ms por ID para los testigos de [Carroceria]. Si el adaptador se cuelga, cierra
+ * y los pide por turnos según su [Ritmo] (ver [leerCiclo]): críticas en cada turno y un solo dato secundario por turno.
+ * Cada [periodoCarroceriaMs] escucha el bus unos ms por ID, de a uno por turno, para los testigos de [Carroceria]. Si el adaptador se cuelga, cierra
  * y reconecta con espera creciente; el flujo nunca termina por un error del adaptador.
  */
 class Elm327(
@@ -71,12 +73,12 @@ class Elm327(
     private var ciclo = 0L
     private var carroceriaActiva = true
     private var fallosCarroceria = 0
-    private var proximaEscucha = reloj.markNow()
     private var escuchas = 0
     private var extendidoActivo = true
+    private val proxima = mutableMapOf<String, TimeMark>() // next due time of each secondary task
+    private val colaEscucha = ArrayDeque<String>()
     private var cuenta = ""
     private var grupoCritico: List<Senal> = emptyList()
-    private var proximoExtendido = reloj.markNow()
 
     /** Testigos de carrocería (escucha ATMA). Se puede apagar en caliente si molestan en algún adaptador. */
     var testigos: Boolean = true
@@ -187,11 +189,12 @@ class Elm327(
         grupoCritico = criticas.takeIf { it.size > 1 && leerGrupo(it) != null }.orEmpty()
         anotar("pedidos: ${if (grupoCritico.isEmpty()) "de a un PID" else "agrupados"}, ${if (cuenta.isEmpty()) "sin" else "con"} cuenta de respuestas")
         valores.clear()
+        proxima.clear()
+        colaEscucha.clear()
         ciclo = 0
         extendidoActivo = true
         carroceriaActiva = testigos
         fallosCarroceria = 0
-        proximaEscucha = reloj.markNow()
         _estado.value = EstadoConexion(FaseConexion.CONECTADO, adaptador = banner, vin = vin, pidsSoportados = soportados.size, carroceria = testigos)
         return true
     }
@@ -212,81 +215,102 @@ class Elm327(
     private suspend fun leerGrupo(grupo: List<Senal>): Map<String, Double>? =
         Decodificador.variosPids(enviar("01" + grupo.joinToString("") { it.pid.orEmpty() } + cuenta, valida = responde("41")), grupo)
 
+    /**
+     * One turn on the single ELM327 channel: the critical PIDs first (the screen updates right after), then at most
+     * ONE secondary task by priority: brake/clutch block, fast PIDs, one body-listen ID, medium, slow.
+     * Nothing secondary ever delays the needles by more than one request.
+     */
     private suspend fun leerCiclo(): Map<String, Double> {
-        if (grupoCritico.isNotEmpty()) leerGrupo(grupoCritico)?.let { valores += it }
-        for (senal in senales) {
-            if (senal in grupoCritico) continue
-            val toca = when (senal.ritmo) {
-                Ritmo.CRITICO -> true
-                Ritmo.RAPIDO -> ciclo % 3 == 0L
-                Ritmo.MEDIO -> ciclo % 20 == 0L
-                Ritmo.LENTO -> ciclo % 100 == 0L
-            }
-            if (toca) {
-                val respuesta = enviar(senal.modo + senal.pid + cuenta, valida = responde("41" + senal.pid))
-                Decodificador.decodificar(respuesta, senal)?.let { valores[senal.id] = it }
-            }
-        }
-        if (extendidoActivo && proximoExtendido.hasPassedNow()) {
-            proximoExtendido = reloj.markNow() + PERIODO_EXTENDIDO_MS.milliseconds
-            // A negative answer (7F 22) counts as the reply, or enviar would wait it out as a late one.
-            val r = enviar(MotorExtendido.COMANDO + cuenta) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
-            val leidos = MotorExtendido.decodificar(r)
-            if (leidos != null) valores += leidos
-            // An engine without the block refuses it: stop asking. NO DATA or a truncated reply is just skipped.
-            else if ("7F22" in limpio(r)) extendidoActivo = false
-        }
+        leerCriticas()
         if (!testigos && _estado.value.carroceria) {
             Carroceria.senales.forEach { valores.remove(it) }
+            colaEscucha.clear()
             _estado.value = _estado.value.copy(carroceria = false)
         }
         if (testigos && !_estado.value.carroceria && fallosCarroceria < MAX_FALLOS_CARROCERIA) {
             carroceriaActiva = true
             _estado.value = _estado.value.copy(carroceria = true)
         }
-        if (testigos && carroceriaActiva && proximaEscucha.hasPassedNow()) {
-            escucharCarroceria()
-            proximaEscucha = reloj.markNow() + periodoCarroceriaMs.milliseconds
-        }
+        secundaria()
         derivadas()
         ciclo++
         return valores.toMap()
     }
 
+    private suspend fun leerCriticas() {
+        if (grupoCritico.isNotEmpty()) leerGrupo(grupoCritico)?.let { valores += it }
+        else senales.filter { it.ritmo == Ritmo.CRITICO }.forEach { leerPid(it) }
+    }
+
+    private suspend fun secundaria() {
+        val tareas = buildList {
+            if (extendidoActivo) add(MotorExtendido.COMANDO to PERIODO_EXTENDIDO_MS)
+            senales.filter { it.ritmo != Ritmo.CRITICO }.forEach { add(it.id to PERIODOS_MS.getValue(it.ritmo)) }
+            if (testigos && carroceriaActiva) add(ESCUCHA to periodoCarroceriaMs)
+        }
+        // Earliest deadline first: the most overdue task runs, so when the channel is saturated every task slows
+        // down evenly instead of the low ones starving. Ties (first turn) go by list order, which is the priority.
+        val (id, periodo) = tareas.filter { proxima[it.first]?.hasPassedNow() != false }
+            .maxByOrNull { proxima[it.first]?.elapsedNow() ?: Duration.INFINITE } ?: return
+        when (id) {
+            ESCUCHA -> {
+                // One ID per turn; the task stays overdue until the whole round is listened.
+                if (colaEscucha.isEmpty()) colaEscucha += Carroceria.idsEscucha(escuchas++)
+                escucharId(colaEscucha.removeFirst())
+                if (colaEscucha.isEmpty()) proxima[id] = reloj.markNow() + periodo.milliseconds
+            }
+            else -> {
+                proxima[id] = reloj.markNow() + periodo.milliseconds
+                if (id == MotorExtendido.COMANDO) leerExtendido() else leerPid(senales.first { it.id == id })
+            }
+        }
+    }
+
+    private suspend fun leerPid(senal: Senal) {
+        val respuesta = enviar(senal.modo + senal.pid + cuenta, valida = responde("41" + senal.pid))
+        Decodificador.decodificar(respuesta, senal)?.let { valores[senal.id] = it }
+    }
+
+    private suspend fun leerExtendido() {
+        // A negative answer (7F 22) counts as the reply, or enviar would wait it out as a late one.
+        val r = enviar(MotorExtendido.COMANDO + cuenta) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
+        val leidos = MotorExtendido.decodificar(r)
+        if (leidos != null) valores += leidos
+        // An engine without the block refuses it: stop asking. NO DATA or a truncated reply is just skipped.
+        else if ("7F22" in limpio(r)) extendidoActivo = false
+    }
+
     /**
-     * Escucha pasiva: ATCAF0 (tramas crudas), luego ATCRA<id> + ATMA unos ms por cada ID; se detiene con un byte,
-     * se drena hasta el prompt y se tiran los restos tardíos. Al final restaura ATCRA y ATCAF1 esperando OK,
-     * para volver a pedir PIDs. Tras 3 escuchas sin tramas o con error se desactiva sola; los PIDs siguen igual.
+     * Escucha pasiva de un ID: ATCAF0 (tramas crudas), ATCRA<id> + ATMA unos ms; se detiene con un byte, se drena
+     * hasta el prompt y se tiran los restos tardíos. Al final restaura ATCRA y ATCAF1 esperando OK, para volver a
+     * pedir PIDs. Tras 3 escuchas seguidas sin tramas o con error se desactiva sola; los PIDs siguen igual.
      */
-    private suspend fun escucharCarroceria() {
-        var conTramas = 0
+    private suspend fun escucharId(id: String) {
+        var conTramas = false
         try {
             enviar("ATCAF0", valida = ::esOk)
-            for (id in Carroceria.idsEscucha(escuchas++)) {
-                enviar("ATCRA$id", valida = ::esOk)
-                transporte.descartar()
-                transporte.escribir("ATMA\r")
-                var r = transporte.leer(ventanaEscuchaMs)
-                if (!r.completa) {
-                    transporte.escribir(" ")
-                    val cierre = transporte.leer(timeoutMs)
-                    if (!cierre.completa) throw AdaptadorSinRespuesta("ATMA no se detuvo")
-                    r = Respuesta(r.texto + "\r" + cierre.texto, true)
-                }
-                anotar("ATMA $id → ${legible(r.texto).takeLast(60)}")
-                // El clon por BLE sigue mandando restos (y a veces otro '>') un rato después de detenerse.
-                delay(RESTOS_ATMA_MS)
-                transporte.descartar()
-                Carroceria.ultimaTrama(r.texto)?.let {
-                    valores += Carroceria.decodificar(id, it)
-                    conTramas++
-                }
+            enviar("ATCRA$id", valida = ::esOk)
+            transporte.descartar()
+            transporte.escribir("ATMA\r")
+            var r = transporte.leer(ventanaEscuchaMs)
+            if (!r.completa) {
+                transporte.escribir(" ")
+                val cierre = transporte.leer(timeoutMs)
+                if (!cierre.completa) throw AdaptadorSinRespuesta("ATMA no se detuvo")
+                r = Respuesta(r.texto + "\r" + cierre.texto, true)
+            }
+            anotar("ATMA $id → ${legible(r.texto).takeLast(60)}")
+            // El clon por BLE sigue mandando restos (y a veces otro '>') un rato después de detenerse.
+            delay(RESTOS_ATMA_MS)
+            transporte.descartar()
+            Carroceria.ultimaTrama(r.texto)?.let {
+                valores += Carroceria.decodificar(id, it)
+                conTramas = true
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             anotar("testigos: ${e.message}")
-            conTramas = 0
         }
         // Listening must never take the adapter down: its failures don't count toward a reconnect.
         // If the filters can't be restored, the telltales switch off; the PIDs alone decide a reconnect.
@@ -294,12 +318,13 @@ class Elm327(
         fallosSeguidos = 0
         if (!restaurado) {
             anotar("testigos: el adaptador no confirmó ATCRA/ATCAF1")
-            conTramas = 0
+            conTramas = false
             fallosCarroceria = MAX_FALLOS_CARROCERIA - 1
         }
-        fallosCarroceria = if (conTramas > 0) 0 else fallosCarroceria + 1
+        fallosCarroceria = if (conTramas) 0 else fallosCarroceria + 1
         if (fallosCarroceria >= MAX_FALLOS_CARROCERIA) {
             carroceriaActiva = false
+            colaEscucha.clear()
             Carroceria.senales.forEach { valores.remove(it) }
             _estado.value = _estado.value.copy(carroceria = false)
             anotar("testigos desactivados: 3 escuchas sin tramas")
@@ -329,6 +354,8 @@ private const val RESTOS_ATMA_MS = 200L
 // Brake and clutch are top priority: 4 times a second. The research capture cut off after ~1 min of back-to-back
 // requests (cause unconfirmed); if the adapter hangs, lower this first.
 private const val PERIODO_EXTENDIDO_MS = 250L
+private const val ESCUCHA = "escucha"
+private val PERIODOS_MS = mapOf(Ritmo.RAPIDO to 500L, Ritmo.MEDIO to 3_000L, Ritmo.LENTO to 15_000L)
 private const val MAX_FALLOS_CARROCERIA = 3
 
 internal fun hex2(valor: Int): String = valor.toString(16).uppercase().padStart(2, '0')
