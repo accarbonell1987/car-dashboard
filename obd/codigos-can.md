@@ -102,6 +102,45 @@ Las de otras marcas con EDC17 (Renault `22242C` hollín, Mazda `2228F4`) no sirv
 **Siguiente paso posible (Motor, permitido):** barrer `22 0400-0FFF`, `1200-1FFF`, `2200-2FFF`,
 `3000-FFFF` en 7E0, por bloques de 256 y con pausas. Es lectura pura, pero lleva horas por BLE.
 
+## Lo que el Autel lee del motor (2026-11-21)
+
+Con el Autel (app en el teléfono), contacto en ON y motor apagado, el módulo **Engine** muestra
+más de 150 datos en vivo. Todos salen del ECU del motor, así que **existe un protocolo extendido
+en 7E0** que nuestro barrido no encontró (probablemente servicio `21` o `22` dentro de una sesión
+de diagnóstico extendida, o DIDs `22` en rangos sin barrer).
+
+Datos vistos, con su número en la lista del Autel. El usuario probó pedales y palanca: cambian.
+
+| N.º | Dato | Valor visto | Uso en la app |
+| --- | --- | --- | --- |
+| 001 | Pedal del acelerador | 0 % | Gauge |
+| 002 | Válvula de control de presión (rail) | 7 % | Diagnóstico |
+| 003 | Masa de aire por cilindro | 0 mg/carrera | Diagnóstico (EGR, turbo) |
+| 004 | Presión barométrica | 988 hPa | Coincide con `0x545` (984 hPa): valida esa escala |
+| 005 | Interruptor de embrague | OFF / ON al pisar | Marcha, 3D |
+| 007, 101 | Caja en punto muerto | ON / OFF | **Indicador de punto muerto** |
+| 008, 009 | Interruptores de freno 1 y 2 | OFF / ON al pisar | **Luz de stop del 3D** |
+| 006, 010 | A/C pedido, relé del compresor | OFF | Testigo de A/C |
+| 097 | Sensor de presión de rail, crudo | 0,51 V | Diagnóstico |
+| 104 | Embrague pisado más del 40 % | NO | — |
+| 106, 107 | Cinturón y puerta del conductor | Sin abrochar, abierta | Ya los tenemos por `0x690` |
+| 108 | Interruptor de capó | OPEN | A verificar: quizá no está instalado |
+| 109-114 | Sensor de batería (AMS) | 6,00 V, 87,5 °C, 0 % | **No instalado**: valores por defecto, no usar |
+| 098-099, 143-153 | ISG (start-stop), cambio D/N | NO / OFF | No aplica a este auto |
+| 146 | Velocidad | 0 km/h | Ya la tenemos |
+| 148 | Presión del cilindro maestro de freno | 0,0 bar | A verificar andando |
+
+Los datos 011 a 096 y 115 a 142 no se capturaron: ahí deberían estar hollín y presión del DPF,
+temperaturas de escape, turbo, EGR y correcciones de inyectores.
+
+**Cómo obtener los comandos (pasivo):** con un cable en Y para el puerto OBD, conectar el Autel
+y el ELM327 a la vez. El ELM327 escucha con `ATCRA` en `7E0` y `7E8` mientras el Autel muestra
+Engine > Live data. Así se registran la petición y la respuesta de cada dato, sin que nuestro
+adaptador envíe nada. Con el Autel, entrar **solo a Engine** para respetar la regla.
+
+El menú del Autel lista además A/T, ABS, Airbag, TPMS, A/C, EPS, IMMO, SMK, BCM y CODE. Es la
+lista genérica del modelo: no prueba que este auto tenga todos esos módulos.
+
 ## Lo que requiere hablar con otros módulos (⚠ prohibido por la regla)
 
 | Dato | Cómo lo hace la comunidad | Módulo |
