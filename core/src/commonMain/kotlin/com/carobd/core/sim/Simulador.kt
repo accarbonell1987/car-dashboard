@@ -27,6 +27,8 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
         var tempRefrig = 22.0
         var odometroKm = 0.0
         var faseSemaforo = 0L
+        var marchaPrevia = 0
+        var embragueHasta = 0L
         while (true) {
             val seg = t / 1000.0
             // Perfil de velocidad: ondas largas con paradas cada ~90 s.
@@ -34,6 +36,10 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
             kmh += (objetivo - kmh) * 0.03
             kmh = max(0.0, min(130.0, kmh))
             val marcha = marchas.marcha(rpmPara(kmh), kmh).takeIf { it > 0 } ?: marchaPara(kmh)
+            // Clutch down for 0.6 s at each shift and while pulling away.
+            if (marcha != marchaPrevia) embragueHasta = t + 600
+            marchaPrevia = marcha
+            val embrague = t < embragueHasta || (kmh < 3 && objetivo > 0)
             val rpm = if (kmh < 3) 800 + 30 * sin(seg * 3) else max(900.0, kmh * marchas.relaciones[marcha - 1])
             val acelerador = if (objetivo > kmh + 1) min(100.0, 20 + (objetivo - kmh) * 3) else 5.0
             val carga = min(100.0, 15 + acelerador * 0.7)
@@ -52,6 +58,7 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
                         "acelerador" to acelerador,
                         // Braking when the target is clearly below the current speed (lights, slowdowns).
                         MotorExtendido.FRENO to if (objetivo < kmh - 3) 1.0 else 0.0,
+                        MotorExtendido.EMBRAGUE to if (embrague) 1.0 else 0.0,
                         "map" to map,
                         "barometrica" to 101.0,
                         "boost" to (map - 101.0) / 100.0,

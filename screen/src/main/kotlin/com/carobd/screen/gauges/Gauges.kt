@@ -1,6 +1,7 @@
 package com.carobd.screen.gauges
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.text.style.TextAlign
 import com.carobd.core.obd.MotorExtendido
 import androidx.compose.animation.core.tween
@@ -243,6 +244,8 @@ internal fun CuadroInstrumentos(valores: Map<String, Double>, alertas: List<Aler
         Reloj(rpm, valores["rpm"], Alertas.nivelDe("rpm", alertas), Modifier.size(diametro).align(Alignment.CenterStart))
         Reloj(velocidad, valores["velocidad"], Alertas.nivelDe("velocidad", alertas), Modifier.size(diametro).align(Alignment.CenterEnd))
         val m = valores["marcha"]?.roundToInt()
+        val pisado = valores[MotorExtendido.EMBRAGUE] == 1.0
+        val embrague by animateFloatAsState(if (pisado) 1f else 0f, tween(if (pisado) 80 else 300), label = "embrague")
         Box(
             Modifier
                 .align(Alignment.Center)
@@ -250,7 +253,19 @@ internal fun CuadroInstrumentos(valores: Map<String, Double>, alertas: List<Aler
                 .clip(CircleShape)
                 .background(p.fondo)
                 .border(3.dp, if (m == 0) p.ok else p.pista, CircleShape)
-                .semantics { contentDescription = "Marcha ${if (m == 0) "neutro" else m ?: "sin dato"}" },
+                // Clutch: a yellow crescent hugging the top of the ring while the pedal is down.
+                .drawWithContent {
+                    drawContent()
+                    if (embrague > 0f) {
+                        val grosor = 6.dp.toPx()
+                        val d = size.minDimension - grosor
+                        drawArc(
+                            p.atencion.copy(alpha = embrague), 200f, 140f, false,
+                            Offset(grosor / 2, grosor / 2), Size(d, d), style = Stroke(grosor, cap = StrokeCap.Round),
+                        )
+                    }
+                }
+                .semantics { contentDescription = "Marcha ${if (m == 0) "neutro" else m ?: "sin dato"}${if (pisado) ", embrague pisado" else ""}" },
             contentAlignment = Alignment.Center,
         ) {
             Text(
