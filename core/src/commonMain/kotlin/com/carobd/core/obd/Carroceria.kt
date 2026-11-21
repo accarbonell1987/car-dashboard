@@ -29,9 +29,9 @@ object Carroceria {
     val senales = listOf(PUERTA, CINTURON, AIRE, TEMP_EXTERIOR, ODOMETRO, RESERVA, LUNETA, TEMP_COMBUSTIBLE, DIRECCION)
 
     /**
-     * IDs de la escucha número [n] (una cada 5 s): puertas y A/C siempre, y cada 3 escuchas uno de los lentos por
+     * IDs de la escucha número [n] (una cada 10 s): puertas y A/C siempre, y cada 3 escuchas uno de los lentos por
      * turno, empezando por el odómetro. Cada ID pausa los PIDs unos 400 ms por BLE: escuchar todos juntos
-     * frenaría las agujas. Así cada dato lento se refresca cada ~1 min.
+     * frenaría las agujas. Así cada dato lento se refresca cada ~2 min.
      */
     fun idsEscucha(n: Int): List<String> =
         if (n % 3 == 0) ids.take(2) + ids[2 + (n / 3) % (ids.size - 2)] else ids.take(2)

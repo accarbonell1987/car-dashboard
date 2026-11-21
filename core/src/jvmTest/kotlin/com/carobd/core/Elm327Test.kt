@@ -176,6 +176,15 @@ class Elm327Test {
     }
 
     @Test
+    fun variosPidsEnUnPedido() {
+        val criticas = Catalogo.estandar.filter { it.id in listOf("rpm", "velocidad", "acelerador") }
+        // 8 bytes: the ECU splits it into two ISO-TP frames.
+        assertEquals(mapOf("rpm" to 780.5, "velocidad" to 42.0, "acelerador" to 20.0), Decodificador.variosPids("008\r0:410C0C320D2A\r1:1133\r\r", criticas))
+        assertNull(Decodificador.variosPids("410C0C32\r\r", criticas), "faltan PIDs y no cayó a uno por pedido")
+        assertNull(Decodificador.variosPids("NO DATA\r\r", criticas))
+    }
+
+    @Test
     fun bloqueExtendidoDelMotor() {
         // Real 22ED01 replies from obd/capturas/elm327-motor22-pedales-*.csv.
         fun d(datos: String) = MotorExtendido.decodificar(multitrama("62ED01$datos"))
@@ -250,12 +259,14 @@ class Elm327Test {
     @Test
     fun puntaAPuntaContraElEmulador() = conEmulador { puerto, consola ->
         consola("puerta off"); consola("ac off")
-        val elm = Elm327(TransporteTcp("127.0.0.1", puerto), excluir = Catalogo.noSoportadasAccent)
+        val elm = Elm327(TransporteTcp("127.0.0.1", puerto), excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = 2000)
         var ultima: Lectura? = null
         val lector = CoroutineScope(Dispatchers.IO).launch { elm.lecturas().collect { ultima = it } }
         try {
             esperar({ ultima }) { it[Carroceria.PUERTA] == 0.0 && it[Carroceria.AIRE] == 0.0 && "rpm" in it && "velocidad" in it && "temp_refrigerante" in it }
             assertTrue(ultima!!.valores.getValue("rpm") in 500.0..5000.0)
+            assertTrue(elm.registro.value.any { "agrupados, con cuenta" in it }, "no agrupó los PIDs críticos")
+            assertTrue("acelerador" in ultima!!.valores)
             consola("puerta on"); consola("ac on")
             esperar({ ultima }) { it[Carroceria.PUERTA] == 1.0 && it[Carroceria.AIRE] == 1.0 }
             assertEquals("KMHCU41UAGU000000", elm.estado.value.vin)

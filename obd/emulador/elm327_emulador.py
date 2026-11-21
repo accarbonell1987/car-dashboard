@@ -145,6 +145,10 @@ class Vehicle:
     def answer(self, request):
         """OBD payload the engine ECU would send back, or None for NO DATA."""
         mode, pid = request[0], request[1] if len(request) > 1 else None
+        if mode == 0x01 and len(request) > 2:
+            # Several PIDs in one request, as the real ECU accepts: 41 + (pid, value) for each one it knows.
+            parts = [bytes([pid]) + self.pid_value(pid) for pid in request[1:7] if pid in self.supported and self.pid_value(pid)]
+            return b"\x41" + b"".join(parts) if parts else None
         if mode == 0x01 and pid is not None and (pid in self.supported or pid % 0x20 == 0):
             value = self.pid_value(pid)
             return bytes([0x41, pid]) + value if value else None

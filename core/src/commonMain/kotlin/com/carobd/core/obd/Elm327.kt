@@ -55,9 +55,10 @@ class Elm327(
     private val excluir: Set<String> = emptySet(),
     private val timeoutMs: Long = 1500,
     private val intentos: Int = 3,
-    // Each listen pauses the PIDs about a second over BLE: every 5 s keeps the gauges live.
-    private val periodoCarroceriaMs: Long = 5000,
-    private val ventanaEscuchaMs: Long = 300,
+    // Each listen pauses the PIDs (~0.6 s over BLE): every 10 s, with short windows, keeps the needles live.
+    // 690 sends at 10 Hz and 350 at 48 Hz, so 150 ms still catches a frame of each.
+    private val periodoCarroceriaMs: Long = 10_000,
+    private val ventanaEscuchaMs: Long = 150,
 ) {
     private val _estado = MutableStateFlow(EstadoConexion(FaseConexion.DESCONECTADO))
     val estado: StateFlow<EstadoConexion> = _estado.asStateFlow()
@@ -73,6 +74,8 @@ class Elm327(
     private var proximaEscucha = reloj.markNow()
     private var escuchas = 0
     private var extendidoActivo = true
+    private var cuenta = ""
+    private var grupoCritico: List<Senal> = emptyList()
     private var proximoExtendido = reloj.markNow()
 
     /** Testigos de carrocería (escucha ATMA). Se puede apagar en caliente si molestan en algún adaptador. */
@@ -177,6 +180,12 @@ class Elm327(
         senales = Catalogo.estandar.filter {
             it.modo == "01" && it.pid != null && it.id !in excluir && (soportados.isEmpty() || it.pid.toInt(16) in soportados)
         }
+        // Response count "1": the adapter returns as soon as the engine answers instead of waiting for others.
+        cuenta = if ("410D" in limpio(enviar("010D1", valida = responde("410D")))) "1" else ""
+        // Critical PIDs in one request when the engine accepts several at once (one round trip instead of three).
+        val criticas = senales.filter { it.ritmo == Ritmo.CRITICO }
+        grupoCritico = criticas.takeIf { it.size > 1 && leerGrupo(it) != null }.orEmpty()
+        anotar("pedidos: ${if (grupoCritico.isEmpty()) "de a un PID" else "agrupados"}, ${if (cuenta.isEmpty()) "sin" else "con"} cuenta de respuestas")
         valores.clear()
         ciclo = 0
         extendidoActivo = true
@@ -200,8 +209,13 @@ class Elm327(
         return soportados
     }
 
+    private suspend fun leerGrupo(grupo: List<Senal>): Map<String, Double>? =
+        Decodificador.variosPids(enviar("01" + grupo.joinToString("") { it.pid.orEmpty() } + cuenta, valida = responde("41")), grupo)
+
     private suspend fun leerCiclo(): Map<String, Double> {
+        if (grupoCritico.isNotEmpty()) leerGrupo(grupoCritico)?.let { valores += it }
         for (senal in senales) {
+            if (senal in grupoCritico) continue
             val toca = when (senal.ritmo) {
                 Ritmo.CRITICO -> true
                 Ritmo.RAPIDO -> ciclo % 3 == 0L
@@ -209,14 +223,14 @@ class Elm327(
                 Ritmo.LENTO -> ciclo % 100 == 0L
             }
             if (toca) {
-                val respuesta = enviar(senal.modo + senal.pid, valida = responde("41" + senal.pid))
+                val respuesta = enviar(senal.modo + senal.pid + cuenta, valida = responde("41" + senal.pid))
                 Decodificador.decodificar(respuesta, senal)?.let { valores[senal.id] = it }
             }
         }
         if (extendidoActivo && proximoExtendido.hasPassedNow()) {
             proximoExtendido = reloj.markNow() + PERIODO_EXTENDIDO_MS.milliseconds
             // A negative answer (7F 22) counts as the reply, or enviar would wait it out as a late one.
-            val r = enviar(MotorExtendido.COMANDO) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
+            val r = enviar(MotorExtendido.COMANDO + cuenta) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
             val leidos = MotorExtendido.decodificar(r)
             if (leidos != null) valores += leidos
             // An engine without the block refuses it: stop asking. NO DATA or a truncated reply is just skipped.
@@ -312,8 +326,9 @@ class Elm327(
 
 private const val LARGO_REGISTRO = 50
 private const val RESTOS_ATMA_MS = 200L
-// The research capture cut off after ~1 min of back-to-back requests: at most one extended request a second.
-private const val PERIODO_EXTENDIDO_MS = 1000L
+// Brake and clutch are top priority: 4 times a second. The research capture cut off after ~1 min of back-to-back
+// requests (cause unconfirmed); if the adapter hangs, lower this first.
+private const val PERIODO_EXTENDIDO_MS = 250L
 private const val MAX_FALLOS_CARROCERIA = 3
 
 internal fun hex2(valor: Int): String = valor.toString(16).uppercase().padStart(2, '0')

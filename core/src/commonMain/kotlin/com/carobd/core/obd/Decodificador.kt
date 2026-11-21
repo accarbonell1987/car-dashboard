@@ -74,6 +74,26 @@ object Decodificador {
 
     private fun aBytes(hex: String): List<Int> = hex.chunked(2).filter { it.length == 2 }.map { it.toInt(16) }
 
+    /**
+     * Reply to a multi-PID request ("010C0D11" → 41 0C A B 0D A 11 A): one value per signal, or null if any is
+     * missing, so the caller falls back to one PID per request.
+     */
+    fun variosPids(respuesta: String, senales: List<Senal>): Map<String, Double>? {
+        val bytes = unirMultitrama(respuesta) ?: return null
+        var i = bytes.indexOf(0x41) + 1
+        if (i == 0) return null
+        val porPid = senales.associateBy { it.pid?.toInt(16) }
+        val valores = mutableMapOf<String, Double>()
+        while (i < bytes.size) {
+            val s = porPid[bytes[i]] ?: return null
+            val datos = bytes.drop(i + 1).take(s.bytes)
+            if (datos.size < s.bytes) return null
+            decodificar("41" + s.pid + datos.joinToString("") { hex2(it) }, s)?.let { valores[s.id] = it }
+            i += 1 + s.bytes
+        }
+        return valores.takeIf { it.size == senales.size }
+    }
+
     fun decodificar(respuesta: String, senal: Senal): Double? {
         val bytes = bytesDeDatos(respuesta, senal) ?: return null
         senal.mascaraSoporte?.let { if (bytes.first() and it == 0) return null }
