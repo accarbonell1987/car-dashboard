@@ -1,6 +1,10 @@
 package com.carobd.screen.ui
 
 import androidx.compose.foundation.layout.width
+import java.io.File
+import androidx.core.content.FileProvider
+import android.content.Intent
+import android.content.Context
 import com.carobd.screen.ui.comun.ItemRiel
 import com.carobd.screen.ui.comun.Interruptor
 import com.carobd.screen.ui.comun.IconoTrazo
@@ -209,15 +213,41 @@ private fun Registro(acciones: AccionesTablero) {
     Opcion(if (abierto) "Ocultar registro" else "Registro de comandos", abierto, icono = Icono.TERMINAL) { abierto = !abierto }
     if (!abierto) return
     val lineas by acciones.registro.collectAsState()
+    val context = LocalContext.current
+    Boton("Compartir registro completo (${lineas.size} líneas)", Modifier.fillMaxWidth(), activo = lineas.isNotEmpty()) {
+        compartirRegistro(context, lineas)
+    }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(p.fondo).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         if (lineas.isEmpty()) Text("Sin comandos todavía.", color = p.tenue, fontSize = 15.sp)
-        for (linea in lineas.asReversed()) {
+        // Only the latest on screen: the full log goes out as a file.
+        for (linea in lineas.takeLast(LINEAS_EN_PANTALLA).asReversed()) {
             Text(linea, color = if ("✕" in linea || "sin prompt" in linea) p.atencion else p.texto, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
         }
     }
+}
+
+private const val LINEAS_EN_PANTALLA = 50
+
+/** Writes the log to a cache file and opens the share sheet (WhatsApp, Drive, mail...) to send it off the car. */
+private fun compartirRegistro(context: Context, lineas: List<String>) {
+    val carpeta = File(context.cacheDir, "registros").apply { mkdirs() }
+    carpeta.listFiles()?.forEach { it.delete() }
+    val archivo = File(carpeta, "carobd-registro-${System.currentTimeMillis() / 1000}.txt")
+    archivo.writeText(
+        "CAROBD ${runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()} · Android ${Build.VERSION.RELEASE}\n" +
+            "segundos-desde-el-arranque comando → respuesta\n\n" + lineas.joinToString("\n"),
+    )
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.archivos", archivo)
+    val envio = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        putExtra(Intent.EXTRA_SUBJECT, archivo.name)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(envio, "Compartir registro").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }
 
 /** Permisos para escanear y conectar por BLE: Android 12+ tiene los suyos; antes, escanear exigía ubicación. */

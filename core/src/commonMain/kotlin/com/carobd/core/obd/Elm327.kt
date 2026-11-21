@@ -88,11 +88,16 @@ class Elm327(
         }
 
     private val _registro = MutableStateFlow<List<String>>(emptyList())
-    /** Últimos [LARGO_REGISTRO] comandos y respuestas en crudo, para diagnosticar en el auto. */
+    private val inicioRegistro = reloj.markNow()
+    /**
+     * Últimos [LARGO_REGISTRO] comandos y respuestas en crudo (~7 min), con segundos desde que arrancó la app, para
+     * diagnosticar en el auto: la pantalla muestra los últimos y el resto se comparte como archivo.
+     */
     val registro: StateFlow<List<String>> = _registro.asStateFlow()
 
     private fun anotar(linea: String) {
-        _registro.value = (_registro.value + linea).takeLast(LARGO_REGISTRO)
+        val ms = inicioRegistro.elapsedNow().inWholeMilliseconds
+        _registro.value = (_registro.value + "${ms / 1000}.${(ms % 1000).toString().padStart(3, '0')} $linea").takeLast(LARGO_REGISTRO)
     }
 
     fun lecturas(): Flow<Lectura> = flow {
@@ -349,7 +354,7 @@ class Elm327(
     }
 }
 
-private const val LARGO_REGISTRO = 50
+private const val LARGO_REGISTRO = 5_000
 private const val RESTOS_ATMA_MS = 200L
 // Brake and clutch are top priority: 4 times a second. The research capture cut off after ~1 min of back-to-back
 // requests (cause unconfirmed); if the adapter hangs, lower this first.

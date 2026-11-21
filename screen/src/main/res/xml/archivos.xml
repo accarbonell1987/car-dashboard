@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Downloaded updates, shared with the system installer -->
+<!-- Downloaded updates, shared with the system installer; command logs, shared from Ajustes -->
 <paths>
     <cache-path name="actualizaciones" path="actualizaciones/" />
+    <!-- Command logs shared from Ajustes for diagnosis -->
+    <cache-path name="registros" path="registros/" />
 </paths>
