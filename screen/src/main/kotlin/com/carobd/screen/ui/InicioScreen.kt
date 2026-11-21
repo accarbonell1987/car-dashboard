@@ -1,5 +1,8 @@
 package com.carobd.screen.ui
 
+import com.carobd.screen.R
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import com.carobd.core.obd.FaseConexion
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -192,7 +195,7 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
                 Text(texto, color = color, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
-        Silueta(Color(0xFFB8BEC6), Modifier.fillMaxWidth().weight(1f))
+        FotoAuto(Modifier.fillMaxWidth().weight(1f))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val vs = e.valores
             Stat("Velocidad", vs["velocidad"]?.let { dec(it, 0) } ?: "--", "km/h", p.texto, Modifier.weight(1f))
@@ -240,33 +243,15 @@ private fun Stat(nombre: String, valor: String, unidad: String, color: Color, mo
     }
 }
 
-/** Silueta lateral de un sedán (por ahora el Accent; las demás carrocerías llegan con el selector de vehículo). */
+/** Photo of the user's own Accent, cut out from its background (plate blanked: the repository is public). */
 @Composable
-fun Silueta(color: Color, modifier: Modifier) {
-    val p = LocalPaleta.current
-    val cuerpo = remember {
-        PathParser().parsePathString(
-            "M20,95 L30,72 Q40,66 70,64 L120,60 Q150,34 190,30 L250,30 Q285,32 310,58 L360,64 Q385,68 388,85 L390,98 " +
-                "Q390,104 382,104 L340,104 A28,28 0 0 0 284,104 L132,104 A28,28 0 0 0 76,104 L28,104 Q20,104 20,95 Z",
-        ).toPath()
-    }
-    val vidrios = remember {
-        PathParser().parsePathString("M132,60 Q156,40 190,37 L222,37 L224,60 Z M232,37 L250,37 Q278,39 298,60 L234,60 Z").toPath()
-    }
-    Box(modifier.semantics { contentDescription = "Silueta del auto" }, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxHeight().aspectRatio(410f / 135f)) {
-            val k = size.width / 410f
-            scale(k, k, pivot = androidx.compose.ui.geometry.Offset.Zero) {
-                drawPath(cuerpo, color)
-                drawPath(vidrios, p.celda.copy(alpha = 0.85f))
-                for (x in listOf(104f, 312f)) {
-                    drawCircle(p.fondo, radius = 22f, center = androidx.compose.ui.geometry.Offset(x, 104f))
-                    drawCircle(p.pista, radius = 22f, center = androidx.compose.ui.geometry.Offset(x, 104f), style = Stroke(6f))
-                    drawCircle(p.tenue, radius = 8f, center = androidx.compose.ui.geometry.Offset(x, 104f))
-                }
-            }
-        }
-    }
+fun FotoAuto(modifier: Modifier) {
+    Image(
+        painterResource(R.drawable.accent),
+        contentDescription = "Hyundai Accent 2016",
+        modifier = modifier,
+        contentScale = ContentScale.Fit,
+    )
 }
 
 /** Envía una tecla multimedia al reproductor que esté sonando (Spotify, YouTube Music, radio...). No pide permisos. */

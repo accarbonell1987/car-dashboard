@@ -29,7 +29,7 @@ import com.carobd.screen.ui.comun.Tarjeta
 import com.carobd.screen.ui.comun.TarjetaIcono
 import kotlin.math.floor
 
-/** The car: a large silhouette (later the 3D model) and its data as icon tiles. */
+/** The car: its photo (later the 3D model) and its data as icon tiles. */
 @Composable
 fun VehiculoScreen(e: EstadoTablero, @Suppress("UNUSED_PARAMETER") acciones: AccionesTablero) {
     val p = LocalPaleta.current
@@ -39,7 +39,7 @@ fun VehiculoScreen(e: EstadoTablero, @Suppress("UNUSED_PARAMETER") acciones: Acc
         Tarjeta(Modifier.weight(1.4f).fillMaxHeight()) {
             Text(nombreVehiculo(e), color = p.texto, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Text("${v?.motor ?: "1.6 CRDi"} · diésel · manual 6", color = p.tenue, fontSize = 17.sp)
-            Silueta(Color(0xFFB8BEC6), Modifier.fillMaxWidth().weight(1f))
+            FotoAuto(Modifier.fillMaxWidth().weight(1f))
         }
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val datos = listOf(
