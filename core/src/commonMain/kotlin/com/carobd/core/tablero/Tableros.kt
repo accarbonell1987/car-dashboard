@@ -6,6 +6,7 @@ import com.carobd.core.tablero.TipoGauge.BARRA
 import com.carobd.core.tablero.TipoGauge.CUADRO
 import com.carobd.core.tablero.TipoGauge.MARCHA
 import com.carobd.core.tablero.TipoGauge.NUMERO
+import com.carobd.core.tablero.TipoGauge.PEDALES
 
 /**
  * Tableros que trae la app para el Accent 1.6 CRDi en la pantalla de 1280x720 (grilla de 6x3).
@@ -25,7 +26,7 @@ object Tableros {
             c("m5", "temp_refrigerante", BARRA, 4, 1),
             c("m11", "voltaje", BARRA, 5, 1),
             c("m7", "carga", ARCO, 0, 2),
-            c("m8", "acelerador", ARCO, 1, 2),
+            c("m8", "acelerador", PEDALES, 1, 2),
             c("m9", "temp_admision", NUMERO, 2, 2),
             c("m10", "presion_riel", BARRA, 3, 2),
             c("m13", "temp_dpf", BARRA, 4, 2),

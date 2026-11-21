@@ -1,6 +1,9 @@
 package com.carobd.screen.gauges
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.text.style.TextAlign
+import com.carobd.core.obd.MotorExtendido
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
@@ -110,6 +113,7 @@ fun Gauge(celda: Celda, senal: Senal, valor: Double?, nivel: NivelAviso?, modifi
             TipoGauge.AGUJA -> GaugeAguja(senal, valor, nivel)
             // Drawn by the dashboard with every value (CuadroInstrumentos); alone it falls back to a dial.
             TipoGauge.CUADRO -> GaugeAguja(senal, valor, nivel)
+            TipoGauge.PEDALES -> GaugeBarra(senal, valor, nivel)
         }
     }
 }
@@ -379,3 +383,54 @@ private fun GaugeMarcha(valor: Double?) {
         Text("Marcha", color = p.tenue, fontSize = tamTexto(lado, 0.1f), modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
+
+/**
+ * Throttle and brake bars, like the F1 broadcast graphic. The throttle glows brighter the further it is pressed;
+ * the brake is on/off from the engine (22ED01), so its bar fills whole and glows red while pressed.
+ */
+@Composable
+fun GaugePedales(valores: Map<String, Double>, modifier: Modifier = Modifier) {
+    val p = LocalPaleta.current
+    val acelerador = (valores["acelerador"] ?: 0.0) / 100.0
+    val freno = valores[MotorExtendido.FRENO] == 1.0
+    val gas by animateFloatAsState(acelerador.toFloat().coerceIn(0f, 1f), tween(90), label = "gas")
+    val stop by animateFloatAsState(if (freno) 1f else 0f, tween(if (freno) 60 else 250), label = "stop")
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(p.celda)
+            .padding(10.dp)
+            .semantics { contentDescription = "Acelerador ${(acelerador * 100).roundToInt()} %, freno ${if (freno) "pisado" else "suelto"}" },
+    ) {
+        Canvas(Modifier.fillMaxWidth().weight(1f)) {
+            // Bars inset by the widest halo so the glow is never clipped by the cell.
+            val alto = size.height - BRILLO_MAX * 2
+            val ancho = size.width * 0.3f
+            val hueco = (size.width - ancho * 2) / 3
+            barraConBrillo(Offset(hueco, BRILLO_MAX), Size(ancho, alto), gas, p.ok, p.pista)
+            barraConBrillo(Offset(hueco * 2 + ancho, BRILLO_MAX), Size(ancho, alto), stop, p.peligro, p.pista)
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            Text(if (valores["acelerador"] == null) "--" else "${(acelerador * 100).roundToInt()}%", color = p.texto, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+            Text(if (freno) "STOP" else "Freno", color = if (freno) p.peligro else p.tenue, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        }
+    }
+}
+
+/** Vertical bar filled from the bottom; the glow is a few soft halos whose strength follows [f]. */
+private fun DrawScope.barraConBrillo(origen: Offset, tam: Size, f: Float, color: Color, pista: Color) {
+    val radio = CornerRadius(tam.width * 0.25f)
+    drawRoundRect(pista, origen, tam, radio)
+    if (f <= 0.01f) return
+    val alto = tam.height * f
+    val arriba = Offset(origen.x, origen.y + tam.height - alto)
+    // ponytail: stacked translucent halos instead of a blur shader; cheap and the same on every Android version.
+    for (i in CAPAS_BRILLO downTo 1) {
+        val e = i * (BRILLO_MAX / CAPAS_BRILLO) * f
+        drawRoundRect(color.copy(alpha = 0.07f * f), Offset(arriba.x - e, arriba.y - e), Size(tam.width + e * 2, alto + e * 2), CornerRadius(radio.x + e))
+    }
+    drawRoundRect(color, arriba, Size(tam.width, alto), radio)
+}
+
+private const val BRILLO_MAX = 14f
+private const val CAPAS_BRILLO = 7

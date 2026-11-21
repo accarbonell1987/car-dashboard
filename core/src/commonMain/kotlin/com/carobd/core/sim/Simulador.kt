@@ -1,5 +1,7 @@
 package com.carobd.core.sim
 
+import com.carobd.core.obd.MotorExtendido
+
 import com.carobd.core.obd.Marchas
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +50,8 @@ class SimuladorAccent(private val periodoMs: Long = 100) {
                         "velocidad" to kmh,
                         "carga" to carga,
                         "acelerador" to acelerador,
+                        // Braking when the target is clearly below the current speed (lights, slowdowns).
+                        MotorExtendido.FRENO to if (objetivo < kmh - 3) 1.0 else 0.0,
                         "map" to map,
                         "barometrica" to 101.0,
                         "boost" to (map - 101.0) / 100.0,

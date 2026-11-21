@@ -40,7 +40,7 @@ object Catalogo {
         Senal("rpm", "RPM", "rpm", "01", "0C", formula = "(A*256+B)/4", bytes = 2, min = 0.0, max = 6000.0, ritmo = Ritmo.CRITICO),
         Senal("velocidad", "Velocidad", "km/h", "01", "0D", formula = "A", min = 0.0, max = 220.0, ritmo = Ritmo.CRITICO),
         Senal("carga", "Carga del motor", "%", "01", "04", formula = "A*100/255", min = 0.0, max = 100.0, ritmo = Ritmo.RAPIDO),
-        Senal("acelerador", "Acelerador", "%", "01", "11", formula = "A*100/255", min = 0.0, max = 100.0, ritmo = Ritmo.RAPIDO),
+        Senal("acelerador", "Acelerador", "%", "01", "11", formula = "A*100/255", min = 0.0, max = 100.0, ritmo = Ritmo.CRITICO),
         Senal("map", "Presión de admisión", "kPa", "01", "0B", formula = "A", min = 0.0, max = 255.0, ritmo = Ritmo.RAPIDO),
         Senal("maf", "Flujo de aire", "g/s", "01", "10", formula = "(A*256+B)/100", bytes = 2, min = 0.0, max = 300.0, ritmo = Ritmo.MEDIO),
         Senal("temp_refrigerante", "Temp. refrigerante", "°C", "01", "05", formula = "A-40", min = -40.0, max = 130.0, ritmo = Ritmo.MEDIO),

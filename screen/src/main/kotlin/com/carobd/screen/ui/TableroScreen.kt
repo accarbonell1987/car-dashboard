@@ -64,6 +64,7 @@ import kotlinx.coroutines.flow.StateFlow
 import com.carobd.screen.ModoNoche
 import com.carobd.screen.Seccion
 import com.carobd.screen.gauges.CuadroInstrumentos
+import com.carobd.screen.gauges.GaugePedales
 import com.carobd.screen.gauges.Gauge
 import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.gauges.formatear
@@ -294,8 +295,11 @@ private fun CeldaTablero(
     }
 
     Box(mod) {
-        if (celda.tipo == TipoGauge.CUADRO) CuadroInstrumentos(valores, alertas, Modifier.fillMaxSize())
-        else Gauge(celda, senal, valor, nivel, Modifier.fillMaxSize())
+        when (celda.tipo) {
+            TipoGauge.CUADRO -> CuadroInstrumentos(valores, alertas, Modifier.fillMaxSize())
+            TipoGauge.PEDALES -> GaugePedales(valores, Modifier.fillMaxSize())
+            else -> Gauge(celda, senal, valor, nivel, Modifier.fillMaxSize())
+        }
         if (editando) {
             // Quitar
             Text(

@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
  * AGUJA: analog dial with a needle. ARCO: segmented LED arc. BARRA: linear bar with the normal band.
  * CUADRO: tachometer + speedometer with the gear between them (its senalId is "rpm").
  */
-enum class TipoGauge { ARCO, NUMERO, BARRA, MARCHA, AGUJA, CUADRO }
+enum class TipoGauge { ARCO, NUMERO, BARRA, MARCHA, AGUJA, CUADRO, PEDALES }
 
 /** Una celda de la grilla: qué señal muestra, cómo, y dónde (columna, fila, ancho y alto en celdas). */
 @Serializable
