@@ -145,7 +145,7 @@ lista genérica del modelo: no prueba que este auto tenga todos esos módulos.
 
 El barrido de 7E0 dio NRC 31 en `0400-0FFF`, `1200-1FFF` y `2200-65FF`. **`22ED00-EDFF` responde
 con 39 bloques** (`capturas/elm327-motor22-ED.txt`). Es el bloque diésel que la comunidad (OBDb)
-documenta para Kia Ceed/Rio e i20/i30 CRDi. Falta barrer `6600-EBFF` y `EF00-FFFF`.
+documenta para Kia Ceed/Rio e i20/i30 CRDi. Falta barrer `6600-EBFF` y `EF00-FFFF` (el intento del 2026-11-21 se cortó en `66xx` al apagarse el Bluetooth de la Mac).
 
 Byte n = posición después del eco `62 ED xx`, desde 0. Valores con contacto en ON, motor apagado.
 

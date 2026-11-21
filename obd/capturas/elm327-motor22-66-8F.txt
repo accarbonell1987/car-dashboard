@@ -1,0 +1,19 @@
+Exploración ELM327 2026-11-21 12:58:45  BLE 'OBDII'
+ATZ    -> ['7E82500001955555555', '�', 'ELM327v1.5', '�', 'ELM3']
+ATE0   -> []
+ATL0   -> []
+ATS0   -> []
+ATH1   -> []
+ATAT1  -> []
+ATSP6  -> []
+ATI -> ['27v1.5', 'ATE0', 'OK', 'OK', 'OK', 'OK', 'OK', 'OK', 'ELM32']  ATRV -> []
+
+==================== FASE 3: datos propios de Hyundai en el motor (7E0) ====================
+
+-- Servicio 21 (bloques de datos estilo Hyundai/Kia) --
+  21: servicio no soportado (NRC 11)
+
+-- Servicio 22, identificadores 6600 a 66FF --
+  22: 0 respuestas válidas; negativas por código: 31x71
+
+-- Servicio 22, identificadores 6700 a 67FF --
