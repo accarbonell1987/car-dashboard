@@ -46,7 +46,14 @@ private val RESPUESTAS = mapOf(
 )
 
 /** ELM327 falso: contesta como el emulador y cuenta lo que se le pide. */
-private class TransporteFalso(var colgarTrasLecturas: Int = Int.MAX_VALUE, val sordoAlEscuchar: Boolean = false) : TransporteElm {
+private class TransporteFalso(
+    var colgarTrasLecturas: Int = Int.MAX_VALUE,
+    val sordoAlEscuchar: Boolean = false,
+    /** Stop bytes the adapter misses (as a dropped BLE write would): ATMA keeps running through them. */
+    var paradasPerdidas: Int = 0,
+    /** Ignition on, engine and bus asleep: every PID answers NO DATA and ATMA hears nothing. */
+    val autoApagado: Boolean = false,
+) : TransporteElm {
     val enviados = mutableListOf<String>()
     var aperturas = 0
     var lecturas = 0
@@ -71,6 +78,12 @@ private class TransporteFalso(var colgarTrasLecturas: Int = Int.MAX_VALUE, val s
         if (++lecturas > colgarTrasLecturas) return Respuesta("", false)
         // Like the BLE clone in the car: the filter commands around ATMA get no prompt back.
         if (sordoAlEscuchar && (ultimo == "ATCAF0" || ultimo == "ATCAF1" || ultimo.startsWith("ATCRA"))) return Respuesta("", false)
+        if (ultimo.isEmpty() && paradasPerdidas > 0) {
+            paradasPerdidas--
+            return Respuesta("", false)
+        }
+        if (autoApagado && ultimo == "ATMA") return Respuesta("", false)
+        if (autoApagado && !ultimo.startsWith("AT") && ultimo.isNotEmpty()) return Respuesta("NO DATA\r\r", true)
         return when {
             ultimo == "ATMA" -> Respuesta(if (enviados.last { it.startsWith("ATCRA") } == "ATCRA690") "0000410000002C00\r4000400000000800\r" else "0050C592990000DE\r", false)
             ultimo.isEmpty() -> Respuesta("\rSTOPPED\r\r", true) // el espacio que detiene ATMA
@@ -212,6 +225,29 @@ class Elm327Test {
     }
 
     @Test
+    fun unaParadaPerdidaDeLaEscuchaNoReconecta() = runTest {
+        val transporte = TransporteFalso(paradasPerdidas = 2)
+        val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = 0)
+        transporte.elm = elm
+        val lecturas = elm.lecturas().take(40).toList()
+        assertEquals(1, transporte.aperturas, "reconectó por un byte de parada perdido")
+        assertTrue(elm.estado.value.carroceria, "apagó los testigos por un byte de parada perdido")
+        assertEquals(1.0, lecturas.last().valores[Carroceria.PUERTA])
+        assertEquals(780.5, lecturas.last().valores["rpm"])
+    }
+
+    @Test
+    fun conElAutoApagadoYTestigosPrendidosNoReconecta() = runTest {
+        val transporte = TransporteFalso(autoApagado = true)
+        val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = 0)
+        transporte.elm = elm
+        elm.lecturas().take(60).toList()
+        assertEquals(1, transporte.aperturas, "reconectó con el auto apagado")
+        assertEquals(FaseConexion.CONECTADO, elm.estado.value.fase)
+        assertFalse(elm.estado.value.carroceria, "sin tramas, los testigos deberían apagarse solos")
+    }
+
+    @Test
     fun adaptadorColgadoReconectaSinCortarElFlujo() = runTest {
         val transporte = TransporteFalso(colgarTrasLecturas = 20)
         val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent)
@@ -302,6 +338,7 @@ class Elm327Test {
             assertTrue(paso >= segundos / 2, "solo $paso cambios de rpm en $segundos s")
             assertEquals(FaseConexion.CONECTADO, elm.estado.value.fase)
             assertTrue(elm.estado.value.carroceria, "los testigos se desactivaron")
+            assertEquals(1, elm.registro.value.count { " ATZ " in "$it " || it.endsWith(" ATZ") || " ATZ →" in it }, "reconectó durante la prueba")
         } finally {
             lector.cancel()
         }
