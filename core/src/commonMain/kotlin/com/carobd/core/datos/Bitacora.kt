@@ -30,20 +30,26 @@ class Bitacora(
          * Si cada uno inventara el suyo, al sincronizar aparecerían dos autos.
          */
         const val ID_ACCENT = "accent-2016-crdi"
-        const val MAX_SALTO_KM = 20_000
+        const val PREFIJO_TABLERO = "tablero-"
+        const val MAX_ODOMETRO_KM = 999_999.0
 
         /**
          * Odómetro estimado: el último dato firme (inicial, corrección a mano o servicio) más los km de los viajes
          * posteriores. Nunca baja: si hay un dato mayor, gana ese.
+         * Excepción: la última lectura del tablero (trama 0x4F0) es la verdad del auto; lo anterior a ella no cuenta,
+         * así corrige un estimado que se había pasado.
          * Las lecturas CALCULADO no sirven de base porque van redondeadas y perderían los decimales de cada viaje.
          */
         fun odometro(m: AlmacenEnMemoria, vehiculoId: String): Double {
             val v = m.vehiculos[vehiculoId] ?: return 0.0
-            val lecturas = m.lecturasOdometro.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null }
+            val todas = m.lecturasOdometro.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null }
+            val desde = todas.filter { it.id.startsWith(PREFIJO_TABLERO) }.maxOfOrNull { it.fecha }
+            val lecturas = if (desde == null) todas else todas.filter { it.fecha >= desde }
             val firmes = buildList {
-                add(v.odometroInicialFecha to v.odometroInicialKm)
+                if (desde == null) add(v.odometroInicialFecha to v.odometroInicialKm)
                 lecturas.filter { it.origen != OrigenOdometro.CALCULADO }.forEach { add(it.fecha to it.km) }
-                m.servicios.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null }.forEach { add(it.fecha to it.km) }
+                m.servicios.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null && (desde == null || it.fecha >= desde) }
+                    .forEach { add(it.fecha to it.km) }
             }
             val base = firmes.maxBy { it.first }
             val recorrido = m.viajes.values
@@ -88,15 +94,15 @@ class Bitacora(
     }
 
     /**
-     * Guarda el odómetro que el tablero manda por el bus (trama 0x4F0) como dato firme. Descarta lecturas a más de
-     * [MAX_SALTO_KM] del estimado: una trama mal leída quedaría para siempre, porque el odómetro nunca baja.
-     * Devuelve si la guardó.
+     * Guarda el odómetro que el tablero manda por el bus (trama 0x4F0). Es la verdad del auto: pisa al estimado
+     * aunque sea menor. Solo descarta valores imposibles. Devuelve si la guardó.
      */
     suspend fun guardarOdometroTablero(km: Double, vehiculoId: String = ID_ACCENT): Boolean {
-        val actual = odometroKm(vehiculoId)
-        if (kotlin.math.abs(km - actual) > MAX_SALTO_KM || floor(km).toInt() <= floor(actual).toInt()) return false
+        if (km !in 1.0..MAX_ODOMETRO_KM) return false
         val ahora = reloj()
-        almacen.guardar(LecturaOdometro(crearId(), vehiculoId, ahora, floor(km).toInt(), OrigenOdometro.MANUAL, ahora))
+        // ponytail: the id prefix marks cluster readings without changing the synced format; add an OrigenOdometro
+        // value once every app that syncs is updated together.
+        almacen.guardar(LecturaOdometro(PREFIJO_TABLERO + crearId(), vehiculoId, ahora, floor(km).toInt(), OrigenOdometro.MANUAL, ahora))
         return true
     }
 

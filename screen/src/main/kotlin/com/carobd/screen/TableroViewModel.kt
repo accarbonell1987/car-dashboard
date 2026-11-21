@@ -69,6 +69,8 @@ data class EstadoTablero(
     val nube: EstadoNube = EstadoNube(),
     val config: ConfigNube = ConfigNube(),
     val odometroKm: Double = 0.0,
+    /** True once this connection read the cluster's own odometer; otherwise [odometroKm] is the estimate. */
+    val odometroDelTablero: Boolean = false,
     val viajeEnCursoKm: Double? = null,
     val ultimoViajeKm: Double? = null,
     val viajeEnCursoSeg: Long = 0,
@@ -192,7 +194,7 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
         vigilancia?.cancel()
         historial.limpiar()
         _estado.update {
-            it.copy(fuente = fuente.nombre, esDemo = fuente is FuenteDemo, conexion = fuente.conexion?.value, valores = emptyMap(), alertas = emptyList(), viajeEnCursoKm = null, series = emptyMap())
+            it.copy(fuente = fuente.nombre, esDemo = fuente is FuenteDemo, conexion = fuente.conexion?.value, valores = emptyMap(), alertas = emptyList(), viajeEnCursoKm = null, series = emptyMap(), odometroDelTablero = false)
         }
         fuenteActual = fuente
         fuente.fijarTestigos(_estado.value.testigos)
@@ -221,9 +223,13 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
                 .collect { l ->
                     // The cluster's own odometer (frame 0x4F0): saved once per connection as a firm reading.
                     val tablero = l.valores[Carroceria.ODOMETRO]
-                    if (reg != null && tablero != null && !odometroLeido) {
-                        odometroLeido = true
-                        withContext(Dispatchers.IO) { if (bitacora.guardarOdometroTablero(tablero)) actualizarOdometro() }
+                    if (reg != null && tablero != null) {
+                        // Shown as read; saved once per connection so trips add up from the car's own number.
+                        if (!odometroLeido) {
+                            odometroLeido = true
+                            withContext(Dispatchers.IO) { bitacora.guardarOdometroTablero(tablero) }
+                        }
+                        _estado.update { it.copy(odometroKm = tablero, odometroDelTablero = true) }
                     }
                     val terminado = reg?.procesar(l)
                     val nuevaMuestra = historial.agregar(l)

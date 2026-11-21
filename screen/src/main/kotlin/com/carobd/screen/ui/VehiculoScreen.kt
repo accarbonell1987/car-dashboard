@@ -46,7 +46,7 @@ fun VehiculoScreen(e: EstadoTablero, @Suppress("UNUSED_PARAMETER") acciones: Acc
                 Triple(Icono.MOTOR, "Motor", v?.motor ?: "1.6 CRDi"),
                 Triple(Icono.CAJA, "Caja", "Manual 6"),
                 Triple(Icono.SURTIDOR, "Combustible", "Diésel"),
-                Triple(Icono.VELOCIMETRO, "Odómetro", "${miles(floor(e.odometroKm).toInt())} km"),
+                Triple(Icono.VELOCIMETRO, if (e.odometroDelTablero) "Odómetro del tablero" else "Odómetro estimado", "${miles(floor(e.odometroKm).toInt())} km"),
                 Triple(Icono.ADAPTADOR, "Adaptador", if (e.esDemo) "Modo demo" else e.fuente),
                 // Shortened: the screen is photographed and shared; the full VIN stays in Ajustes.
                 Triple(Icono.INFO, "VIN", vin?.let { "${it.take(3)}…${it.takeLast(3)}" } ?: "Sin leer"),

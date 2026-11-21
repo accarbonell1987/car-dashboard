@@ -37,16 +37,18 @@ class BitacoraTest {
     }
 
     @Test
-    fun elOdometroDelTableroEsLaNuevaBaseSiEsCreible() = runTest {
+    fun elOdometroDelTableroManda() = runTest {
         val b = bitacora()
         b.vehiculo()
-        assertFalse(b.guardarOdometroTablero(1_456_947.2), "aceptó una trama mal leída")
+        assertFalse(b.guardarOdometroTablero(1_456_947.2), "aceptó un valor imposible")
+        // The estimate overshot (bad trips): the cluster corrects it downwards.
+        repeat(2) { b.guardarViaje(viaje(600.0)) }
+        assertEquals(91_800.0, b.odometroKm(), 1e-9)
         ahora += 1.hours
-        assertTrue(b.guardarOdometroTablero(91_268.7))
-        assertEquals(91_268.0, b.odometroKm(), 1e-9)
+        assertTrue(b.guardarOdometroTablero(91_294.4))
+        assertEquals(91_294.0, b.odometroKm(), 1e-9)
         b.guardarViaje(viaje(2.5))
-        assertEquals(91_270.5, b.odometroKm(), 1e-9)
-        assertFalse(b.guardarOdometroTablero(91_268.7), "el odómetro bajó")
+        assertEquals(91_296.5, b.odometroKm(), 1e-9)
     }
 
     @Test
