@@ -38,6 +38,8 @@ reiniciar el auto.
 | `elm327-guiada.csv`, `.txt`, `-marcas.txt` | Captura guiada (aceleraciones) y marcas de cada paso. |
 | `elm327-carroceria.csv`, `.txt`, `-marcas.txt` | Captura de carrocería y marcas de cada paso. |
 
+Los IDs del bus decodificados y lo que documenta la comunidad están en `codigos-can.md`.
+
 ## Emulador
 
 `emulador/` emula el adaptador a partir de estas capturas para desarrollar sin el auto (TCP `127.0.0.1:35000` o

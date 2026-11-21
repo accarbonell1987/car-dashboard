@@ -1,0 +1,132 @@
+# Códigos CAN y OBD del Accent 2016 (RB, 1.6 CRDi)
+
+Investigación del 2026-11-21: qué documenta la comunidad para este auto y qué se
+confirma con las capturas de `capturas/` (2026-11-20, ELM327 v1.5 por BLE, CAN 11 bit a 500 kbps).
+
+## Resumen
+
+- **El bus del puerto OBD es el bus de tren motriz (C-CAN).** Casi todos sus IDs están en el DBC
+  `hyundai_i30_2014.dbc` de opendbc (plataforma GD, la misma generación que el RB). Las escalas
+  coinciden con valores reales: cilindrada 1,6 L, voltaje 14,1 V, ralentí 780 rpm.
+- **El odómetro está en `0x4F0` (CLU1), no en `0x5B0` (CLU12).** Este tablero usa el formato viejo
+  (CLU1/CLU3). La captura da **91 268,7 km**. Hay que compararlo con el tablero para confirmarlo.
+- **Nivel de combustible: no hay en el bus.** Ni `0x50C` (CLU13) ni el PID `012F` existen. CLU3
+  (`0x4F1`) solo trae el aviso de reserva (bits 16-17), que siempre estuvo en 0 (tanque no bajo).
+- **Varios datos nuevos salen gratis, solo escuchando:** temperatura exterior del A/C, temperatura
+  del combustible, presión atmosférica, contador de consumo y testigo de dirección asistida.
+- **Modo 22 en el motor:** no hay lista pública para el EDC17C57 de Hyundai. El barrido que se hizo
+  cubrió pocos rangos. Seguir barriendo **el motor** (7E0) es compatible con la regla de seguridad.
+- **ABS, airbag, puertas de acompañante y freno de mano:** no aparecen en este bus. ABS
+  (`0x153`, `0x386`, `0x220`) no aparece nunca. El airbag manda `0x5A0`/`0x5A1`, pero sin datos útiles.
+
+## Regla de seguridad
+
+Todo lo marcado **Pasivo** se lee con `ATMA`/`ATCRA`, sin enviar nada al bus. Lo marcado
+**Motor** es una consulta a 7E0 (permitida). Lo marcado **⚠ Otro módulo** requiere consultar
+otro módulo y **está prohibido** por la regla del proyecto (ver `README.md`). Se lista solo
+como referencia.
+
+## IDs del bus decodificados
+
+Bits en formato Intel (little-endian), contando desde el bit 0 del byte 0, como en el DBC.
+"Validado" significa que el valor decodificado de la captura coincide con un dato real conocido.
+
+| ID | Nombre DBC | Hz | Señal útil | Bits / escala | Valor en la captura | Estado |
+| --- | --- | --- | --- | --- | --- | --- |
+| `0x4F0` | CLU1 | 48 | **Odómetro** | 40-63, ×0,1 km | 91 268,7 km (fijo) | Candidato fuerte, comparar con el tablero |
+| `0x4F0` | CLU1 | 48 | Velocidad del tablero | 8-16, ×0,5 km/h | 0 (detenido) | Probar andando |
+| `0x4F0` | CLU1 | 48 | Freno de mano | bit 7 | siempre 0, aunque se accionó | No cableado en este auto |
+| `0x4F1` | CLU3 | 10 | Aviso de reserva | 16-17 | 0 | Probar con reserva |
+| `0x4F1` | CLU3 | 10 | Luneta térmica | bit 5 | cambió a 1 | Validado |
+| `0x4F1` | CLU3 | 10 | Autonomía (DTE) | 25-34, km | 0 | Este tablero no la manda |
+| `0x690` | CLU2 | 10 | Puerta conductor | 6-7 | cambia | Validado (2026-11-20) |
+| `0x690` | CLU2 | 10 | Cinturón conductor | 16-17 | cambia | Validado (2026-11-20) |
+| `0x690` | CLU2 | 10 | Intermitentes, balizas, baúl, acompañante, luces | 24, 25, 49, 18-19, 54-55, 37-38 | sin cambios | No los manda este auto |
+| `0x316` | EMS11 | 97 | RPM | 16-31, ×0,25 | 773-2579 | Validado (igual a `010C`) |
+| `0x316` | EMS11 | 97 | Velocidad | 48-55, km/h | 0 | Probar andando |
+| `0x329` | EMS12 | 97 | Refrigerante | 8-15, ×0,75 −48 °C | 88-96 °C | Validado |
+| `0x329` | EMS12 | 97 | Pedal acelerador | 48-55, ×0,3906 % | 0 | Probar |
+| `0x329` | EMS12 | 97 | Cilindrada | 56-63, ×0,1 L | 1,6 L | Validado |
+| `0x545` | EMS14 | 97 | **Voltaje batería** | 24-31, ×0,101563 V | 13,7-14,3 V | Validado (igual a `ATRV`) |
+| `0x545` | EMS14 | 97 | **Temp. combustible** | 48-55, ×0,75 −48 °C | 59-62 °C | Nuevo, plausible (retorno diésel) |
+| `0x545` | EMS14 | 97 | **Presión atmosférica** | 3-7, ×10,73 +459 mmHg | 738 mmHg (984 hPa) | Nuevo, plausible |
+| `0x545` | EMS14 | 97 | Contador de consumo (FCO) | 8-23, ×0,128 µl | 0-22, se mueve | Nuevo: derivar para L/h, validar contra `015E` |
+| `0x545` | EMS14 | 97 | Testigo MIL / inmovilizador | bit 1 / bit 0 | 0 | Validado (sin fallas) |
+| `0x350` | FATC | 48 | **Temp. exterior** | 24-31, ×0,5 −40 °C | 33 °C | Nuevo, comparar con un termómetro |
+| `0x350` | FATC | 48 | Par del compresor A/C | 0-7, ×0,2 Nm | 11 Nm | Indica A/C encendido |
+| `0x2A0` | EMS5 | 48 | Temp. admisión | 16-23, ×0,75 −48 °C | 43-45 °C | Plausible |
+| `0x260` | EMS16 | 48 | Bujías de precalentamiento | bit 24 | 0 | Probar en arranque en frío |
+| `0x260` | EMS16 | 48 | Estado del motor | 28-30 | 3 | Sin tabla de valores |
+| `0x18F` | EMS_H12 | 48 | Ralentí objetivo | 40-47, ×10 rpm | 780 | Validado |
+| `0x080` | EMS_DCT11 | 48 | RPM, par | 16-31 ×0,25 | igual a `0x316` | Duplicado |
+| `0x0A0` | EngFrzFrm1 | 1 | Carga, refrigerante, RPM, velocidad | PIDs 04, 05, 0C, 0D | 26 %, 90 °C, 780 rpm | Validado (copia del modo 01) |
+| `0x0A1` | EngFrzFrm2 | 1 | MAP, presión de rail | 32-39 kPa; 40-55 ×10 kPa | 101 kPa; 230-281 bar | Validado (igual a `0123`) |
+| `0x382` | EMS9 | 48 | Temp. aceite, presión turbo | 32-39; 20-31 | 0 | El EDC17 no los llena |
+| `0x5E4` | MDPS1 | 10 | Testigo de dirección asistida | 1-2 | 0 | Nuevo (0 = sin falla) |
+| `0x5A0` | ACU11 | 1 | Airbag: falla, cinturones | 28-31, 34-35 | todo 0 | Ver nota |
+| `0x5A1` | ACU12 | 1 | Número de serie del airbag | 0-63 | constante | Sin uso (no publicar) |
+| `0x400` | CLU_CFG11 | — | Tipo de vehículo | 0-15 | — | Visto solo en una captura |
+| `0x081`, `0x2C0`, `0x543`, `0x5A2` | — | — | — | — | casi constantes | Sin definición en ningún DBC |
+
+Nota sobre `0x5A0`: en el DBC moderno los cinturones y la falla del airbag van en bits 28-35. Aquí
+siempre vale 0, incluso con el cinturón del conductor desabrochado. El cinturón sale de `0x690`.
+
+## Modo 01 del motor: datos que ya responden y la app puede usar
+
+Todos son **Motor** (7E0). Lectura del 2026-11-20 en ralentí:
+
+| PID | Dato | Lectura |
+| --- | --- | --- |
+| `015E` | Consumo instantáneo | 0,25 L/h |
+| `016D` | Presión de rail pedida / real | 273 / 238 bar |
+| `0178` | Temp. de gases de escape | 110 °C |
+| `017C` | Temp. del DPF | 110 °C |
+| `017F` | Horas de motor totales / en ralentí | 4796 h / 1428 h (a confirmar el formato) |
+| `0131` | Km desde el último borrado de fallas | 11 928 km |
+
+`015C` (aceite), `016F`-`0174` (turbo, VGT), `017A` (presión DPF) y `0183` (NOx) responden, pero
+siempre en 0: el ECU los anuncia y no los llena.
+
+## Modo 22 (UDS) en el motor 7E0
+
+ECU: Bosch EDC17C57 (respuesta de `22F180`). El servicio `21` no existe (NRC 11). Ya barridos
+con NRC 31 en todo el rango: `0000-03FF`, `1000-11FF`, `2000-21FF`, `F000-F0FF`. Responden
+`00FA` (identificación Bosch) y `F180-F199` (identificación).
+
+No se encontró ninguna lista pública de DIDs de datos para el EDC17 de Hyundai/Kia (D4FB).
+Las de otras marcas con EDC17 (Renault `22242C` hollín, Mazda `2228F4`) no sirven acá.
+
+**Siguiente paso posible (Motor, permitido):** barrer `22 0400-0FFF`, `1200-1FFF`, `2200-2FFF`,
+`3000-FFFF` en 7E0, por bloques de 256 y con pausas. Es lectura pura, pero lleva horas por BLE.
+
+## Lo que requiere hablar con otros módulos (⚠ prohibido por la regla)
+
+| Dato | Cómo lo hace la comunidad | Módulo |
+| --- | --- | --- |
+| Odómetro | `22B002` en 7C6 (EV nuevos) | ⚠ Tablero 7C6 |
+| Nivel de combustible | lectura del tablero (`21xx` / `22xx`) | ⚠ Tablero 7C6 |
+| Velocidad de cada rueda, fallas ABS | `21xx` en el ABS | ⚠ ABS (no apareció en el bus) |
+| Puertas, baúl, luces | BCM / body CAN | ⚠ BCM, otro bus |
+
+En 7C6 (tablero) el barrido del 2026-11-20 encontró bloques `210C`, `210E`, `211A`, `2147`
+con bytes que varían, pero fue el barrido que dejó los relojes sin funcionar. No repetir.
+
+## Fuentes
+
+- opendbc, `hyundai_i30_2014.dbc` y `generator/hyundai/hyundai_can.dbc`:
+  https://github.com/commaai/opendbc/tree/master/opendbc/dbc
+- JejuSoul, PIDs para Hyundai/Kia eléctricos (no aplica al diésel):
+  https://github.com/JejuSoul/OBD-PIDs-for-HKMC-EVs
+- Lista de bases de IDs CAN por marca (incluye Solaris 2013 en ruso):
+  https://github.com/iDoka/awesome-automotive-can-id
+- Hilo de Torque sobre DPF en Kia Cee'd 1.6 2016 (sin PIDs confirmados):
+  https://torque-bhp.com/community/main-forum/2016-kia-ceed-1-6-dpf-readings/
+
+## Pruebas pendientes (todas pasivas)
+
+1. Odómetro: escuchar `0x4F0` y comparar con el tablero (anotar el número que muestra).
+2. Velocidad: escuchar `0x4F0` y `0x316` andando, comparar con `010D`.
+3. Temp. exterior: escuchar `0x350` con un termómetro al lado.
+4. Reserva: escuchar `0x4F1` con el testigo de combustible encendido.
+5. Consumo: comparar la derivada de FCO (`0x545`) con `015E`.
+6. Bujías: escuchar `0x260` en un arranque en frío.
