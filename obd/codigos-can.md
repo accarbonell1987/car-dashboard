@@ -180,9 +180,11 @@ Sin ubicar todavía: presión de rail y masa de aire (hay que medir con el motor
 Con `22ED01` solo (un pedido, 34 bytes) la app obtiene freno, embrague, punto muerto, presión de
 admisión, temperatura de combustible y voltaje.
 
-**Fiabilidad del adaptador:** en las dos grabaciones el enlace BLE del clon se degradó cerca de
-los 60-70 s de sondeo continuo (respuestas truncadas y luego mudo); hubo que reenchufarlo. La app
-debe sondear más despacio que una vez por segundo y tolerar respuestas cortas.
+**Fiabilidad de la captura:** las dos grabaciones se cortaron cerca de los 60-70 s, con respuestas
+truncadas justo antes. En la segunda, macOS cerró el proceso de Python (informe de fallo en la
+cola `bleak.corebluetooth`, 12:57:03). No está claro si lo origina el clon BLE o el puente BLE del
+script en la Mac; los barridos largos con `elm327-explorar.py` no fallaron. La app debe tolerar
+respuestas cortas, y conviene repetir la prueba antes de culpar al adaptador.
 
 ## Lo que requiere hablar con otros módulos (⚠ prohibido por la regla)
 
