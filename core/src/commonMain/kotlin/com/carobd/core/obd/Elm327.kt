@@ -218,7 +218,16 @@ class Elm327(
     }
 
     private suspend fun leerGrupo(grupo: List<Senal>): Map<String, Double>? =
-        Decodificador.variosPids(enviar("01" + grupo.joinToString("") { it.pid.orEmpty() } + cuenta, valida = responde("41")), grupo)
+        Decodificador.variosPids(
+            enviar("01" + grupo.joinToString("") { it.pid.orEmpty() } + cuentaPara(1 + grupo.sumOf { 1 + it.bytes }), valida = responde("41")),
+            grupo,
+        )
+
+    /**
+     * The response count only for replies that fit one CAN frame (7 bytes): with "1" the adapter returns after the
+     * FIRST frame, which truncated the multi-frame ones (brake/clutch block, grouped PIDs) and they were discarded.
+     */
+    private fun cuentaPara(bytesRespuesta: Int) = if (bytesRespuesta <= 7) cuenta else ""
 
     /**
      * One turn on the single ELM327 channel: the critical PIDs first (the screen updates right after), then at most
@@ -272,13 +281,13 @@ class Elm327(
     }
 
     private suspend fun leerPid(senal: Senal) {
-        val respuesta = enviar(senal.modo + senal.pid + cuenta, valida = responde("41" + senal.pid))
+        val respuesta = enviar(senal.modo + senal.pid + cuentaPara(2 + senal.bytes), valida = responde("41" + senal.pid))
         Decodificador.decodificar(respuesta, senal)?.let { valores[senal.id] = it }
     }
 
     private suspend fun leerExtendido() {
         // A negative answer (7F 22) counts as the reply, or enviar would wait it out as a late one.
-        val r = enviar(MotorExtendido.COMANDO + cuenta) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
+        val r = enviar(MotorExtendido.COMANDO) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
         val leidos = MotorExtendido.decodificar(r)
         if (leidos != null) valores += leidos
         // An engine without the block refuses it: stop asking. NO DATA or a truncated reply is just skipped.

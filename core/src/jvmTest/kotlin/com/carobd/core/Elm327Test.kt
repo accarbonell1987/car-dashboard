@@ -40,6 +40,7 @@ private val RESPUESTAS = mapOf(
     "0180" to "4180EAC27190\r\r",
     "010C" to "410C0C32\r\r",
     "010D" to "410D00\r\r",
+    "0111" to "411100\r\r",
     "0105" to "41057B\r\r",
     "22ED01" to "025\r0:62ED01FFFF7E\r1:F8000112007F48\r2:656380082513CB\r3:0F009900FF0000\r4:00469B64FF0001\r5:000019\r\r",
     "0902" to "014\r0:4902014B4D48\r1:43553431554147\r2:55303030303030\r\r",
@@ -53,6 +54,8 @@ private class TransporteFalso(
     var paradasPerdidas: Int = 0,
     /** Ignition on, engine and bus asleep: every PID answers NO DATA and ATMA hears nothing. */
     val autoApagado: Boolean = false,
+    /** Honours a trailing response count like the real ELM327: it returns after the first CAN frame. */
+    val conCuenta: Boolean = false,
 ) : TransporteElm {
     val enviados = mutableListOf<String>()
     var aperturas = 0
@@ -84,12 +87,30 @@ private class TransporteFalso(
         }
         if (autoApagado && ultimo == "ATMA") return Respuesta("", false)
         if (autoApagado && !ultimo.startsWith("AT") && ultimo.isNotEmpty()) return Respuesta("NO DATA\r\r", true)
+        if (conCuenta && !ultimo.startsWith("AT") && ultimo.length % 2 == 1) {
+            val pedido = ultimo.dropLast(1)
+            val completa = RESPUESTAS[pedido] ?: multiplesPids(pedido) ?: return Respuesta("NO DATA\r\r", true)
+            // Count 1: only the first frame of a multi-frame reply comes back.
+            return Respuesta(completa.substringBefore("\r1:") + "\r\r", true)
+        }
+        if (conCuenta && ultimo.startsWith("01") && ultimo.length > 4) multiplesPids(ultimo)?.let { return Respuesta(it, true) }
         return when {
             ultimo == "ATMA" -> Respuesta(if (enviados.last { it.startsWith("ATCRA") } == "ATCRA690") "0000410000002C00\r4000400000000800\r" else "0050C592990000DE\r", false)
             ultimo.isEmpty() -> Respuesta("\rSTOPPED\r\r", true) // el espacio que detiene ATMA
             ultimo.startsWith("AT") && ultimo != "ATZ" -> Respuesta("OK\r\r", true)
             else -> Respuesta(RESPUESTAS[ultimo] ?: "NO DATA\r\r", true)
         }
+    }
+
+    /** 010C0D11 → 41 0C A B 0D A 11 A, framed like the ELM327 with ATH0 (multi-frame above 7 bytes). */
+    private fun multiplesPids(pedido: String): String? {
+        val pids = pedido.drop(2).chunked(2)
+        if (pids.size < 2) return null
+        val valores = pids.map { pid -> RESPUESTAS["01$pid"]?.substringBefore("\r")?.drop(4) ?: return null }
+        val datos = "41" + pids.zip(valores).joinToString("") { (pid, v) -> pid + v }
+        val b = datos.chunked(2)
+        if (b.size <= 7) return datos + "\r\r"
+        return "%03X\r".format(b.size) + (listOf(b.take(6)) + b.drop(6).chunked(7)).mapIndexed { i, t -> "$i:" + t.joinToString("") }.joinToString("\r") + "\r\r"
     }
 
     override fun descartar() {}
@@ -222,6 +243,17 @@ class Elm327Test {
         assertEquals("ATSH7E0", transporte.enviados[7], "no fijó la cabecera del motor")
         assertEquals(1, transporte.enviados.count { it == "22ED01" })
         assertEquals(1.0, lecturas.last().valores[MotorExtendido.PUNTO_MUERTO])
+    }
+
+    @Test
+    fun conCuentaDeRespuestasLasRespuestasLargasLleganEnteras() = runTest {
+        val transporte = TransporteFalso(conCuenta = true)
+        val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = Long.MAX_VALUE)
+        val l = elm.lecturas().take(6).toList().last()
+        assertTrue(elm.registro.value.any { "agrupados, con cuenta" in it }, elm.registro.value.joinToString("\n"))
+        assertTrue("010D1" in transporte.enviados && "22ED01" in transporte.enviados, "la cuenta se aplicó donde no debía")
+        assertEquals(1.0, l.valores[MotorExtendido.PUNTO_MUERTO], "el bloque de freno y embrague llegó cortado")
+        assertEquals(780.5, l.valores["rpm"])
     }
 
     @Test
