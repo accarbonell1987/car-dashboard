@@ -1,6 +1,8 @@
 package com.carobd.screen.gauges
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.text.style.TextAlign
 import com.carobd.core.obd.MotorExtendido
@@ -410,25 +412,29 @@ fun GaugePedales(valores: Map<String, Double>, modifier: Modifier = Modifier) {
     val freno = valores[MotorExtendido.FRENO] == 1.0
     val gas by animateFloatAsState(acelerador.toFloat().coerceIn(0f, 1f), tween(90), label = "gas")
     val stop by animateFloatAsState(if (freno) 1f else 0f, tween(if (freno) 60 else 250), label = "stop")
-    Column(
+    Row(
         modifier
             .clip(RoundedCornerShape(14.dp))
             .background(p.celda)
             .padding(10.dp)
             .semantics { contentDescription = "Acelerador ${(acelerador * 100).roundToInt()} %, freno ${if (freno) "pisado" else "suelto"}" },
     ) {
+        // Each pedal is its own column: bar and label share one centre line.
+        Pedal(gas, p.ok, if (valores["acelerador"] == null) "--" else "${(acelerador * 100).roundToInt()}%", p.texto)
+        Pedal(stop, p.peligro, if (freno) "STOP" else "Freno", if (freno) p.peligro else p.tenue)
+    }
+}
+
+@Composable
+private fun RowScope.Pedal(f: Float, color: Color, texto: String, colorTexto: Color) {
+    val p = LocalPaleta.current
+    Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
         Canvas(Modifier.fillMaxWidth().weight(1f)) {
-            // Bars inset by the widest halo so the glow is never clipped by the cell.
-            val alto = size.height - BRILLO_MAX * 2
-            val ancho = size.width * 0.3f
-            val hueco = (size.width - ancho * 2) / 3
-            barraConBrillo(Offset(hueco, BRILLO_MAX), Size(ancho, alto), gas, p.ok, p.pista)
-            barraConBrillo(Offset(hueco * 2 + ancho, BRILLO_MAX), Size(ancho, alto), stop, p.peligro, p.pista)
+            // Inset by the widest halo so the glow is never clipped by the cell.
+            val ancho = size.width * 0.6f
+            barraConBrillo(Offset((size.width - ancho) / 2, BRILLO_MAX), Size(ancho, size.height - BRILLO_MAX * 2), f, color, p.pista)
         }
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            Text(if (valores["acelerador"] == null) "--" else "${(acelerador * 100).roundToInt()}%", color = p.texto, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-            Text(if (freno) "STOP" else "Freno", color = if (freno) p.peligro else p.tenue, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        }
+        Text(texto, color = colorTexto, fontSize = 15.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
     }
 }
 
