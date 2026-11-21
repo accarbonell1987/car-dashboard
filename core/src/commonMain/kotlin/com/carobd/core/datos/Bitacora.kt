@@ -30,6 +30,7 @@ class Bitacora(
          * Si cada uno inventara el suyo, al sincronizar aparecerían dos autos.
          */
         const val ID_ACCENT = "accent-2016-crdi"
+        const val MAX_SALTO_KM = 20_000
 
         /**
          * Odómetro estimado: el último dato firme (inicial, corrección a mano o servicio) más los km de los viajes
@@ -84,6 +85,19 @@ class Bitacora(
 
     suspend fun viajes(vehiculoId: String = ID_ACCENT): List<Viaje> = almacen.leer { m ->
         m.viajes.values.filter { it.vehiculoId == vehiculoId && it.deletedAt == null }.sortedByDescending { it.inicio }
+    }
+
+    /**
+     * Guarda el odómetro que el tablero manda por el bus (trama 0x4F0) como dato firme. Descarta lecturas a más de
+     * [MAX_SALTO_KM] del estimado: una trama mal leída quedaría para siempre, porque el odómetro nunca baja.
+     * Devuelve si la guardó.
+     */
+    suspend fun guardarOdometroTablero(km: Double, vehiculoId: String = ID_ACCENT): Boolean {
+        val actual = odometroKm(vehiculoId)
+        if (kotlin.math.abs(km - actual) > MAX_SALTO_KM || floor(km).toInt() <= floor(actual).toInt()) return false
+        val ahora = reloj()
+        almacen.guardar(LecturaOdometro(crearId(), vehiculoId, ahora, floor(km).toInt(), OrigenOdometro.MANUAL, ahora))
+        return true
     }
 
     /** Lo que muestra la pantalla de mantenimiento del móvil. Si no hay plan todavía, carga el del Accent. */

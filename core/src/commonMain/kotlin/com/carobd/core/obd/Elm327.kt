@@ -71,6 +71,7 @@ class Elm327(
     private var carroceriaActiva = true
     private var fallosCarroceria = 0
     private var proximaEscucha = reloj.markNow()
+    private var escuchas = 0
 
     /** Testigos de carrocería (escucha ATMA). Se puede apagar en caliente si molestan en algún adaptador. */
     var testigos: Boolean = true
@@ -233,7 +234,7 @@ class Elm327(
         var conTramas = 0
         try {
             enviar("ATCAF0", valida = ::esOk)
-            for (id in Carroceria.ids) {
+            for (id in Carroceria.idsEscucha(escuchas++)) {
                 enviar("ATCRA$id", valida = ::esOk)
                 transporte.descartar()
                 transporte.escribir("ATMA\r")

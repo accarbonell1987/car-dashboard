@@ -67,6 +67,12 @@ object Catalogo {
         Senal(Carroceria.PUERTA, "Puerta del conductor abierta", "", "can", "690", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
         Senal(Carroceria.CINTURON, "Cinturón del conductor sin abrochar", "", "can", "690", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
         Senal(Carroceria.AIRE, "Aire acondicionado", "", "can", "350", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
+        Senal(Carroceria.TEMP_EXTERIOR, "Temp. exterior", "°C", "can", "350", min = -40.0, max = 60.0, ritmo = Ritmo.LENTO),
+        Senal(Carroceria.ODOMETRO, "Odómetro", "km", "can", "4F0", min = 0.0, max = 999_999.0, ritmo = Ritmo.LENTO),
+        Senal(Carroceria.RESERVA, "Reserva de combustible", "", "can", "4F1", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
+        Senal(Carroceria.LUNETA, "Luneta térmica", "", "can", "4F1", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
+        Senal(Carroceria.TEMP_COMBUSTIBLE, "Temp. combustible", "°C", "can", "545", min = -40.0, max = 120.0, ritmo = Ritmo.LENTO),
+        Senal(Carroceria.DIRECCION, "Falla de dirección asistida", "", "can", "5E4", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),
     )
 
     /**

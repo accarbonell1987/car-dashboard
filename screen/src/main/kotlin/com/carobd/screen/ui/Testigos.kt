@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import com.carobd.core.obd.Carroceria
+import com.carobd.screen.ui.comun.Icono
 import com.carobd.screen.gauges.LocalPaleta
 
 /**
@@ -72,6 +73,9 @@ internal fun Testigos(valores: Map<String, Double>) {
         Testigo("mil", "Check engine", p.atencion, 0, RepeatMode.Restart, DrawScope::motor),
         // ponytail: 60° per period is seamless because the snowflake has six-fold symmetry.
         Testigo(Carroceria.AIRE, "Aire acondicionado", p.normal, 1200, RepeatMode.Restart, DrawScope::copoDeNieve),
+        Testigo(Carroceria.RESERVA, "Reserva de combustible", p.atencion, 0, RepeatMode.Restart, fijo(Icono.SURTIDOR)),
+        Testigo(Carroceria.DIRECCION, "Falla de dirección asistida", p.peligro, 0, RepeatMode.Restart, fijo(Icono.VOLANTE)),
+        Testigo(Carroceria.LUNETA, "Luneta térmica", p.atencion, 1500, RepeatMode.Reverse, DrawScope::luneta),
     ).filter { valores[it.id] != null }
     if (testigos.isEmpty()) return
     Row(
@@ -172,4 +176,19 @@ private fun DrawScope.copoDeNieve(color: Color, encendido: Float, ciclo: Float) 
     withTransform({ rotate(encendido * ciclo * 60f, centro) }) {
         for (angulo in 0 until 180 step 60) rotate(angulo.toFloat(), centro) { drawPath(brazo, color, style = trazo) }
     }
+}
+
+/** Steady lamps: drawn as the shared icon, no loop. */
+private fun fijo(icono: Icono): DrawScope.(Color, Float, Float) -> Unit {
+    val path = svg(icono.trazo)
+    return { color, _, _ -> drawPath(path, color, style = trazo) }
+}
+
+// Rear window with three heating lines that pulse while on.
+private val ventana = svg("M4 7q8 -3 16 0l-1 10h-14z")
+private val calor = svg("M9 9.5v5 M12 9v5.5 M15 9.5v5")
+
+private fun DrawScope.luneta(color: Color, encendido: Float, ciclo: Float) {
+    drawPath(ventana, color, style = trazo)
+    drawPath(calor, color, alpha = 1f - encendido * 0.6f * ciclo, style = trazo)
 }

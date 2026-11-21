@@ -9,6 +9,7 @@ import com.carobd.core.sync.AlmacenPersistente
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.time.Duration.Companion.hours
@@ -33,6 +34,19 @@ class BitacoraTest {
         assertEquals(90_602.1, b.odometroKm(), 1e-9)
         val calculadas = b.almacen.leer { m -> m.lecturasOdometro.values.map { it.km }.sorted() }
         assertEquals(listOf(90_600, 90_601, 90_602), calculadas)
+    }
+
+    @Test
+    fun elOdometroDelTableroEsLaNuevaBaseSiEsCreible() = runTest {
+        val b = bitacora()
+        b.vehiculo()
+        assertFalse(b.guardarOdometroTablero(1_456_947.2), "aceptó una trama mal leída")
+        ahora += 1.hours
+        assertTrue(b.guardarOdometroTablero(91_268.7))
+        assertEquals(91_268.0, b.odometroKm(), 1e-9)
+        b.guardarViaje(viaje(2.5))
+        assertEquals(91_270.5, b.odometroKm(), 1e-9)
+        assertFalse(b.guardarOdometroTablero(91_268.7), "el odómetro bajó")
     }
 
     @Test

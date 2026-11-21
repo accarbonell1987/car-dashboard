@@ -105,6 +105,27 @@ class Elm327Test {
     }
 
     @Test
+    fun tramasDelBusConDatosNuevos() {
+        fun d(id: String, hex: String) = Carroceria.decodificar(id, hex.chunked(2).map { it.toInt(16) })
+        // Real frames from capturas/elm327-guiada.csv (2026-11-20).
+        assertEquals(91_268.7, d("4F0", "00007A00002FED0D")[Carroceria.ODOMETRO]!!, 1e-9)
+        assertEquals(33.0, d("350", "001005929900001E")[Carroceria.TEMP_EXTERIOR])
+        assertEquals(mapOf(Carroceria.RESERVA to 1.0, Carroceria.LUNETA to 1.0), d("4F1", "2000010000000000"))
+        assertEquals(mapOf(Carroceria.RESERVA to 0.0, Carroceria.LUNETA to 0.0), d("4F1", "0000000000000000"))
+        assertEquals(60.0, d("545", "0000000000009000")[Carroceria.TEMP_COMBUSTIBLE])
+        assertEquals(1.0, d("5E4", "0400000000000000")[Carroceria.DIRECCION])
+        assertEquals(0.0, d("5E4", "0100000000000000")[Carroceria.DIRECCION])
+        assertEquals(emptyMap<String, Double>(), d("4F0", "0000"), "trama corta")
+    }
+
+    @Test
+    fun cadaTresEscuchasSumaUnIdLentoPorTurno() {
+        val turnos = (0 until 12).map { Carroceria.idsEscucha(it) }
+        assertTrue(turnos.all { it.take(2) == listOf("690", "350") })
+        assertEquals(listOf("4F0", "545", "4F1", "5E4"), turnos.filter { it.size == 3 }.map { it[2] })
+    }
+
+    @Test
     fun vinMultitramaConYSinCabeceras() {
         assertEquals("KMHCU41UAGU000000", Decodificador.vin(RESPUESTAS.getValue("0902")))
         assertEquals("KMHCU41UAGU000000", Decodificador.vin("014\r0: 49 02 01 4B 4D 48\r1: 43 55 34 31 55 41 47\r2: 55 30 30 30 30 30 30\r"))

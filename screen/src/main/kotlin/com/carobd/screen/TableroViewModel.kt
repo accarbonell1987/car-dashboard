@@ -24,6 +24,7 @@ import com.carobd.screen.obd.FuenteElm327
 import com.carobd.screen.obd.DispositivoBle
 import com.carobd.screen.obd.TransporteBle
 import com.carobd.core.obd.EstadoConexion
+import com.carobd.core.obd.Carroceria
 import com.carobd.core.obd.FaseConexion
 import com.carobd.core.obd.TransporteTcp
 import kotlinx.coroutines.Dispatchers
@@ -119,6 +120,7 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
     private val datos = DatosLocales(app)
     private val bitacora = datos.bitacora
     private var registrador: RegistradorViaje? = null
+    private var odometroLeido = false
     private val historial = Historial(SENALES_GRAFICA)
 
     init {
@@ -210,12 +212,19 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
             RegistradorViaje(Bitacora.ID_ACCENT, reloj = { Clock.System.now() }, nuevoId = { UUID.randomUUID().toString() })
         } else null
         registrador = reg
+        odometroLeido = false
         lectura = viewModelScope.launch {
             fuente.lecturas()
                 // Si el adaptador se desconecta (se apagó el auto) o se cambia de fuente, el viaje en curso se cierra.
                 .onCompletion { withContext(NonCancellable) { reg?.cerrar()?.let { guardarViaje(it) } } }
                 .catch { _estado.update { it.copy(fuente = "${fuente.nombre}: desconectado", viajeEnCursoKm = null) } }
                 .collect { l ->
+                    // The cluster's own odometer (frame 0x4F0): saved once per connection as a firm reading.
+                    val tablero = l.valores[Carroceria.ODOMETRO]
+                    if (reg != null && tablero != null && !odometroLeido) {
+                        odometroLeido = true
+                        withContext(Dispatchers.IO) { if (bitacora.guardarOdometroTablero(tablero)) actualizarOdometro() }
+                    }
                     val terminado = reg?.procesar(l)
                     val nuevaMuestra = historial.agregar(l)
                     _estado.update {

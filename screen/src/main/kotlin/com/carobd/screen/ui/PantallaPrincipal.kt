@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.carobd.core.obd.Carroceria
 import com.carobd.core.obd.FaseConexion
 import com.carobd.screen.EstadoTablero
 import com.carobd.screen.Seccion
@@ -127,9 +128,10 @@ private fun BarraEstado(e: EstadoTablero, acciones: AccionesTablero) {
                         fontSize = 16.sp,
                     )
                 }
-                // Outside temperature from the weather: the engine's "ambient" PID reads the hot air under the bonnet.
+                // Outside temperature: the A/C sensor on the bus first, else the weather.
+                // The engine's "ambient" PID reads the hot air under the bonnet, so it is never used here.
                 val clima by ClimaActual.clima.collectAsState()
-                clima?.let { Text("${dec(it.temperatura, 0)} °C", color = p.texto, fontSize = 16.sp) }
+                (e.valores[Carroceria.TEMP_EXTERIOR] ?: clima?.temperatura)?.let { Text("${dec(it, 0)} °C", color = p.texto, fontSize = 16.sp) }
             }
         }
         Spacer(Modifier.fillMaxWidth().height(1.dp).background(p.linea))
