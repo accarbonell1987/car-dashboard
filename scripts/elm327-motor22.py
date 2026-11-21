@@ -34,14 +34,14 @@ for c in ["ATE0", "ATL0", "ATS0", "ATH1", "ATAT1", "ATSP6", "ATSH7E0", "ATCF7E8"
 dids = a.dids.split(",")
 t0 = time.time()
 with open(a.csv, "w") as f:
-    f.write("t,did,datos\n")
+    f.write("epoch,did,datos\n")
     ciclo = 0
     while time.time() - t0 < a.segundos:
         for did in dids:
             r, _ = ex.pedir(fd, "22" + did, 4.0)
             ps = [p for v in r.values() for p in v]
-            if ps and ps[-1][0] == 0x62:
-                f.write(f"{time.time() - t0:.1f},{did},{ex.hx(ps[-1][3:])}\n")
+            if ps and ps[-1][:1] == b"\x62":
+                f.write(f"{time.time():.1f},{did},{ex.hx(ps[-1][3:])}\n")
         f.flush()
         ciclo += 1
         print(f"t={time.time() - t0:5.0f}s ciclo {ciclo}", flush=True)

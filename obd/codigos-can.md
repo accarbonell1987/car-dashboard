@@ -161,9 +161,28 @@ Byte n = posición después del eco `62 ED xx`, desde 0. Valores con contacto en
 | `22ED1D`, `22ED94` | Hollín | b0-1 / b7 | 0 | Ídem |
 | `22ED02`, `22ED07` | Temp. de aceite | b23 − 4; b19 × 0,7843 − 50 | sin dato | Sin sensor |
 
-Sin ubicar todavía: freno, embrague, punto muerto, pedal, presión de rail y masa de aire (los
-muestra el Autel). Método: `scripts/elm327-motor22.py` graba los bloques mientras se pisan los
-pedales, y se comparan los bytes.
+**Pedales y palanca (prueba guiada del 2026-11-21, contacto en ON, motor apagado).** Capturas en
+`capturas/elm327-motor22-pedales-1.csv` y `-2.csv`, con los pasos en `-pedales-marcas.txt`.
+
+| Comando | Dato | Byte y bit | Estado |
+| --- | --- | --- | --- |
+| `22ED01` | Interruptor de freno 1 | b12, bit 0 (`0x01`) | Validado: 1 al pisar |
+| `22ED01` | Interruptor de freno 2 | b13, bit 6 (`0x40`) | Validado: 1 al pisar |
+| `22ED01` | Embrague pisado | b13, bit 0 (`0x01`) | Validado en dos pisadas |
+| `22ED01` | **Punto muerto** | b13, bit 3 (`0x08`) | Validado: 0 con primera puesta, 1 en punto muerto |
+| `22ED27` | Embrague y punto muerto (copia) | b4, bit 6 y bit 3 | Validado, mismo comportamiento |
+| `22ED04` | Interruptores de freno | b18 y b19 (0/1) | Validado |
+| `22ED01` | Voltaje de batería | b19 × ~0,0816 V | Estimado: `0x99` = 12,5 V (`ATRV` daba 12,4-12,5); bajó al encender las luces de stop |
+| `22ED01` | Pedal del acelerador | b4 (`0x00` suelto, `0xFF` a fondo) | **Candidato**: una sola muestra, de una respuesta truncada |
+
+Sin ubicar todavía: presión de rail y masa de aire (hay que medir con el motor en marcha).
+
+Con `22ED01` solo (un pedido, 34 bytes) la app obtiene freno, embrague, punto muerto, presión de
+admisión, temperatura de combustible y voltaje.
+
+**Fiabilidad del adaptador:** en las dos grabaciones el enlace BLE del clon se degradó cerca de
+los 60-70 s de sondeo continuo (respuestas truncadas y luego mudo); hubo que reenchufarlo. La app
+debe sondear más despacio que una vez por segundo y tolerar respuestas cortas.
 
 ## Lo que requiere hablar con otros módulos (⚠ prohibido por la regla)
 

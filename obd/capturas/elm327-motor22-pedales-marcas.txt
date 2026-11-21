@@ -1,0 +1,8 @@
+1795276249,base hecha; pedido freno
+1795276265,freno PISADO; pedido soltar freno y pisar embrague
+1795276281,embrague PISADO; pedido mantener embrague y poner primera
+1795276434,grabacion 2: pedido primera puesta sin pedales
+1795276558,grabacion 2 arranca (se supone primera puesta, sin pedales); pedido confirmar
+1795276577,PRIMERA puesta sin pedales (ok); pedido punto muerto
+1795276598,PUNTO MUERTO sin pedales (ok); pedido acelerador a fondo
+1795276617,ACELERADOR a fondo (ok); pedido soltar
