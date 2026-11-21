@@ -299,8 +299,14 @@ class Elm327(
             transporte.escribir("ATMA\r")
             var r = transporte.leer(ventanaEscuchaMs)
             if (!r.completa) {
-                transporte.escribir(" ")
-                val cierre = transporte.leer(timeoutMs)
+                // A lost stop byte leaves the adapter monitoring and every later PID unanswered: retry it.
+                var cierre = Respuesta("", false)
+                for (intento in 1..INTENTOS_PARADA) {
+                    transporte.escribir(" ")
+                    cierre = transporte.leer(timeoutMs / INTENTOS_PARADA)
+                    if (cierre.completa) break
+                    anotar("ATMA $id: no se detuvo, reintento $intento")
+                }
                 if (!cierre.completa) throw AdaptadorSinRespuesta("ATMA no se detuvo")
                 r = Respuesta(r.texto + "\r" + cierre.texto, true)
             }
@@ -356,6 +362,7 @@ class Elm327(
 
 private const val LARGO_REGISTRO = 5_000
 private const val RESTOS_ATMA_MS = 200L
+private const val INTENTOS_PARADA = 3
 // Brake and clutch are top priority: 4 times a second. The research capture cut off after ~1 min of back-to-back
 // requests (cause unconfirmed); if the adapter hangs, lower this first.
 private const val PERIODO_EXTENDIDO_MS = 250L

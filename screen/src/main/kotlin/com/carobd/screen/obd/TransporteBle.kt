@@ -125,11 +125,12 @@ class TransporteBle(private val context: Context, private val direccion: String)
     override suspend fun escribir(texto: String) {
         val g = gatt ?: throw IOException("transporte cerrado")
         val c = caracteristica ?: throw IOException("transporte cerrado")
-        // Without response when the adapter allows it: no extra round trip waiting for the write acknowledgement.
-        val tipo = if (c.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0) {
-            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-        } else {
+        // Acknowledged writes when the adapter allows them: a dropped write (like the byte that stops ATMA) left the
+        // adapter monitoring. With the high connection priority the acknowledgement costs only ~10 ms.
+        val tipo = if (c.properties and BluetoothGattCharacteristic.PROPERTY_WRITE != 0) {
             BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        } else {
+            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
         }
         for (trozo in BufferRespuestas.fragmentar(texto.toByteArray(Charsets.ISO_8859_1), tamanoFragmento)) {
             val pedido = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
