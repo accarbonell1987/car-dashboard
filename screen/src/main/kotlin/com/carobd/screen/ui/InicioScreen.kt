@@ -1,5 +1,10 @@
 package com.carobd.screen.ui
 
+import androidx.compose.ui.graphics.drawscope.rotate
+import kotlin.math.min
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.layout.BoxWithConstraints
 import com.carobd.screen.R
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -243,16 +248,49 @@ private fun Stat(nombre: String, valor: String, unidad: String, color: Color, mo
     }
 }
 
-/** Photo of the user's own Accent, cut out from its background (plate blanked: the repository is public). */
+/**
+ * Photo of the user's own Accent, cut out from its background (plate blanked: the repository is public), standing
+ * on a soft platform shadow so it does not float on the card.
+ */
 @Composable
 fun FotoAuto(modifier: Modifier) {
-    Image(
-        painterResource(R.drawable.accent),
-        contentDescription = "Hyundai Accent 2016",
-        modifier = modifier,
-        contentScale = ContentScale.Fit,
-    )
+    val p = LocalPaleta.current
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        // Size of the photo once fitted, to put the shadow right under its wheels.
+        val ancho = min(maxWidth.value, maxHeight.value * PROPORCION_FOTO).dp * 0.94f
+        val alto = ancho / PROPORCION_FOTO
+        // The photo is a three-quarter view: the footprint is an ellipse under both wheels, tilted with the car.
+        Canvas(Modifier.size(ancho, alto)) {
+            val centro = Offset(size.width * 0.53f, size.height * 0.85f)
+            val radio = size.width * 0.47f
+            rotate(-10f, centro) {
+                scale(1f, 0.17f, pivot = centro) {
+                    drawCircle(
+                        Brush.radialGradient(
+                            0f to Color.Black.copy(alpha = 0.85f),
+                            0.6f to Color.Black.copy(alpha = 0.5f),
+                            1f to Color.Transparent,
+                            center = centro,
+                            radius = radio,
+                        ),
+                        radio,
+                        centro,
+                    )
+                    // Faint rim: the platform edge, in the dashboard's accent colour.
+                    drawCircle(p.normal.copy(alpha = 0.25f), radio * 0.97f, centro, style = Stroke(width = 14f))
+                }
+            }
+        }
+        Image(
+            painterResource(R.drawable.accent),
+            contentDescription = "Hyundai Accent 2016",
+            modifier = Modifier.size(ancho, alto),
+            contentScale = ContentScale.Fit,
+        )
+    }
 }
+
+private const val PROPORCION_FOTO = 900f / 429f
 
 /** Envía una tecla multimedia al reproductor que esté sonando (Spotify, YouTube Music, radio...). No pide permisos. */
 private fun teclaMultimedia(context: Context, codigo: Int) {
