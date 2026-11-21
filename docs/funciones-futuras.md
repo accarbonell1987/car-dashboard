@@ -183,6 +183,36 @@ migrar, y el servidor además hace falta para el token del asistente (punto 2).
 **A cuidar:** la telemetría con ubicación es un dato personal sensible; el respaldo diario del
 VPS ya existe, pero conviene definir cuánto historial se guarda.
 
+## 6. Navegación embebida (como Android Auto o CarPlay)
+
+Pedido del 2026-11-21: Maps abre como app aparte y Waze no se instala en la pantalla.
+
+**Por qué no se puede "meter" Google Maps dentro de la app:** Android no deja que una app
+normal dibuje la pantalla de otra app dentro de un componente propio. Eso solo lo puede hacer
+el sistema (es lo que usa Android Automotive). Android Auto y CarPlay funcionan distinto: el
+teléfono dibuja el mapa y lo proyecta.
+
+Opciones reales:
+
+| Opción | Qué se ve | Costo | Esfuerzo |
+| --- | --- | --- | --- |
+| **A. Navigation SDK de Google** | El mapa y la guía giro a giro de Google Maps, con tráfico, **dentro** de un componente de la app | Gratis hasta 1 000 destinos por mes; requiere cuenta de Google Cloud con facturación | Medio |
+| **B. Mapa abierto** (MapLibre + rutas OSRM/Valhalla) | Mapa propio con ruta; la guía por voz hay que armarla | Gratis | Alto, y sin tráfico |
+| **C. Pantalla dividida** | Google Maps real en media pantalla y el tablero en la otra | Gratis | Bajo |
+| **D. Proyección de Android Auto** (app Headunit Reloaded) | Android Auto del teléfono, pero en una app aparte | Pago único de la app | Nulo, pero no queda embebido |
+
+**Recomendación:** A. Es lo único que da la experiencia pedida (mapa de Google embebido, con el
+tablero alrededor) y para un solo auto entra en la franja gratuita. El asistente de voz puede
+fijar el destino con una función `navegarA(destino)`.
+
+**A probar antes:** que el SDK funcione en esta pantalla. Depende de Google Play Services (la
+unidad tiene la versión 26.45) y el firmware falsea el nivel de API. Prueba de medio día con el
+proyecto de ejemplo de Google.
+
+**Waze:** falta saber qué mensaje da al instalar. Lo más probable es que Play Store la marque
+"no compatible" porque la pantalla declara datos raros (densidad de 25 dpi, API 35 falso).
+Waze no ofrece SDK para embeber, así que de todos modos no serviría para esto.
+
 ## Orden sugerido para planificar
 
 1. **Relevar la pantalla** (comandos de arriba): desbloquea las decisiones de 1, 3 y 4.
@@ -197,6 +227,7 @@ VPS ya existe, pero conviene definir cuánto historial se guarda.
 - OpenAI, modelo `gpt-realtime`: https://developers.openai.com/api/docs/models/gpt-realtime
 - OpenAI, modelo `gpt-realtime-mini`: https://developers.openai.com/api/docs/models/gpt-realtime-mini
 - OpenAI, latencia y costo de voz: https://developers.openai.com/api/docs/guides/voice-latency-cost?voice-api=realtime
+- Navigation SDK de Google, precios: https://developers.google.com/maps/documentation/navigation/android-sdk/pricing
 - SceneView (3D en Compose con Filament): https://github.com/sceneview/sceneview
 - SceneView, problemas conocidos (WebP, hilo principal): https://sceneview.github.io/docs/troubleshooting/
 - Launchers en pantallas Android de auto: https://android-headunits.com/android-head-unit-launcher/
