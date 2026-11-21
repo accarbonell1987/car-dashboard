@@ -124,10 +124,11 @@ private fun tamTexto(lado: Float, factor: Float) = (lado * factor).coerceAtLeast
 @Composable
 private fun fraccionDirecta(valor: Double?, senal: Senal): State<Float> = rememberUpdatedState(fraccion(valor, senal))
 
-/** Needles follow a spring: readings arrive every ~60 ms and a jumping needle is hard to read. */
+/** Needles follow a spring: readings arrive every ~120 ms and a jumping needle is hard to read.
+ * Medium stiffness settles in ~200 ms; softer springs added a visible lag on throttle. */
 @Composable
 private fun fraccionSuave(valor: Double?, senal: Senal): State<Float> =
-    animateFloatAsState(fraccion(valor, senal), spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), label = "aguja")
+    animateFloatAsState(fraccion(valor, senal), spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium), label = "aguja")
 
 private fun fraccionDe(v: Double, senal: Senal) = ((v - senal.min) / (senal.max - senal.min)).toFloat().coerceIn(0f, 1f)
 

@@ -46,7 +46,7 @@ class AdaptadorSinRespuesta(mensaje: String) : Exception(mensaje)
 
 /**
  * Protocolo ELM327 sobre cualquier [TransporteElm]. Arranca el adaptador, lee qué PIDs soporta el motor
- * y los pide en ciclos: rápidas siempre, medias cada 10 ciclos y lentas cada 50. Cada [periodoCarroceriaMs]
+ * y los pide en ciclos según su [Ritmo]: críticas siempre, rápidas cada 3 ciclos, medias cada 20 y lentas cada 100. Cada [periodoCarroceriaMs]
  * escucha el bus unos ms por ID para los testigos de [Carroceria]. Si el adaptador se cuelga, cierra
  * y reconecta con espera creciente; el flujo nunca termina por un error del adaptador.
  */
@@ -197,9 +197,10 @@ class Elm327(
     private suspend fun leerCiclo(): Map<String, Double> {
         for (senal in senales) {
             val toca = when (senal.ritmo) {
-                Ritmo.RAPIDO -> true
-                Ritmo.MEDIO -> ciclo % 10 == 0L
-                Ritmo.LENTO -> ciclo % 50 == 0L
+                Ritmo.CRITICO -> true
+                Ritmo.RAPIDO -> ciclo % 3 == 0L
+                Ritmo.MEDIO -> ciclo % 20 == 0L
+                Ritmo.LENTO -> ciclo % 100 == 0L
             }
             if (toca) {
                 val respuesta = enviar(senal.modo + senal.pid, valida = responde("41" + senal.pid))

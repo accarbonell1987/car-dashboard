@@ -3,7 +3,11 @@ package com.carobd.core.obd
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class Ritmo { RAPIDO, MEDIO, LENTO }
+/**
+ * How often a signal is polled. Each PID is one round trip (~60 ms over BLE), so a cycle carries only the
+ * CRITICO ones and the rest join every few cycles: needles refresh ~8 times a second.
+ */
+enum class Ritmo { CRITICO, RAPIDO, MEDIO, LENTO }
 
 /**
  * Una señal del catálogo: qué pedir al adaptador y cómo convertir la respuesta.
@@ -33,8 +37,8 @@ data class Senal(
 /** Catálogo estándar (modo 01, SAE J1979). Los PIDs de Hyundai se añaden al descubrirlos con el vLinker. */
 object Catalogo {
     val estandar: List<Senal> = listOf(
-        Senal("rpm", "RPM", "rpm", "01", "0C", formula = "(A*256+B)/4", bytes = 2, min = 0.0, max = 5000.0, ritmo = Ritmo.RAPIDO),
-        Senal("velocidad", "Velocidad", "km/h", "01", "0D", formula = "A", min = 0.0, max = 200.0, ritmo = Ritmo.RAPIDO),
+        Senal("rpm", "RPM", "rpm", "01", "0C", formula = "(A*256+B)/4", bytes = 2, min = 0.0, max = 5000.0, ritmo = Ritmo.CRITICO),
+        Senal("velocidad", "Velocidad", "km/h", "01", "0D", formula = "A", min = 0.0, max = 200.0, ritmo = Ritmo.CRITICO),
         Senal("carga", "Carga del motor", "%", "01", "04", formula = "A*100/255", min = 0.0, max = 100.0, ritmo = Ritmo.RAPIDO),
         Senal("acelerador", "Acelerador", "%", "01", "11", formula = "A*100/255", min = 0.0, max = 100.0, ritmo = Ritmo.RAPIDO),
         Senal("map", "Presión de admisión", "kPa", "01", "0B", formula = "A", min = 0.0, max = 255.0, ritmo = Ritmo.RAPIDO),
@@ -57,7 +61,7 @@ object Catalogo {
         Senal("tiempo_motor", "Tiempo desde arranque", "s", "01", "1F", formula = "A*256+B", bytes = 2, min = 0.0, max = 65535.0, ritmo = Ritmo.LENTO),
         // Calculadas
         Senal("boost", "Boost", "bar", formula = "(map-barometrica)/100", min = -0.5, max = 1.5, ritmo = Ritmo.RAPIDO, dependeDe = listOf("map", "barometrica")),
-        Senal("marcha", "Marcha", "", min = 0.0, max = 6.0, ritmo = Ritmo.RAPIDO, dependeDe = listOf("rpm", "velocidad")),
+        Senal("marcha", "Marcha", "", min = 0.0, max = 6.0, ritmo = Ritmo.CRITICO, dependeDe = listOf("rpm", "velocidad")),
         Senal("consumo_l100", "Consumo", "L/100 km", min = 0.0, max = 30.0, ritmo = Ritmo.MEDIO, dependeDe = listOf("consumo_lh", "velocidad")),
         // Testigos por escucha pasiva del bus (modo "can", `pid` = ID de la trama); 1 = activo. Ver Carroceria.
         Senal(Carroceria.PUERTA, "Puerta del conductor abierta", "", "can", "690", min = 0.0, max = 1.0, ritmo = Ritmo.LENTO),

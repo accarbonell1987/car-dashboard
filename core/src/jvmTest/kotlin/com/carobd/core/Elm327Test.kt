@@ -136,6 +136,16 @@ class Elm327Test {
     }
 
     @Test
+    fun lasCriticasSeLeenCadaCicloYLasRapidasCadaTres() = runTest {
+        val transporte = TransporteFalso()
+        Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = Long.MAX_VALUE).lecturas().take(6).toList()
+        assertEquals(6, transporte.enviados.count { it == "010C" }, "RPM no se leyó en cada ciclo")
+        assertEquals(6, transporte.enviados.count { it == "010D" }, "velocidad no se leyó en cada ciclo")
+        assertEquals(2, transporte.enviados.count { it == "0104" }, "carga no se leyó cada 3 ciclos")
+        assertEquals(1, transporte.enviados.count { it == "0105" }, "refrigerante no esperó 20 ciclos")
+    }
+
+    @Test
     fun adaptadorColgadoReconectaSinCortarElFlujo() = runTest {
         val transporte = TransporteFalso(colgarTrasLecturas = 40)
         val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent)
