@@ -33,7 +33,7 @@ Bits en formato Intel (little-endian), contando desde el bit 0 del byte 0, como 
 
 | ID | Nombre DBC | Hz | Señal útil | Bits / escala | Valor en la captura | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
-| `0x4F0` | CLU1 | 48 | **Odómetro** | 40-63, ×0,1 km | 91 268,7 km (fijo) | Candidato fuerte, comparar con el tablero |
+| `0x4F0` | CLU1 | 48 | **Odómetro** | 40-63, ×0,1 km | 91 268,7 km (fijo) | **Validado**: el tablero marcaba 91 294 km al día siguiente (2026-11-21) |
 | `0x4F0` | CLU1 | 48 | Velocidad del tablero | 8-16, ×0,5 km/h | 0 (detenido) | Probar andando |
 | `0x4F0` | CLU1 | 48 | Freno de mano | bit 7 | siempre 0, aunque se accionó | No cableado en este auto |
 | `0x4F1` | CLU3 | 10 | Aviso de reserva | 16-17 | 0 | Probar con reserva |
@@ -140,6 +140,30 @@ adaptador envíe nada. Con el Autel, entrar **solo a Engine** para respetar la r
 
 El menú del Autel lista además A/T, ABS, Airbag, TPMS, A/C, EPS, IMMO, SMK, BCM y CODE. Es la
 lista genérica del modelo: no prueba que este auto tenga todos esos módulos.
+
+## Modo 22 en el motor: bloque `ED xx` (encontrado el 2026-11-21)
+
+El barrido de 7E0 dio NRC 31 en `0400-0FFF`, `1200-1FFF` y `2200-65FF`. **`22ED00-EDFF` responde
+con 39 bloques** (`capturas/elm327-motor22-ED.txt`). Es el bloque diésel que la comunidad (OBDb)
+documenta para Kia Ceed/Rio e i20/i30 CRDi. Falta barrer `6600-EBFF` y `EF00-FFFF`.
+
+Byte n = posición después del eco `62 ED xx`, desde 0. Valores con contacto en ON, motor apagado.
+
+| Comando | Dato | Bytes / fórmula | Valor | Estado |
+| --- | --- | --- | --- | --- |
+| `22ED03` / `22ED0A` | Odómetro del ECU | b49-52 / b0-3, ÷1000 km | 90 761,0 km | Contador propio del motor: 0,6 % menos que el tablero |
+| `22ED09` | Tiempo de motor | b0-3, segundos | 4 799 h | Validado (coincide con `017F`) |
+| `22ED01` | Temp. de combustible | b27 × 0,7843 − 50 °C | 28 °C | Plausible |
+| `22ED01` | Presión de admisión (turbo) | b25 × 13,725 hPa | 961 hPa | Plausible (atmosférica 988); validar andando |
+| `22ED01` | Par del motor | b30 × 2,3529 Nm | 2 Nm | Validar andando |
+| `22ED03` | Temp. de escape 1 y 2 | b37, b38 × 4,7098 + 99 °C | 108 °C | Piso del sensor; validar andando |
+| `22ED03` | Presión diferencial, regeneraciones, km desde la última | b36, b40-48, b53-55 | todo 0 | **Probablemente sin DPF** |
+| `22ED1D`, `22ED94` | Hollín | b0-1 / b7 | 0 | Ídem |
+| `22ED02`, `22ED07` | Temp. de aceite | b23 − 4; b19 × 0,7843 − 50 | sin dato | Sin sensor |
+
+Sin ubicar todavía: freno, embrague, punto muerto, pedal, presión de rail y masa de aire (los
+muestra el Autel). Método: `scripts/elm327-motor22.py` graba los bloques mientras se pisan los
+pedales, y se comparan los bytes.
 
 ## Lo que requiere hablar con otros módulos (⚠ prohibido por la regla)
 

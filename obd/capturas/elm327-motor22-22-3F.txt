@@ -1,0 +1,106 @@
+Exploración ELM327 2026-11-21 12:07:42  BLE 'OBDII'
+ATZ    -> ['�', 'ELM327v1.5']
+ATE0   -> ['OK']
+ATL0   -> ['OK']
+ATS0   -> ['OK']
+ATH1   -> ['OK']
+ATAT1  -> ['OK']
+ATSP6  -> ['OK']
+ATI -> ['ELM327v1.5']  ATRV -> ['12.4V']
+
+==================== FASE 3: datos propios de Hyundai en el motor (7E0) ====================
+
+-- Servicio 21 (bloques de datos estilo Hyundai/Kia) --
+  21: servicio no soportado (NRC 11)
+
+-- Servicio 22, identificadores 2200 a 22FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2300 a 23FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2400 a 24FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2500 a 25FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2600 a 26FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2700 a 27FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2800 a 28FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2900 a 29FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2A00 a 2AFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2B00 a 2BFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2C00 a 2CFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2D00 a 2DFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2E00 a 2EFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 2F00 a 2FFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3000 a 30FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3100 a 31FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3200 a 32FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3300 a 33FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3400 a 34FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3500 a 35FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3600 a 36FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3700 a 37FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3800 a 38FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3900 a 39FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3A00 a 3AFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3B00 a 3BFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3C00 a 3CFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3D00 a 3DFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3E00 a 3EFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 3F00 a 3FFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+Fin. Duración 702 s. Voltaje final: ['12.4V']

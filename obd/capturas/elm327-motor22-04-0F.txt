@@ -1,0 +1,52 @@
+Exploración ELM327 2026-11-21 11:54:59  BLE 'OBDII'
+ATZ    -> ['�', 'ELM327v1.5']
+ATE0   -> ['OK']
+ATL0   -> ['OK']
+ATS0   -> ['OK']
+ATH1   -> ['OK']
+ATAT1  -> ['OK']
+ATSP6  -> ['OK']
+ATI -> ['ELM327v1.5']  ATRV -> ['12.5V']
+
+==================== FASE 3: datos propios de Hyundai en el motor (7E0) ====================
+
+-- Servicio 21 (bloques de datos estilo Hyundai/Kia) --
+  21: servicio no soportado (NRC 11)
+
+-- Servicio 22, identificadores 0400 a 04FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0500 a 05FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0600 a 06FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0700 a 07FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0800 a 08FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0900 a 09FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0A00 a 0AFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0B00 a 0BFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0C00 a 0CFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0D00 a 0DFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0E00 a 0EFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 0F00 a 0FFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+Fin. Duración 290 s. Voltaje final: ['12.4V']

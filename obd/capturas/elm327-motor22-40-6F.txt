@@ -1,0 +1,130 @@
+Exploración ELM327 2026-11-21 12:22:50  BLE 'OBDII'
+ATZ    -> ['�', 'ELM327v1.5']
+ATE0   -> ['OK']
+ATL0   -> ['OK']
+ATS0   -> ['OK']
+ATH1   -> ['OK']
+ATAT1  -> ['OK']
+ATSP6  -> ['OK']
+ATI -> ['ELM327v1.5']  ATRV -> ['12.4V']
+
+==================== FASE 3: datos propios de Hyundai en el motor (7E0) ====================
+
+-- Servicio 21 (bloques de datos estilo Hyundai/Kia) --
+  21: servicio no soportado (NRC 11)
+
+-- Servicio 22, identificadores 4000 a 40FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4100 a 41FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4200 a 42FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4300 a 43FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4400 a 44FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4500 a 45FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4600 a 46FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4700 a 47FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4800 a 48FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4900 a 49FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4A00 a 4AFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4B00 a 4BFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4C00 a 4CFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4D00 a 4DFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4E00 a 4EFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 4F00 a 4FFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5000 a 50FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5100 a 51FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5200 a 52FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5300 a 53FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5400 a 54FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5500 a 55FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5600 a 56FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5700 a 57FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5800 a 58FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5900 a 59FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5A00 a 5AFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5B00 a 5BFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5C00 a 5CFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5D00 a 5DFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5E00 a 5EFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 5F00 a 5FFF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 6000 a 60FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 6100 a 61FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 6200 a 62FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 6300 a 63FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 6400 a 64FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 6500 a 65FF --
+  22: 0 respuestas válidas; negativas por código: 31x256
+
+-- Servicio 22, identificadores 6600 a 66FF --
