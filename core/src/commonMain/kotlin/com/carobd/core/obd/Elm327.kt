@@ -366,7 +366,7 @@ class Elm327(
             val neutro = valores[MotorExtendido.PUNTO_MUERTO] == 1.0
             // With the clutch down the ratio slips: learning from it would skew the gear table.
             if (!embrague) marchas.aprender(rpm, kmh)
-            valores["marcha"] = if (neutro) 0.0 else marchas.marcha(rpm, kmh).toDouble()
+            valores["marcha"] = marchas.mostrar(if (neutro) 0 else marchas.marcha(rpm, kmh), kmh).toDouble()
         }
         val lh = valores["consumo_lh"]
         if (lh != null && kmh != null && kmh > 5) valores["consumo_l100"] = lh / kmh * 100

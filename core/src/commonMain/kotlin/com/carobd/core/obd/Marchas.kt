@@ -39,13 +39,42 @@ class Marchas(relaciones: List<Double> = listOf(120.0, 66.0, 42.0, 31.0, 25.0, 2
         if (estables < MUESTRAS_ESTABLES) return
         val i = marcha(rpm, kmh) - 1
         if (i < 0) return
+        // Only learn from an unambiguous reading: close to this gear and clearly away from its neighbours.
+        // A reading halfway between 4th and 5th used to teach 5th, which then won every later reading (4 → 5 jump).
+        val distancia = abs(rel[i] - r)
+        val vecina = listOfNotNull(rel.getOrNull(i - 1), rel.getOrNull(i + 1)).minOf { abs(it - r) }
+        if (distancia > rel[i] * 0.06 || distancia > vecina * 0.5) return
         val nuevo = rel[i] + (r - rel[i]) * 0.1
         val techo = rel.getOrNull(i - 1) ?: Double.MAX_VALUE
         val piso = rel.getOrNull(i + 1) ?: 0.0
         if (nuevo < techo && nuevo > piso) rel[i] = nuevo
     }
 
+    private var mostrada = 0
+    private var candidata = 0
+    private var vistas = 0
+
+    /**
+     * The gear to show for a new detection [m]: a change needs [LECTURAS_PARA_CAMBIAR] readings in a row, so one
+     * noisy sample does not flip the display. Stopped (or N) shows at once.
+     */
+    fun mostrar(m: Int, kmh: Double): Int {
+        if (m == mostrada || (m == 0 && kmh < 5)) {
+            mostrada = m
+            vistas = 0
+            return mostrada
+        }
+        vistas = if (m == candidata) vistas + 1 else 1
+        candidata = m
+        if (vistas >= LECTURAS_PARA_CAMBIAR) {
+            mostrada = m
+            vistas = 0
+        }
+        return mostrada
+    }
+
     private companion object {
         const val MUESTRAS_ESTABLES = 8
+        const val LECTURAS_PARA_CAMBIAR = 3
     }
 }

@@ -116,6 +116,28 @@ class CoreTest {
     }
 
     @Test
+    fun `una cuarta entre dos relaciones no se convierte en quinta al aprender`() {
+        val m = Marchas()
+        // The reported bug: 4th shows "4" and later "5" without touching the lever. This car's 4th sits halfway
+        // between the table's 4th (31) and 5th (25); a reading that leans to 5th used to teach 5th, which then
+        // won every later reading.
+        repeat(200) { i -> m.aprender(rpm = 2800.0 + if (i % 40 < 20) -10.0 else 10.0, kmh = 100.0) }
+        assertEquals(4, m.marcha(rpm = 2800.0, kmh = 100.0))
+        assertEquals(25.0, m.relaciones[4], 0.01)
+    }
+
+    @Test
+    fun `la marcha mostrada no salta por una lectura suelta`() {
+        val m = Marchas()
+        repeat(3) { m.mostrar(4, kmh = 70.0) }
+        assertEquals(4, m.mostrar(4, kmh = 70.0))
+        assertEquals(4, m.mostrar(5, kmh = 70.0), "cambió con una sola lectura")
+        assertEquals(4, m.mostrar(5, kmh = 70.0))
+        assertEquals(5, m.mostrar(5, kmh = 70.0))
+        assertEquals(0, m.mostrar(0, kmh = 0.0), "detenido tiene que mostrar N enseguida")
+    }
+
+    @Test
     fun `marchas no aprende con datos inestables`() {
         val m = Marchas()
         val antes = m.relaciones.toList()
