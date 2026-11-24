@@ -1,6 +1,7 @@
 package com.carobd.screen.ui
 
 import androidx.compose.foundation.background
+import com.carobd.screen.ui.auto.AutoTablero
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,7 +40,7 @@ fun VehiculoScreen(e: EstadoTablero, @Suppress("UNUSED_PARAMETER") acciones: Acc
         Tarjeta(Modifier.weight(1.4f).fillMaxHeight()) {
             Text(nombreVehiculo(e), color = p.texto, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Text("${v?.motor ?: "1.6 CRDi"} · diésel · manual 6", color = p.tenue, fontSize = 17.sp)
-            FotoAuto(Modifier.fillMaxWidth().weight(1f))
+            AutoTablero(e, Modifier.fillMaxWidth().weight(1f))
         }
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val datos = listOf(

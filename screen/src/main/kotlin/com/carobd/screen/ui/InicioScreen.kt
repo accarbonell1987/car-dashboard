@@ -65,6 +65,8 @@ import com.carobd.screen.ui.comun.IconoTrazo
 import com.carobd.screen.ui.comun.Tarjeta
 import com.carobd.screen.ui.comun.TarjetaIcono
 import com.carobd.screen.ui.comun.dec
+import com.carobd.screen.ui.auto.ANCLAS_ACCENT
+import com.carobd.screen.ui.auto.AutoTablero
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 
@@ -200,7 +202,7 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
                 Text(texto, color = color, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
-        FotoAuto(Modifier.fillMaxWidth().weight(1f))
+        AutoTablero(e, Modifier.fillMaxWidth().weight(1f))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val vs = e.valores
             Stat("Velocidad", vs["velocidad"]?.let { dec(it, 0) } ?: "--", "km/h", p.texto, Modifier.weight(1f))
@@ -257,8 +259,8 @@ fun FotoAuto(modifier: Modifier) {
     val p = LocalPaleta.current
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         // Size of the photo once fitted, to put the shadow right under its wheels.
-        val ancho = min(maxWidth.value, maxHeight.value * PROPORCION_FOTO).dp * 0.94f
-        val alto = ancho / PROPORCION_FOTO
+        val ancho = min(maxWidth.value, maxHeight.value * ANCLAS_ACCENT.proporcion).dp * ANCLAS_ACCENT.escala
+        val alto = ancho / ANCLAS_ACCENT.proporcion
         // The photo is a three-quarter view: the footprint is an ellipse under both wheels, tilted with the car.
         Canvas(Modifier.size(ancho, alto)) {
             val centro = Offset(size.width * 0.53f, size.height * 0.85f)
@@ -289,8 +291,6 @@ fun FotoAuto(modifier: Modifier) {
         )
     }
 }
-
-private const val PROPORCION_FOTO = 900f / 429f
 
 /** Envía una tecla multimedia al reproductor que esté sonando (Spotify, YouTube Music, radio...). No pide permisos. */
 private fun teclaMultimedia(context: Context, codigo: Int) {

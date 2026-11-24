@@ -6,6 +6,7 @@ import androidx.core.content.FileProvider
 import android.content.Intent
 import android.content.Context
 import com.carobd.screen.ui.comun.ItemRiel
+import com.carobd.screen.ui.auto.AjustesLucesAuto
 import com.carobd.screen.ui.comun.Interruptor
 import com.carobd.screen.ui.comun.IconoTrazo
 import com.carobd.screen.ui.comun.Icono
@@ -82,6 +83,7 @@ import kotlinx.datetime.toLocalDateTime
 private enum class SeccionAjustes(val nombre: String, val corto: String, val icono: Icono) {
     PANTALLA("Pantalla", "Pantalla", Icono.SOL),
     ADAPTADOR("Adaptador", "Adaptador", Icono.ADAPTADOR),
+    LUCES("Luces del auto", "Luces", Icono.VEHICULO),
     CUENTA("Cuenta y sync", "Sync", Icono.NUBE),
     ACERCA("Acerca de", "Acerca", Icono.INFO),
 }
@@ -102,6 +104,7 @@ fun AjustesScreen(e: EstadoTablero, acciones: AccionesTablero) {
                 when (seccion) {
                     SeccionAjustes.PANTALLA -> AjustesPantalla(e, acciones)
                     SeccionAjustes.ADAPTADOR -> AjustesAdaptador(e, acciones)
+                    SeccionAjustes.LUCES -> AjustesLucesAuto(e)
                     SeccionAjustes.CUENTA -> AjustesCuenta(e, acciones)
                     SeccionAjustes.ACERCA -> AjustesAcerca()
                 }
