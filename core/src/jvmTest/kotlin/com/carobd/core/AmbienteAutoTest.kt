@@ -1,8 +1,8 @@
 package com.carobd.core
 
 import com.carobd.core.auto.AmbienteAuto
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
 
 class AmbienteAutoTest {
     @Test
