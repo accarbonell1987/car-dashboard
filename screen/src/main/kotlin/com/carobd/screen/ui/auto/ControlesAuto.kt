@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,15 +85,40 @@ fun rememberEstadoVisualAuto(e: EstadoTablero): EstadoVisualAuto {
 }
 
 /**
- * The animated car as the screens show it. A long press on the car opens the light toggles over it,
+ * The animated car as the screens show it: the 3D model when the screen can run it, the photo otherwise.
+ * A long press on the car opens the light toggles over it,
  * to try the animations without going to Ajustes.
  */
 @Composable
 fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
+    val p = LocalPaleta.current
+    val contexto = LocalContext.current
     val estado = rememberEstadoVisualAuto(e)
     var panel by rememberSaveable { mutableStateOf(false) }
-    Box(modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { panel = !panel }, onTap = { if (panel) panel = false }) }) {
-        AutoAnimado(estado, Modifier.fillMaxSize()) { FotoAuto(Modifier.fillMaxSize()) }
+    remember { Preferencia3D.cargar(contexto) }
+    val activo3D by Preferencia3D.activo.collectAsState()
+    val lento by Preferencia3D.lento.collectAsState()
+    val en3D = activo3D && !lento
+    // The photo stays on top until the 3D scene has drawn its first frame, and for good if it cannot run.
+    var listo3D by remember(en3D) { mutableStateOf(false) }
+    val tocar = { if (panel) panel = false }
+    val mantener = { panel = !panel }
+    Box(modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { mantener() }, onTap = { tocar() }) }) {
+        if (en3D) {
+            Auto3D(
+                estado = estado,
+                embrague = e.valores[MotorExtendido.EMBRAGUE] == 1.0,
+                fondo = p.celda,
+                modifier = Modifier.fillMaxSize(),
+                alTocar = tocar,
+                alMantener = mantener,
+                alListo = { listo3D = true },
+                alFallar = { Preferencia3D.lento.value = true },
+            )
+        }
+        if (!en3D || !listo3D) {
+            AutoAnimado(estado, Modifier.fillMaxSize().background(p.celda)) { FotoAuto(Modifier.fillMaxSize()) }
+        }
         if (panel) {
             PanelLucesCompacto(e, Modifier.align(Alignment.BottomCenter).fillMaxWidth())
         }
@@ -180,5 +206,13 @@ fun AjustesLucesAuto(e: EstadoTablero) {
         Opcion("Lluvia", lluvia != null && lluvia!! > 0f && lluvia!! < 1f, Modifier.weight(1f)) { ControlesAuto.lluvia.value = 0.6f }
         Opcion("Tormenta", lluvia == 1f, Modifier.weight(1f)) { ControlesAuto.lluvia.value = 1f }
     }
+    val contexto = LocalContext.current
+    val activo3D by Preferencia3D.activo.collectAsState()
+    val lento by Preferencia3D.lento.collectAsState()
+    Interruptor(
+        "Auto en 3D",
+        activo3D && !lento,
+        if (lento) "Esta pantalla no pudo moverlo con fluidez: se muestra la foto. Actívalo para reintentar" else "Con ruedas, frenada, cambios, lluvia y viento. Arrastra el auto para girarlo",
+    ) { Preferencia3D.cambiar(contexto, it) }
     Interruptor("Animar luces en el demo", demo, "Con el simulador recorre intermitentes, balizas, faros y lluvia") { ControlesAuto.demo.value = it }
 }

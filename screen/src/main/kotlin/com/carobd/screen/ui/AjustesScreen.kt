@@ -374,6 +374,7 @@ private fun AjustesAcerca() {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "?"
     }
     Fila("Versión de la app", version)
+    Text("Modelo 3D: \"hyundai accent 2013\" de L95XP (Sketchfab), licencia CC BY 4.0. Simplificado y repintado.", color = p.tenue, fontSize = 14.sp)
     val alcance = rememberCoroutineScope()
     val estado by Actualizador.estado.collectAsState()
     Text(
