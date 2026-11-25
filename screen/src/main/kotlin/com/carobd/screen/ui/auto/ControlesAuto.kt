@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -99,6 +100,7 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
     val activo3D by Preferencia3D.activo.collectAsState()
     val lento by Preferencia3D.lento.collectAsState()
     val en3D = activo3D && !lento
+    val pintura by Preferencia3D.color.collectAsState()
     // The photo stays on top until the 3D scene has drawn its first frame, and for good if it cannot run.
     var listo3D by remember(en3D) { mutableStateOf(false) }
     val tocar = { if (panel) panel = false }
@@ -109,6 +111,7 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
                 estado = estado,
                 embrague = e.valores[MotorExtendido.EMBRAGUE] == 1.0,
                 fondo = p.celda,
+                pintura = pintura,
                 modifier = Modifier.fillMaxSize(),
                 alTocar = tocar,
                 alMantener = mantener,
@@ -214,5 +217,25 @@ fun AjustesLucesAuto(e: EstadoTablero) {
         activo3D && !lento,
         if (lento) "Esta pantalla no pudo moverlo con fluidez: se muestra la foto. Actívalo para reintentar" else "Con ruedas, frenada, cambios, lluvia y viento. Arrastra el auto para girarlo",
     ) { Preferencia3D.cambiar(contexto, it) }
+    if (activo3D && !lento) {
+        val pintura by Preferencia3D.color.collectAsState()
+        Text("Color del auto: ${pintura.nombre}", color = p.texto, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        for (fila in COLORES_AUTO.chunked(5)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (c in fila) {
+                    val elegido = c == pintura
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF000000 or c.rgb.toLong()))
+                            .border(if (elegido) 3.dp else 1.dp, if (elegido) p.normal else p.linea, RoundedCornerShape(12.dp))
+                            .clickable(role = Role.RadioButton, onClickLabel = c.nombre) { Preferencia3D.pintar(contexto, c) },
+                    )
+                }
+            }
+        }
+    }
     Interruptor("Animar luces en el demo", demo, "Con el simulador recorre intermitentes, balizas, faros y lluvia") { ControlesAuto.demo.value = it }
 }

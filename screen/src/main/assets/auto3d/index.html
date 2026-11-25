@@ -156,7 +156,7 @@ const camera=new T.PerspectiveCamera(30,16/9,0.1,60);
 scene.add(new T.HemisphereLight(0xbfd4ff,0x0a0c10,0.18));
 const sun=new T.DirectionalLight(0xffffff,0.9); sun.position.set(3,6,4); scene.add(sun);
 
-const car=new T.Group(); scene.add(car); const paintRef={m:null};
+const car=new T.Group(); scene.add(car); const paintRef={m:null}, PINT={hex:'#92060f',metal:0.62};
 const body=new T.Group(); car.add(body);
 const proc=new T.Group(); body.add(proc); const procW=new T.Group(); car.add(procW); // hand-built stand-in, shown only if the model file fails to load
 const paint=new T.MeshPhysicalMaterial({color:0x9a0715,metalness:0.6,roughness:0.24,clearcoat:1,clearcoatRoughness:0.07,vertexColors:true,side:T.DoubleSide,envMapIntensity:0.95});
@@ -390,8 +390,11 @@ window.auto3d={
   set(o){let ch=false;for(const k in o)if(k in E&&E[k]!==o[k]){E[k]=o[k];ch=true;} if(ch){S.speed=+E.v||0;S.rain=clamp(+E.lluvia||0,0,1);awake=3;}},
   girar(dx,dy){S.manual=true;S.az-=dx*0.008;S.el=clamp(S.el+dy*0.005,0.04,1.2);awake=3;},
   fondo(hex){FONDO.set(hex);renderer.setClearColor(FONDO,1);scene.fog.color.copy(FONDO);awake=3;},
+  // Body colour: hex plus how metallic the paint is (solid white wants little, a dark metallic a lot).
+  color(hex,metal){PINT.hex=hex;PINT.metal=metal===undefined?0.62:+metal;pintar();awake=3;},
   estado:S
 };
+function pintar(){for(const m of [paint,paintRef.m]){if(!m)continue;m.color.set(PINT.hex);m.metalness=PINT.metal;}}
 
 function resize(){
   const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return;
@@ -426,7 +429,7 @@ const stopMats=[];
     fit.traverse(o=>{
       if(!o.isMesh)return; const m=o.material; if(!m||seen.has(m))return; seen.add(m);
       m.envMapIntensity=1; if('transmission' in m)m.transmission=0;
-      if(m.name==='body'){m.color.setHex(0x92060f);m.metalness=0.62;m.roughness=0.22;m.clearcoat=1;m.clearcoatRoughness=0.06;paintRef.m=m;}
+      if(m.name==='body'){m.roughness=0.22;m.clearcoat=1;m.clearcoatRoughness=0.06;paintRef.m=m;pintar();}
       else if(m.name==='vehicle_vehglass'){m.color.setRGB(0.42,0.01,0.02);m.transparent=true;m.opacity=0.9;m.roughness=0.15;m.emissive=new T.Color(1,0,0);m.emissiveIntensity=0;stopMats.push(m);}
       else if(m.name==='Material_41'||m.name==='Material_43'){m.emissive=new T.Color(1,0.96,0.88);m.emissiveIntensity=0;headMats.push(m);}
       else if(/glass/i.test(m.name)){m.transparent=true;m.opacity=Math.max(m.opacity,0.82);m.roughness=0.05;m.depthWrite=false;}

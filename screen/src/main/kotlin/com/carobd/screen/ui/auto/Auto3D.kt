@@ -39,6 +39,8 @@ import java.util.Locale
  */
 object Preferencia3D {
     val activo = MutableStateFlow(true)
+    /** The body colour of the 3D car, one of [COLORES_AUTO]. */
+    val color = MutableStateFlow(COLORES_AUTO.first())
     val lento = MutableStateFlow(false)
     private var cargado = false
 
@@ -48,6 +50,13 @@ object Preferencia3D {
         if (cargado) return
         cargado = true
         activo.value = prefs(c).getBoolean("activo", true)
+        val guardado = prefs(c).getString("color", null)
+        color.value = COLORES_AUTO.firstOrNull { it.id == guardado } ?: COLORES_AUTO.first()
+    }
+
+    fun pintar(c: Context, v: ColorAuto) {
+        color.value = v
+        prefs(c).edit().putString("color", v.id).apply()
     }
 
     fun cambiar(c: Context, v: Boolean) {
@@ -56,6 +65,25 @@ object Preferencia3D {
         prefs(c).edit().putBoolean("activo", v).apply()
     }
 }
+
+/**
+ * A paint for the 3D car. [metal] is how metallic it looks: solid colours want little, dark metallics a lot.
+ */
+data class ColorAuto(val id: String, val nombre: String, val rgb: Int, val metal: Float)
+
+/** The paints offered in Ajustes, close to the Accent's catalogue. The first one is the default. */
+val COLORES_AUTO = listOf(
+    ColorAuto("rojo", "Rojo", 0x92060F, 0.62f),
+    ColorAuto("blanco", "Blanco", 0xE9EAEC, 0.12f),
+    ColorAuto("plata", "Plata", 0x8D9298, 0.8f),
+    ColorAuto("gris", "Gris", 0x2E3238, 0.75f),
+    ColorAuto("negro", "Negro", 0x050506, 0.6f),
+    ColorAuto("azul", "Azul", 0x0A1F52, 0.65f),
+    ColorAuto("celeste", "Celeste", 0x3A6A96, 0.7f),
+    ColorAuto("beige", "Beige", 0x8F8165, 0.7f),
+    ColorAuto("marron", "Marrón", 0x2E1A12, 0.65f),
+    ColorAuto("verde", "Verde", 0x0F3024, 0.65f),
+)
 
 /** The page's assets are served under this made-up host, so the page has a normal https origin without any network. */
 private const val HOST = "auto3d.carobd.local"
@@ -105,6 +133,7 @@ fun Auto3D(
     embrague: Boolean,
     fondo: Color,
     modifier: Modifier = Modifier,
+    pintura: ColorAuto = COLORES_AUTO.first(),
     alTocar: () -> Unit = {},
     alMantener: () -> Unit = {},
     alListo: () -> Unit = {},
@@ -183,6 +212,9 @@ fun Auto3D(
     val colorFondo = remember(fondo) { String.format("#%06x", fondo.toArgb() and 0xFFFFFF) }
     LaunchedEffect(web, listo, colorFondo) {
         if (listo) web?.evaluateJavascript("window.auto3d&&auto3d.fondo('$colorFondo')", null)
+    }
+    LaunchedEffect(web, listo, pintura) {
+        if (listo) web?.evaluateJavascript(String.format(Locale.US, "window.auto3d&&auto3d.color('#%06x',%.2f)", pintura.rgb, pintura.metal), null)
     }
     // Before the page is up the call is a no-op; once it reports ready, the current state goes in.
     LaunchedEffect(web, listo, js) { web?.evaluateJavascript(js, null) }
