@@ -37,24 +37,43 @@ object Garaje {
             tieneObd = true,
             updatedAt = ahora,
         )
-        return DatosGaraje(vehiculo, 90_600, Mantenimiento.plantillaAccentCrdi(id, ahora, ::nuevoId))
+        return DatosGaraje(vehiculo, 90_600, CatalogoMantenimiento.plan(id, vehiculo.plantilla, ahora))
     }
 
-    /** Registra un servicio y deja al día los ítems marcados. El odómetro nunca baja. */
-    fun registrarServicio(d: DatosGaraje, km: Int, tipo: String, itemsHechos: Set<String>, ahora: Instant): DatosGaraje {
+    /**
+     * Registra un servicio y deja al día los ítems marcados. `fecha` permite cargar uno pasado (por defecto, ahora).
+     * Un servicio más viejo que el último del ítem no lo hace retroceder. Solo los registrados suben el odómetro,
+     * que nunca baja; los declarados en el asistente son de memoria.
+     */
+    fun registrarServicio(
+        d: DatosGaraje,
+        km: Int,
+        tipo: String,
+        itemsHechos: Set<String>,
+        ahora: Instant,
+        fecha: Instant = ahora,
+        origen: String = ORIGEN_REGISTRADO,
+        aproximado: Boolean = false,
+        nunca: Boolean = false,
+    ): DatosGaraje {
         val servicio = Servicio(
             id = nuevoId(),
             vehiculoId = d.vehiculo.id,
-            fecha = ahora,
+            fecha = fecha,
             km = km,
             tipo = tipo,
             itemsHechos = itemsHechos.toList(),
+            origen = origen,
+            aproximado = aproximado,
+            nunca = nunca,
             updatedAt = ahora,
         )
         val items = d.items.map {
-            if (it.id in itemsHechos) it.copy(ultimoKm = km, ultimaFecha = ahora, updatedAt = ahora) else it
+            val masNuevo = it.ultimoKm == null || km > it.ultimoKm || (km == it.ultimoKm && (it.ultimaFecha == null || fecha > it.ultimaFecha))
+            if (it.id in itemsHechos && !nunca && masNuevo) it.copy(ultimoKm = km, ultimaFecha = fecha, updatedAt = ahora) else it
         }
-        return d.copy(odometroKm = maxOf(d.odometroKm, km), items = items, servicios = listOf(servicio) + d.servicios)
+        val odometro = if (origen == ORIGEN_REGISTRADO) maxOf(d.odometroKm, km) else d.odometroKm
+        return d.copy(odometroKm = odometro, items = items, servicios = listOf(servicio) + d.servicios)
     }
 
     /** Corrige el odómetro a mano. Igual que en la sincronización, nunca baja. */

@@ -35,6 +35,21 @@ data class Vehiculo(
     val odometroInicialKm: Int,
     val odometroInicialFecha: Instant,
     val tieneObd: Boolean,
+    /** Plantilla de mantenimiento elegida en el asistente, por ejemplo [CatalogoMantenimiento.DIESEL_D4FB_MANUAL]. */
+    val plantilla: String? = null,
+    /** "MANUAL" o "AUTOMATICA". Texto y no enum, para que una app vieja pueda leerlo. */
+    val transmision: String? = null,
+    /** Fecha de compra o primera matriculación. Base de los ítems por tiempo que nunca se hicieron. */
+    val fechaAlta: Instant? = null,
+    val kmCompra: Int? = null,
+    /** Uso severo del manual: cambia los intervalos de los ítems que lo tienen. */
+    val usoSevero: Boolean = false,
+    /** Letras de las condiciones severas del manual (A a L) que marcó el usuario. */
+    val condicionesSeveras: List<String> = emptyList(),
+    /** Filtro de partículas. null = no se sabe. */
+    val tieneDpf: Boolean? = null,
+    /** Gasoil EN 590 o de bajo azufre. null = no se sabe, y se toma como que no. */
+    val combustibleEn590: Boolean? = null,
     override val updatedAt: Instant,
     override val deletedAt: Instant? = null,
 ) : Sincronizable
@@ -111,6 +126,9 @@ data class AvisoSalud(
     override val deletedAt: Instant? = null,
 ) : Sincronizable
 
+const val ORIGEN_REGISTRADO = "REGISTRADO"
+const val ORIGEN_DECLARADO = "DECLARADO"
+
 @Serializable
 data class Servicio(
     override val id: String,
@@ -125,6 +143,12 @@ data class Servicio(
     val fotoUrl: String? = null,
     /** Ítems del plan de mantenimiento que este servicio deja al día, por id de ítem. */
     val itemsHechos: List<String> = emptyList(),
+    /** [ORIGEN_REGISTRADO] (hecho y cargado al volver del taller) o [ORIGEN_DECLARADO] (contado en el asistente). */
+    val origen: String = ORIGEN_REGISTRADO,
+    /** El km o la fecha son a ojo. */
+    val aproximado: Boolean = false,
+    /** Declaración "nunca se hizo": cuenta desde 0 km y la fecha de alta del auto. */
+    val nunca: Boolean = false,
     override val updatedAt: Instant,
     override val deletedAt: Instant? = null,
 ) : Sincronizable
@@ -138,6 +162,22 @@ data class ItemMantenimiento(
     val cadaMeses: Int? = null,
     val ultimoKm: Int? = null,
     val ultimaFecha: Instant? = null,
+    /** Código del catálogo ("ACEITE_MOTOR"); null en ítems propios del usuario. */
+    val codigo: String? = null,
+    /** "REVISAR" o "CAMBIAR". */
+    val accion: String? = null,
+    /** Primera vez, contada desde 0 km y la fecha de alta, cuando nunca se hizo. */
+    val primeraKm: Int? = null,
+    val primeraMeses: Int? = null,
+    /** Intervalo en uso severo. */
+    val severoKm: Int? = null,
+    val severoMeses: Int? = null,
+    /** El usuario cambió los intervalos: una actualización del catálogo no los pisa. */
+    val personalizado: Boolean = false,
+    val activo: Boolean = true,
+    /** No lo pide Hyundai; lo recomienda la app. */
+    val recomendacion: Boolean = false,
+    val notas: String? = null,
     override val updatedAt: Instant,
     override val deletedAt: Instant? = null,
 ) : Sincronizable

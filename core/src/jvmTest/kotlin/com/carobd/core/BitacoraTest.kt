@@ -1,7 +1,9 @@
 package com.carobd.core
 
 import com.carobd.core.datos.Bitacora
+import com.carobd.core.model.CatalogoMantenimiento
 import com.carobd.core.model.Garaje
+import com.carobd.core.model.ItemMantenimiento
 import com.carobd.core.model.OrigenOdometro
 import com.carobd.core.model.OrigenViaje
 import com.carobd.core.model.Viaje
@@ -94,10 +96,53 @@ class BitacoraTest {
         b.importarGarajeViejo(viejo)
         val g = b.garaje()
         assertEquals(Bitacora.ID_ACCENT, g.vehiculo.id)
-        assertEquals(viejo.items.map { it.id }.toSet(), g.items.map { it.id }.toSet())
+        assertEquals(viejo.items.map { it.codigo }.toSet(), g.items.map { it.codigo }.toSet())
+        assertEquals(viejo.items.size, g.items.size)
         assertTrue(g.items.all { it.vehiculoId == Bitacora.ID_ACCENT })
         assertEquals(90_800, g.odometroKm)
         assertEquals(OrigenOdometro.MANUAL, b.almacen.leer { it.lecturasOdometro.values.single().origen })
+    }
+
+    @Test
+    fun elMovilYLaPantallaCreanElPlanPorSeparadoYAlSincronizarNoHayRepetidos() = runTest {
+        val movil = bitacora()
+        val pantalla = bitacora()
+        movil.garaje()
+        ahora += 1.hours
+        pantalla.garaje()
+        pantalla.almacen.aplicarRemotos(movil.almacen.pendientes())
+        val items = pantalla.almacen.leer { m -> m.itemsMantenimiento.values.filter { it.deletedAt == null } }
+        assertEquals(19, items.size)
+    }
+
+    @Test
+    fun elPlanViejoDeOchoItemsSeMigraSinPerderElUltimoServicio() = runTest {
+        val b = bitacora()
+        val v = b.vehiculo()
+        val viejos = listOf(
+            ItemMantenimiento("old-1", v.id, "Aceite y filtro de aceite", 10_000, 12, ultimoKm = 88_000, ultimaFecha = ahora, updatedAt = ahora),
+            ItemMantenimiento("old-2", v.id, "Correa de accesorios", 50_000, null, ultimoKm = 80_000, updatedAt = ahora),
+            ItemMantenimiento("old-3", v.id, "Lavado de motor", 30_000, null, updatedAt = ahora),
+        )
+        b.almacen.guardar(*viejos.toTypedArray())
+        ahora += 1.hours
+        val g = b.garaje()
+
+        val aceite = g.items.single { it.codigo == CatalogoMantenimiento.ACEITE_MOTOR }
+        assertEquals(88_000, aceite.ultimoKm)
+        assertFalse(aceite.personalizado)
+        val correas = g.items.single { it.codigo == "CORREAS" }
+        assertEquals(80_000, correas.ultimoKm)
+        assertTrue(correas.personalizado, "el usuario había cambiado el intervalo: se respeta")
+        assertEquals(50_000, correas.cadaKm)
+        assertTrue(g.items.any { it.id == "old-3" }, "un ítem propio del usuario se queda")
+        assertTrue(g.items.none { it.id == "old-1" || it.id == "old-2" })
+        assertEquals(20, g.items.size)
+
+        // Correr la migración otra vez no cambia nada.
+        val antes = b.almacen.leer { m -> m.itemsMantenimiento.toMap() }
+        b.garaje()
+        assertEquals(antes, b.almacen.leer { m -> m.itemsMantenimiento.toMap() })
     }
 }
 

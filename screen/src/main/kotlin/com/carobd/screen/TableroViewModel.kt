@@ -5,7 +5,9 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.carobd.core.datos.Bitacora
+import com.carobd.core.model.AvisoSalud
 import com.carobd.core.model.DatosGaraje
+import com.carobd.core.model.RespuestasAsistente
 import com.carobd.core.sim.Historial
 import com.carobd.core.sync.ConfigNube
 import com.carobd.core.sync.EstadoNube
@@ -92,6 +94,12 @@ data class EstadoTablero(
     val series: Map<String, List<Double>> = emptyMap(),
     /** Brillo de la ventana de 0,1 a 1; null deja el del sistema. */
     val brillo: Float? = null,
+    /** Respuestas del asistente de mantenimiento mientras está abierto; null si está cerrado. */
+    val asistente: RespuestasAsistente? = null,
+    /** Hay un asistente empezado y sin terminar (o nunca se hizo): Inicio lo ofrece. */
+    val asistentePendiente: Boolean = true,
+    /** Avisos de salud del vehículo (chequeo del asistente y, más adelante, OBD). */
+    val avisos: List<AvisoSalud> = emptyList(),
 ) {
     val actual: DefinicionTablero get() = tableros[indice.coerceIn(0, tableros.lastIndex)]
 }
@@ -110,6 +118,7 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
             direccionEmulador = prefs.getString("emulador", DIRECCION_EMULADOR)!!,
             testigos = prefs.getBoolean("testigos", true),
             adaptadorBle = prefs.getString("ble_direccion", null)?.let { DispositivoBle(it, prefs.getString("ble_nombre", null) ?: it, 0) },
+            asistentePendiente = prefs.getString("asistente", null)?.let { leerAsistente(it)?.terminado != true } ?: true,
         ),
     )
     val estado: StateFlow<EstadoTablero> = _estado.asStateFlow()
@@ -128,7 +137,7 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
     init {
         viewModelScope.launch(Dispatchers.IO) {
             bitacora.vehiculo()
-            _estado.update { it.copy(config = datos.nube.config, odometroKm = bitacora.odometroKm(), garaje = bitacora.garajeSinCrear()) }
+            _estado.update { it.copy(config = datos.nube.config, odometroKm = bitacora.odometroKm(), garaje = bitacora.garaje(), avisos = bitacora.avisos()) }
             datos.nube.refrescar()
         }
         viewModelScope.launch { datos.nube.estado.collect { n -> _estado.update { it.copy(nube = n) } } }
@@ -257,8 +266,40 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
 
     private suspend fun actualizarOdometro() {
         val km = bitacora.odometroKm()
-        val g = bitacora.garajeSinCrear()
-        _estado.update { it.copy(odometroKm = km, garaje = g) }
+        val g = bitacora.garaje()
+        val avisos = bitacora.avisos()
+        _estado.update { it.copy(odometroKm = km, garaje = g, avisos = avisos) }
+    }
+
+    // --- Asistente de mantenimiento ---
+
+    private fun leerAsistente(json: String): RespuestasAsistente? =
+        runCatching { SyncJson.json.decodeFromString(RespuestasAsistente.serializer(), json) }.getOrNull()
+
+    override fun abrirAsistente() {
+        val guardado = prefs.getString("asistente", null)?.let(::leerAsistente)
+        // Un asistente ya terminado se reabre desde el principio, con las respuestas anteriores para corregirlas.
+        val r = guardado?.let { if (it.terminado) it.copy(paso = 0, terminado = false) else it } ?: RespuestasAsistente()
+        _estado.update { it.copy(asistente = r) }
+    }
+
+    override fun responderAsistente(r: RespuestasAsistente) {
+        prefs.edit().putString("asistente", SyncJson.json.encodeToString(RespuestasAsistente.serializer(), r)).apply()
+        _estado.update { it.copy(asistente = r, asistentePendiente = true) }
+    }
+
+    override fun cerrarAsistente() {
+        _estado.update { it.copy(asistente = null) }
+    }
+
+    override fun terminarAsistente(r: RespuestasAsistente) {
+        prefs.edit().putString("asistente", SyncJson.json.encodeToString(RespuestasAsistente.serializer(), r)).apply()
+        viewModelScope.launch(Dispatchers.IO) {
+            bitacora.guardarAsistente(r)
+            actualizarOdometro()
+            _estado.update { it.copy(asistente = null, asistentePendiente = false) }
+            datos.nube.sincronizar()
+        }
     }
 
     // --- Navegación y pantalla ---

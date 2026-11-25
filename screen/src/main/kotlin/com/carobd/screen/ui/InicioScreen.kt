@@ -53,7 +53,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.carobd.core.model.Mantenimiento
+import com.carobd.core.model.Estado
+import com.carobd.core.model.EstadoMantenimiento
 import com.carobd.core.model.NivelAviso
 import com.carobd.core.model.texto
 import com.carobd.screen.EstadoTablero
@@ -210,23 +211,32 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
             Stat("Batería", vs["voltaje"]?.let { dec(it, 1) } ?: "--", "V", colorNivel(nivelDe("voltaje")), Modifier.weight(1f))
         }
         val proximo = e.garaje?.let { g ->
-            Mantenimiento.pendientes(g.items, maxOf(g.odometroKm, e.odometroKm.toInt()), Clock.System.now(), TimeZone.currentSystemDefault()).firstOrNull()
+            EstadoMantenimiento.calcular(
+                g.items, g.servicios, g.vehiculo, maxOf(g.odometroKm, e.odometroKm.toInt()), Clock.System.now(), TimeZone.currentSystemDefault(),
+            ).firstOrNull()
         }
+        val alerta = proximo?.estado == Estado.VENCIDO || proximo?.probablementeVencido == true
+        // Sin datos y sin asistente hecho: el atajo lleva al asistente, no a Salud.
+        val ofrecerAsistente = e.asistentePendiente && (proximo == null || proximo.estado == Estado.DESCONOCIDO)
         Row(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(p.pista)
-                .clickable(role = Role.Button) { acciones.irA(Seccion.DIAGNOSTICO) }
+                .clickable(role = Role.Button) { if (ofrecerAsistente) acciones.abrirAsistente() else acciones.irA(Seccion.DIAGNOSTICO) }
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconoTrazo(Icono.LLAVE, if (proximo?.vencido == true) p.atencion else p.tenue, 20.dp)
+            IconoTrazo(Icono.LLAVE, if (alerta) p.atencion else p.tenue, 20.dp)
             Spacer(Modifier.size(10.dp))
             Text(
-                if (proximo == null) "Plan de mantenimiento: se carga desde el móvil" else "Próximo servicio: ${proximo.item.nombre} · ${proximo.texto()}",
-                color = if (proximo?.vencido == true) p.atencion else p.texto,
+                when {
+                    ofrecerAsistente -> "Configura tu plan de mantenimiento: unas preguntas con el auto detenido"
+                    proximo == null -> "Plan de mantenimiento"
+                    else -> "Próximo servicio: ${proximo.item.nombre} · ${proximo.texto()}"
+                },
+                color = if (alerta) p.atencion else p.texto,
                 fontSize = 16.sp,
                 maxLines = 1,
                 modifier = Modifier.weight(1f),

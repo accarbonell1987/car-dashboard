@@ -1,6 +1,10 @@
 package com.carobd.core
 
+import com.carobd.core.model.CatalogoMantenimiento
+import com.carobd.core.model.Estado
+import com.carobd.core.model.EstadoMantenimiento
 import com.carobd.core.model.Garaje
+import com.carobd.core.model.ORIGEN_DECLARADO
 import com.carobd.core.model.Mantenimiento
 import com.carobd.core.model.texto
 import kotlinx.datetime.Instant
@@ -43,7 +47,21 @@ class GarajeTest {
     @Test
     fun itemSinHistorialLoDice() {
         val d = Garaje.inicialAccent(ahora)
-        val p = Mantenimiento.pendientes(d.items, d.odometroKm, ahora).first { it.item.nombre == "Líquido de frenos" }
-        assertEquals("sin registro previo", p.texto())
+        val e = EstadoMantenimiento.calcular(d.items, d.servicios, d.vehiculo, d.odometroKm, ahora)
+            .first { it.item.codigo == "LIQUIDO_FRENOS" && it.item.accion == CatalogoMantenimiento.CAMBIAR }
+        assertEquals(Estado.DESCONOCIDO, e.estado)
+        assertEquals("sin datos", e.texto())
+    }
+
+    @Test
+    fun unServicioDeclaradoNoSubeElOdometroNiUnoViejoHaceRetroceder() {
+        val d = Garaje.inicialAccent(ahora)
+        val aceite = d.items.first { it.codigo == CatalogoMantenimiento.ACEITE_MOTOR }
+        val declarado = Garaje.registrarServicio(d, 99_000, "Declarado", setOf(aceite.id), ahora, origen = ORIGEN_DECLARADO)
+        assertEquals(90_600, declarado.odometroKm)
+        val nuevo = Garaje.registrarServicio(d, 90_000, "Aceite", setOf(aceite.id), ahora)
+        val viejo = Garaje.registrarServicio(nuevo, 80_000, "Aceite", setOf(aceite.id), ahora, fecha = Instant.parse("2025-01-01T00:00:00Z"))
+        assertEquals(90_000, viejo.items.first { it.id == aceite.id }.ultimoKm)
+        assertEquals(ahora, viejo.items.first { it.id == aceite.id }.ultimaFecha)
     }
 }

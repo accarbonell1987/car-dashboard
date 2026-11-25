@@ -38,7 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.carobd.core.miles
-import com.carobd.core.model.Mantenimiento
+import com.carobd.core.model.Estado
+import com.carobd.core.model.EstadoMantenimiento
 import com.carobd.core.model.NivelAviso
 import com.carobd.core.model.texto
 import com.carobd.core.obd.Catalogo
@@ -60,7 +61,7 @@ import kotlin.math.floor
 
 /** Salud: el estado del motor en vivo, alertas, mantenimiento y el último minuto. */
 @Composable
-fun DiagnosticoScreen(e: EstadoTablero) {
+fun DiagnosticoScreen(e: EstadoTablero, acciones: AccionesTablero) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             EstadoSenales(e, Modifier.weight(1f).fillMaxHeight())
@@ -68,7 +69,7 @@ fun DiagnosticoScreen(e: EstadoTablero) {
         }
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TiempoReal(e, Modifier.weight(1.3f).fillMaxHeight())
-            AlertasYMantenimiento(e, Modifier.weight(1f).fillMaxHeight())
+            AlertasYMantenimiento(e, acciones, Modifier.weight(1f).fillMaxHeight())
             UltimoMinuto(e, Modifier.weight(1f).fillMaxHeight())
         }
     }
@@ -145,7 +146,7 @@ private fun EstadoMotor(e: EstadoTablero, modifier: Modifier) {
 }
 
 @Composable
-private fun AlertasYMantenimiento(e: EstadoTablero, modifier: Modifier) {
+private fun AlertasYMantenimiento(e: EstadoTablero, acciones: AccionesTablero, modifier: Modifier) {
     val p = LocalPaleta.current
     Tarjeta(modifier, titulo = "Alertas en vivo") {
         if (e.alertas.isEmpty()) {
@@ -165,15 +166,32 @@ private fun AlertasYMantenimiento(e: EstadoTablero, modifier: Modifier) {
                 }
             }
         }
-        Text("MANTENIMIENTO", color = p.tenue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 8.dp))
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("MANTENIMIENTO", color = p.tenue, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
+            Boton("Asistente", onClick = acciones::abrirAsistente)
+        }
         val g = e.garaje
         val odometro = maxOf(g?.odometroKm ?: 0, floor(e.odometroKm).toInt())
-        val pendientes = g?.let { Mantenimiento.pendientes(it.items, odometro, Clock.System.now(), TimeZone.currentSystemDefault()) }.orEmpty()
-        if (pendientes.isEmpty()) {
-            Text("El plan se carga desde la app del móvil al sincronizar.", color = p.tenue, fontSize = 16.sp)
+        // RF-19: la lista por estado, lo vencido primero.
+        val estados = g?.let { EstadoMantenimiento.calcular(it.items, it.servicios, it.vehiculo, odometro, Clock.System.now(), TimeZone.currentSystemDefault()) }.orEmpty()
+        val avisos = e.avisos
+        if (estados.isEmpty()) {
+            Text("Todavía no hay plan de mantenimiento.", color = p.tenue, fontSize = 16.sp)
         } else {
             LazyColumn(Modifier.weight(1f)) {
-                items(pendientes, key = { it.item.id }) { pe ->
+                items(avisos, key = { "aviso-" + it.id }) { a ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        IconoTrazo(Icono.LLAVE, p.atencion, 20.dp)
+                        Text(a.texto, color = p.atencion, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                    }
+                }
+                items(estados, key = { it.item.id }) { pe ->
+                    val alerta = pe.estado == Estado.VENCIDO || pe.probablementeVencido
+                    val color = when {
+                        alerta -> p.atencion
+                        pe.estado == Estado.PROXIMO -> p.texto
+                        else -> p.tenue
+                    }
                     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         val nombre = pe.item.nombre.lowercase()
                         val icono = when {
@@ -181,9 +199,9 @@ private fun AlertasYMantenimiento(e: EstadoTablero, modifier: Modifier) {
                             "filtro" in nombre -> Icono.FILTRO
                             else -> Icono.LLAVE
                         }
-                        IconoTrazo(icono, if (pe.vencido) p.atencion else p.tenue, 20.dp)
+                        IconoTrazo(icono, color, 20.dp)
                         Text(pe.item.nombre, color = p.texto, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Text(pe.texto(), color = if (pe.vencido) p.atencion else p.tenue, fontSize = 16.sp)
+                        Text(pe.texto(), color = color, fontSize = 16.sp)
                     }
                 }
             }

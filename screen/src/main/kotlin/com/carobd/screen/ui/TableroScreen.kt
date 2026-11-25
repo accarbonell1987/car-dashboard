@@ -70,7 +70,7 @@ import com.carobd.screen.gauges.LocalPaleta
 import com.carobd.screen.gauges.formatear
 
 /** Acciones que la pantalla le pide al ViewModel. */
-interface AccionesTablero {
+interface AccionesTablero : AccionesAsistente {
     fun seleccionar(indice: Int)
     fun alternarEdicion()
     fun mover(id: String, col: Int, fila: Int)
