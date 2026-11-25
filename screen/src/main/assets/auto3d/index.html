@@ -299,7 +299,7 @@ for(const ax of [AXF,AXR])for(const s of [1,-1]){
 // Platform, contact shadow
 const radial=radialTex; const _unused=(stops,sz)=>{const c=document.createElement('canvas');c.width=c.height=sz||256;const g=c.getContext('2d');const r=c.width/2;const gr=g.createRadialGradient(r,r,0,r,r,r);stops.forEach(s=>gr.addColorStop(s[0],s[1]));g.fillStyle=gr;g.fillRect(0,0,c.width,c.width);return new T.CanvasTexture(c);};
 const groundM=new T.MeshStandardMaterial({color:0x0a0d12,roughness:0.6,metalness:0,transparent:true,envMapIntensity:0.06,
-  map:radial([[0,'rgba(255,255,255,1)'],[0.55,'rgba(255,255,255,1)'],[1,'rgba(255,255,255,0)']])});
+  map:radial([[0,'rgba(255,255,255,1)'],[0.26,'rgba(255,255,255,1)'],[0.5,'rgba(255,255,255,0.45)'],[0.72,'rgba(255,255,255,0)']])}); // fades out well before its edge, so no horizon line shows against the card
 const ground=new T.Mesh(new T.CircleGeometry(9,64),groundM); ground.rotation.x=-Math.PI/2; scene.add(ground);
 const shadow=new T.Mesh(new T.PlaneGeometry(5.6,2.9),new T.MeshBasicMaterial({map:radial([[0,'rgba(0,0,0,0.92)'],[0.55,'rgba(0,0,0,0.75)'],[1,'rgba(0,0,0,0)']]),transparent:true,depthWrite:false}));
 shadow.rotation.x=-Math.PI/2; shadow.position.y=0.004; scene.add(shadow);

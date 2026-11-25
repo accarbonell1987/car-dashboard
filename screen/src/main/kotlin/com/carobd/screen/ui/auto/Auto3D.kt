@@ -82,7 +82,7 @@ val COLORES_AUTO = listOf(
     ColorAuto("gris", "Gris", 0x2E3238, 0.75f),
     ColorAuto("negro", "Negro", 0x050506, 0.6f),
     ColorAuto("azul", "Azul", 0x0A1F52, 0.65f),
-    ColorAuto("celeste", "Celeste", 0x3A6A96, 0.7f),
+    ColorAuto("celeste", "Celeste", 0x4C96D8, 0.45f),
     ColorAuto("beige", "Beige", 0x8F8165, 0.7f),
     ColorAuto("marron", "Marrón", 0x2E1A12, 0.65f),
     ColorAuto("verde", "Verde", 0x0F3024, 0.65f),
@@ -99,14 +99,14 @@ private fun tipo(ruta: String) = when (ruta.substringAfterLast('.')) {
 }
 
 /** What the page calls back. WebView runs these on its own thread, so each one hops to the main thread. */
-private class Puente(val listo: (String) -> Unit, val lento: (String) -> Unit) {
+private class Puente(val alListo: (String) -> Unit, val alLento: (String) -> Unit) {
     private val principal = Handler(Looper.getMainLooper())
 
     @JavascriptInterface
-    fun listo(que: String) { principal.post { listo(que) } }
+    fun listo(que: String) { principal.post { alListo(que) } }
 
     @JavascriptInterface
-    fun lento(motivo: String) { principal.post { lento(motivo) } }
+    fun lento(motivo: String) { principal.post { alLento(motivo) } }
 }
 
 /** The state as the call the page understands (see window.auto3d.set in assets/auto3d/index.html). */
@@ -172,8 +172,8 @@ fun Auto3D(
                 val navegador = Regex("Chrome/[0-9.]+").find(w.settings.userAgentString.orEmpty())?.value ?: "WebView desconocido"
                 w.addJavascriptInterface(
                     Puente(
-                        listo = { que -> listo = true; Preferencia3D.informe.value = "Funcionando: $que · $navegador"; listoActual() },
-                        lento = { motivo -> fallarActual("$motivo · $navegador") },
+                        alListo = { que -> listo = true; Preferencia3D.informe.value = "Funcionando: $que · $navegador"; listoActual() },
+                        alLento = { motivo -> fallarActual("$motivo · $navegador") },
                     ),
                     "Android",
                 )

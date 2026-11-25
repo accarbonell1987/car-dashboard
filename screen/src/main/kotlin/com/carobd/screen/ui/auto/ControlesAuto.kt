@@ -1,5 +1,9 @@
 package com.carobd.screen.ui.auto
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -105,7 +109,7 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
     var listo3D by remember(en3D) { mutableStateOf(false) }
     val tocar = { if (panel) panel = false }
     val mantener = { panel = !panel }
-    Box(modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { mantener() }, onTap = { tocar() }) }) {
+    Box(modifier.clip(RoundedCornerShape(12.dp)).pointerInput(Unit) { detectTapGestures(onLongPress = { mantener() }, onTap = { tocar() }) }) {
         if (en3D) {
             Auto3D(
                 estado = estado,
@@ -122,7 +126,8 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
                 },
             )
         }
-        if (!en3D || !listo3D) {
+        // The photo fades away over the scene instead of popping out.
+        AnimatedVisibility(!en3D || !listo3D, Modifier.fillMaxSize(), enter = EnterTransition.None, exit = fadeOut(tween(700))) {
             AutoAnimado(estado, Modifier.fillMaxSize().background(p.celda)) { FotoAuto(Modifier.fillMaxSize()) }
         }
         if (panel) {
