@@ -231,8 +231,8 @@ fun Auto3D(
     // The model can take a while on a slow screen. A page that never reports back (a WebView too old to parse it, a stuck load) must not hide behind the photo forever.
     LaunchedEffect(web) {
         if (web == null) return@LaunchedEffect
-        kotlinx.coroutines.delay(90_000)
-        if (!listo) fallarActual("no terminó de cargar en 90 s")
+        kotlinx.coroutines.delay(240_000)
+        if (!listo) fallarActual("no terminó de cargar en 4 minutos")
     }
     // Before the page is up the call is a no-op; once it reports ready, the current state goes in.
     LaunchedEffect(web, listo, js) { web?.evaluateJavascript(js, null) }
