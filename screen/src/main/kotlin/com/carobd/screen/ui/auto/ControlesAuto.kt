@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.carobd.core.auto.AmbienteAuto
 import com.carobd.core.auto.DemoAuto
 import com.carobd.core.auto.EstadoVisualAuto
 import com.carobd.core.auto.LucesAuto
@@ -48,6 +49,7 @@ import com.carobd.screen.ui.FotoAuto
 import com.carobd.screen.ui.comun.Interruptor
 import com.carobd.screen.ui.comun.Opcion
 import kotlinx.coroutines.delay
+import java.util.Calendar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
@@ -61,6 +63,8 @@ object ControlesAuto {
     val lluvia = MutableStateFlow<Float?>(null)
     /** In demo mode, run the light and rain cycle of [DemoAuto]. */
     val demo = MutableStateFlow(true)
+    /** null follows the clock and the weather; a value forces that mood, to try them out. */
+    val ambiente = MutableStateFlow<AmbienteAuto?>(null)
 
     fun cambiar(cambio: (LucesAuto) -> LucesAuto) = luces.update(cambio)
 }
@@ -89,6 +93,24 @@ fun rememberEstadoVisualAuto(e: EstadoTablero): EstadoVisualAuto {
     }
 }
 
+/** The mood for the 3D background right now: the forced one, or the clock (read every minute) plus the weather. */
+@Composable
+private fun rememberAmbiente(): AmbienteAuto? {
+    val activo by Preferencia3D.ambientar.collectAsState()
+    val forzado by ControlesAuto.ambiente.collectAsState()
+    val clima by ClimaActual.clima.collectAsState()
+    val hora by produceState(horaLocal()) {
+        while (true) {
+            delay(60_000)
+            value = horaLocal()
+        }
+    }
+    if (!activo) return null
+    return forzado ?: AmbienteAuto.de(clima?.codigo, hora)
+}
+
+private fun horaLocal(): Float = Calendar.getInstance().let { it.get(Calendar.HOUR_OF_DAY) + it.get(Calendar.MINUTE) / 60f }
+
 /**
  * The animated car as the screens show it: the 3D model when the screen can run it, the photo otherwise.
  * A long press on the car opens the light toggles over it,
@@ -105,6 +127,7 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
     val lento by Preferencia3D.lento.collectAsState()
     val en3D = activo3D && !lento
     val pintura by Preferencia3D.color.collectAsState()
+    val ambiente = rememberAmbiente()
     // The photo stays on top until the 3D scene has drawn its first frame, and for good if it cannot run.
     var listo3D by remember(en3D) { mutableStateOf(false) }
     val tocar = { if (panel) panel = false }
@@ -116,6 +139,7 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
                 embrague = e.valores[MotorExtendido.EMBRAGUE] == 1.0,
                 fondo = p.celda,
                 pintura = pintura,
+                ambiente = ambiente,
                 modifier = Modifier.fillMaxSize(),
                 alTocar = tocar,
                 alMantener = mantener,
@@ -243,6 +267,27 @@ fun AjustesLucesAuto(e: EstadoTablero) {
                             .border(if (elegido) 3.dp else 1.dp, if (elegido) p.normal else p.linea, RoundedCornerShape(12.dp))
                             .clickable(role = Role.RadioButton, onClickLabel = c.nombre) { Preferencia3D.pintar(contexto, c) },
                     )
+                }
+            }
+        }
+    }
+    if (activo3D && !lento) {
+        val ambientar by Preferencia3D.ambientar.collectAsState()
+        val forzado by ControlesAuto.ambiente.collectAsState()
+        Interruptor("Ambientar el fondo", ambientar, "El cielo y la luz siguen la hora y el clima: día, nublado, niebla, nieve, tormenta y noche") { Preferencia3D.ambientar(contexto, it) }
+        if (ambientar) {
+            val pruebas = listOf(
+                "Automático" to null,
+                "Día" to AmbienteAuto(12f),
+                "Atardecer" to AmbienteAuto(18.6f),
+                "Noche" to AmbienteAuto(22f),
+                "Nublado" to AmbienteAuto(13f, nubes = 1f),
+                "Niebla" to AmbienteAuto(9f, nubes = 0.8f, niebla = 1f),
+                "Nieve" to AmbienteAuto(11f, nubes = 1f, nieve = 1f),
+            )
+            for (fila in pruebas.chunked(4)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((nombre, a) in fila) Opcion(nombre, forzado == a, Modifier.weight(1f)) { ControlesAuto.ambiente.value = a }
                 }
             }
         }

@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
+import com.carobd.core.auto.AmbienteAuto
 import com.carobd.core.auto.EstadoVisualAuto
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.ByteArrayInputStream
@@ -42,6 +43,8 @@ object Preferencia3D {
     val activo = MutableStateFlow(true)
     /** The body colour of the 3D car, one of [COLORES_AUTO]. */
     val color = MutableStateFlow(COLORES_AUTO.first())
+    /** Whether the background follows the time of day and the weather. */
+    val ambientar = MutableStateFlow(true)
     val lento = MutableStateFlow(false)
     /** Why the 3D view gave up, or what it runs on when it works; shown in Ajustes to diagnose a screen. */
     val informe = MutableStateFlow<String?>(null)
@@ -53,8 +56,14 @@ object Preferencia3D {
         if (cargado) return
         cargado = true
         activo.value = prefs(c).getBoolean("activo", true)
+        ambientar.value = prefs(c).getBoolean("ambientar", true)
         val guardado = prefs(c).getString("color", null)
         color.value = COLORES_AUTO.firstOrNull { it.id == guardado } ?: COLORES_AUTO.first()
+    }
+
+    fun ambientar(c: Context, v: Boolean) {
+        ambientar.value = v
+        prefs(c).edit().putBoolean("ambientar", v).apply()
     }
 
     fun pintar(c: Context, v: ColorAuto) {
@@ -110,12 +119,13 @@ private class Puente(val alListo: (String) -> Unit, val alLento: (String) -> Uni
 }
 
 /** The state as the call the page understands (see window.auto3d.set in assets/auto3d/index.html). */
-internal fun jsEstado(e: EstadoVisualAuto, embrague: Boolean): String {
+internal fun jsEstado(e: EstadoVisualAuto, embrague: Boolean, ambiente: AmbienteAuto? = null): String {
     val l = e.luces
     return String.format(
         Locale.US,
-        "window.auto3d&&auto3d.set({v:%.1f,lluvia:%.2f,freno:%b,embrague:%b,pos:%b,baja:%b,alta:%b,gi:%b,gd:%b})",
+        "window.auto3d&&auto3d.set({v:%.1f,lluvia:%.2f,freno:%b,embrague:%b,pos:%b,baja:%b,alta:%b,gi:%b,gd:%b,hora:%.2f,nubes:%.2f,niebla:%.2f,nieve:%.2f})",
         e.velocidadKmh, e.lluvia, l.stop, embrague, l.posicionEncendida, l.baja, l.alta, l.parpadeaIzq, l.parpadeaDer,
+        ambiente?.hora ?: -1f, ambiente?.nubes ?: 0f, ambiente?.niebla ?: 0f, ambiente?.nieve ?: 0f,
     )
 }
 
@@ -124,6 +134,7 @@ internal fun jsEstado(e: EstadoVisualAuto, embrague: Boolean): String {
  * - Speed turns the wheels and moves the wind and the road; its changes lean the body a little.
  * - The brake lights the stop lamps and swings the camera to the rear; releasing the clutch gives the gear tug.
  * - Rain, lights and turn signals come from [estado] like in the photo version.
+ * [ambiente] sets the sky and the light behind the car; null keeps the plain card colour.
  * Dragging turns the camera. Nothing is loaded from the network: any request outside the assets gets an empty answer.
  *
  * @param alListo called once the scene is drawing, so the caller can take the photo away.
@@ -137,6 +148,7 @@ fun Auto3D(
     fondo: Color,
     modifier: Modifier = Modifier,
     pintura: ColorAuto = COLORES_AUTO.first(),
+    ambiente: AmbienteAuto? = null,
     alTocar: () -> Unit = {},
     alMantener: () -> Unit = {},
     alListo: () -> Unit = {},
@@ -220,7 +232,7 @@ fun Auto3D(
         )
     }
 
-    val js = remember(estado, embrague) { jsEstado(estado, embrague) }
+    val js = remember(estado, embrague, ambiente) { jsEstado(estado, embrague, ambiente) }
     val colorFondo = remember(fondo) { String.format("#%06x", fondo.toArgb() and 0xFFFFFF) }
     LaunchedEffect(web, listo, colorFondo) {
         if (listo) web?.evaluateJavascript("window.auto3d&&auto3d.fondo('$colorFondo')", null)
