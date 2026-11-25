@@ -12,7 +12,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:transparent}
 <div id="stage"><canvas id="c"></canvas></div>
 <script>
 // Anything that stops the scene (no WebGL, a WebView too old for this script) sends the app back to the photo.
-window.onerror=function(m){try{window.Android&&Android.lento('error: '+m);}catch(e){}};
+window.onerror=function(m,src,line){try{window.Android&&Android.lento('error: '+m+' ('+String(src||'').split('/').pop()+':'+line+')');}catch(e){}};
 </script>
 <script src="three.min.js"></script>
 <script src="GLTFLoader.js"></script>
@@ -408,7 +408,8 @@ if(window.ResizeObserver)new ResizeObserver(()=>{resize();awake=3;}).observe(sta
 /* ---------- The real car: "hyundai accent 2013" by L95XP (CC BY 4.0), simplified and repainted ---------- */
 const stopMats=[];
 (function(){
-  const done=ok=>{awake=3;say('listo',ok?'modelo':'boceto');};
+  const gpu=()=>{try{const g=renderer.getContext(),x=g.getExtension('WEBGL_debug_renderer_info');return x?g.getParameter(x.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER);}catch(e){return '?';}};
+  const done=ok=>{awake=3;say('listo',(ok?'modelo':'boceto')+' · '+gpu());};
   if(!T.GLTFLoader){done(false);return;}
   const fail=()=>done(false);
   fetch('accent.glb').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(buf=>new T.GLTFLoader().parse(buf,'',onModel,fail)).catch(fail);
@@ -481,7 +482,7 @@ function frame(now){
   const dt=Math.min(0.1,(now-last)/1000); last=now; awake-=dt;
   // measure the real rate; step the resolution down if the GPU cannot keep up, and tell the app if even that fails
   fpsN++; fpsT+=dt; if(fpsT>=3){const fps=fpsN/fpsT; fpsN=0; fpsT=0;
-    if(fps<17){ if(calidad<PR.length-1){calidad++; resize();} else if(++slow>=2&&fps<9)say('lento',fps.toFixed(1)); } else slow=0; }
+    if(fps<17){ if(calidad<PR.length-1){calidad++; resize();} else if(++slow>=2&&fps<9)say('lento','lento: '+fps.toFixed(1)+' cuadros por segundo'); } else slow=0; }
   // The app sends the real speed in steps; smooth it and read the push from its slope
   const prev=S.vs; S.vs+=(S.speed-S.vs)*Math.min(1,dt*2.2); if(S.speed<0.5&&S.vs<0.3)S.vs=0;
   let acc=clamp((S.vs-prev)/3.6/Math.max(dt,1e-4),-11,7.5); const dv=S.speed-S.vs;

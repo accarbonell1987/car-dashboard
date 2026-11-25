@@ -116,7 +116,10 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
                 alTocar = tocar,
                 alMantener = mantener,
                 alListo = { listo3D = true },
-                alFallar = { Preferencia3D.lento.value = true },
+                alFallar = { motivo ->
+                    Preferencia3D.informe.value = "No se pudo mostrar: $motivo"
+                    Preferencia3D.lento.value = true
+                },
             )
         }
         if (!en3D || !listo3D) {
@@ -217,6 +220,8 @@ fun AjustesLucesAuto(e: EstadoTablero) {
         activo3D && !lento,
         if (lento) "Esta pantalla no pudo moverlo con fluidez: se muestra la foto. Actívalo para reintentar" else "Con ruedas, frenada, cambios, lluvia y viento. Arrastra el auto para girarlo",
     ) { Preferencia3D.cambiar(contexto, it) }
+    val informe by Preferencia3D.informe.collectAsState()
+    informe?.let { Text(it, color = if (lento) p.atencion else p.tenue, fontSize = 14.sp) }
     if (activo3D && !lento) {
         val pintura by Preferencia3D.color.collectAsState()
         Text("Color del auto: ${pintura.nombre}", color = p.texto, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)

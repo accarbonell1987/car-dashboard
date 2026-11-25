@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
@@ -42,6 +43,8 @@ object Preferencia3D {
     /** The body colour of the 3D car, one of [COLORES_AUTO]. */
     val color = MutableStateFlow(COLORES_AUTO.first())
     val lento = MutableStateFlow(false)
+    /** Why the 3D view gave up, or what it runs on when it works; shown in Ajustes to diagnose a screen. */
+    val informe = MutableStateFlow<String?>(null)
     private var cargado = false
 
     private fun prefs(c: Context) = c.applicationContext.getSharedPreferences("auto3d", Context.MODE_PRIVATE)
@@ -96,14 +99,14 @@ private fun tipo(ruta: String) = when (ruta.substringAfterLast('.')) {
 }
 
 /** What the page calls back. WebView runs these on its own thread, so each one hops to the main thread. */
-private class Puente(val listo: () -> Unit, val lento: () -> Unit) {
+private class Puente(val listo: (String) -> Unit, val lento: (String) -> Unit) {
     private val principal = Handler(Looper.getMainLooper())
 
     @JavascriptInterface
-    fun listo(@Suppress("UNUSED_PARAMETER") que: String) { principal.post(listo) }
+    fun listo(que: String) { principal.post { listo(que) } }
 
     @JavascriptInterface
-    fun lento(@Suppress("UNUSED_PARAMETER") fps: String) { principal.post(lento) }
+    fun lento(motivo: String) { principal.post { lento(motivo) } }
 }
 
 /** The state as the call the page understands (see window.auto3d.set in assets/auto3d/index.html). */
@@ -137,7 +140,7 @@ fun Auto3D(
     alTocar: () -> Unit = {},
     alMantener: () -> Unit = {},
     alListo: () -> Unit = {},
-    alFallar: () -> Unit = {},
+    alFallar: (String) -> Unit = {},
 ) {
     val listoActual by rememberUpdatedState(alListo)
     val fallarActual by rememberUpdatedState(alFallar)
@@ -154,9 +157,11 @@ fun Auto3D(
                 // Some head units ship without a working system WebView: building one throws.
                 val w = try { WebView(ctx) } catch (t: Throwable) { null }
                 if (w == null) {
-                    Handler(Looper.getMainLooper()).post { fallarActual() }
+                    Handler(Looper.getMainLooper()).post { fallarActual("esta pantalla no tiene WebView del sistema") }
                     return@AndroidView android.view.View(ctx)
                 }
+                // Without this the WebView wraps its content and the page gets a viewport 0 px tall: nothing is drawn.
+                w.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 w.settings.javaScriptEnabled = true
                 w.settings.allowFileAccess = false
                 w.settings.allowContentAccess = false
@@ -164,7 +169,14 @@ fun Auto3D(
                 w.isVerticalScrollBarEnabled = false
                 w.isHorizontalScrollBarEnabled = false
                 w.overScrollMode = WebView.OVER_SCROLL_NEVER
-                w.addJavascriptInterface(Puente(listo = { listo = true; listoActual() }, lento = { fallarActual() }), "Android")
+                val navegador = Regex("Chrome/[0-9.]+").find(w.settings.userAgentString.orEmpty())?.value ?: "WebView desconocido"
+                w.addJavascriptInterface(
+                    Puente(
+                        listo = { que -> listo = true; Preferencia3D.informe.value = "Funcionando: $que · $navegador"; listoActual() },
+                        lento = { motivo -> fallarActual("$motivo · $navegador") },
+                    ),
+                    "Android",
+                )
                 w.webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
                         val vacio = { WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0))) }
@@ -182,7 +194,7 @@ fun Auto3D(
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = request.url.host != HOST
 
                     override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-                        fallarActual()
+                        fallarActual("el WebView se cerró solo")
                         return true
                     }
                 }
@@ -215,6 +227,12 @@ fun Auto3D(
     }
     LaunchedEffect(web, listo, pintura) {
         if (listo) web?.evaluateJavascript(String.format(Locale.US, "window.auto3d&&auto3d.color('#%06x',%.2f)", pintura.rgb, pintura.metal), null)
+    }
+    // The model can take a while on a slow screen. A page that never reports back (a WebView too old to parse it, a stuck load) must not hide behind the photo forever.
+    LaunchedEffect(web) {
+        if (web == null) return@LaunchedEffect
+        kotlinx.coroutines.delay(90_000)
+        if (!listo) fallarActual("no terminó de cargar en 90 s")
     }
     // Before the page is up the call is a no-op; once it reports ready, the current state goes in.
     LaunchedEffect(web, listo, js) { web?.evaluateJavascript(js, null) }
