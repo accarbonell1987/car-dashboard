@@ -65,3 +65,10 @@ jobs:
           path: |
             screen/build/capturas/
             screen/build/reports/tests/
+      # Copia de las capturas en el log, para quien no puede bajar artifacts.
+      - name: Capturas en base64
+        if: always()
+        run: |
+          for f in screen/build/capturas/asistente/*.png; do
+            echo "==INICIO $(basename "$f")"; base64 -w 120 "$f"; echo "==FIN"
+          done
