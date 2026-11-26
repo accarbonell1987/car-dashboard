@@ -137,7 +137,7 @@ function radialTex(stops,sz){const c=document.createElement('canvas');c.width=c.
 const canvas=document.getElementById('c'), stage=document.getElementById('stage');
 const renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 const FONDO=new T.Color(0x111418);
-renderer.outputEncoding=T.sRGBEncoding; renderer.toneMapping=T.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
+renderer.outputEncoding=T.sRGBEncoding; renderer.toneMapping=T.ACESFilmicToneMapping; renderer.toneMappingExposure=1.18;
 renderer.setClearColor(FONDO,1);
 const scene=new T.Scene(); scene.fog=new T.Fog(0x111418,11,22);
 const camera=new T.PerspectiveCamera(30,16/9,0.1,60);
@@ -153,12 +153,14 @@ const camera=new T.PerspectiveCamera(30,16/9,0.1,60);
   panel(9,1.6,0,7,0,5); panel(7,1.6,2,4,8,4); panel(7,1.6,-2,4,-8,3.2); panel(3,3,9,3,2,2.2); panel(3,3,-9,3,-1,1.6);
   const pm=new T.PMREMGenerator(renderer); scene.environment=pm.fromScene(env,0.03).texture; pm.dispose();
 })();
-scene.add(new T.HemisphereLight(0xbfd4ff,0x0a0c10,0.18));
-const sun=new T.DirectionalLight(0xffffff,0.9); sun.position.set(3,6,4); scene.add(sun);
+const hemi=new T.HemisphereLight(0xdfe8ff,0x20242c,0.32); scene.add(hemi);
+const sun=new T.DirectionalLight(0xffffff,1.15); sun.position.set(3,6,4); scene.add(sun);
+// a soft light from the camera's side, so the flank facing the driver is never left in the dark
+const fill=new T.DirectionalLight(0xffffff,0.3); scene.add(fill);
 
 const car=new T.Group(); scene.add(car); const paintRef={m:null}, PINT={hex:'#92060f',metal:0.62};
 const body=new T.Group(); car.add(body);
-const proc=new T.Group(); body.add(proc); const procW=new T.Group(); car.add(procW); // hand-built stand-in, shown only if the model file fails to load
+const proc=new T.Group(); body.add(proc); const procW=new T.Group(); car.add(procW); proc.visible=false; procW.visible=false; let modelo=0; // 0 loading, 1 loaded, 2 drawn and reported // hand-built stand-in, shown only if the model file fails to load
 const paint=new T.MeshPhysicalMaterial({color:0x9a0715,metalness:0.6,roughness:0.24,clearcoat:1,clearcoatRoughness:0.07,vertexColors:true,side:T.DoubleSide,envMapIntensity:0.95});
 proc.add(new T.Mesh(buildBody(),paint));
 
@@ -298,8 +300,18 @@ for(const ax of [AXF,AXR])for(const s of [1,-1]){
 
 // Platform, contact shadow
 const radial=radialTex; const _unused=(stops,sz)=>{const c=document.createElement('canvas');c.width=c.height=sz||256;const g=c.getContext('2d');const r=c.width/2;const gr=g.createRadialGradient(r,r,0,r,r,r);stops.forEach(s=>gr.addColorStop(s[0],s[1]));g.fillStyle=gr;g.fillRect(0,0,c.width,c.width);return new T.CanvasTexture(c);};
-const groundM=new T.MeshStandardMaterial({color:0x0a0d12,roughness:0.6,metalness:0,transparent:true,envMapIntensity:0.06,
-  map:radial([[0,'rgba(255,255,255,1)'],[0.26,'rgba(255,255,255,1)'],[0.5,'rgba(255,255,255,0.45)'],[0.72,'rgba(255,255,255,0)']])}); // fades out well before its edge, so no horizon line shows against the card
+// Asphalt: a fine speckle with a little aggregate, tiled, that runs backwards under the car with its speed
+const TILE=3; // metres per tile
+const asphalt=(function(){const n=256,c=document.createElement('canvas');c.width=c.height=n;const g=c.getContext('2d');g.fillStyle='#a4a6aa';g.fillRect(0,0,n,n);
+  for(let i=0;i<5200;i++){const x=Math.random()*n,y=Math.random()*n,l=Math.random(),r=l>0.97?2.2:l>0.85?1.3:0.7,v=Math.round(60+Math.random()*195);g.fillStyle='rgba('+v+','+v+','+(v+3)+','+(0.35+Math.random()*0.5)+')';
+    for(const ox of [0,n,-n])for(const oy of [0,n,-n]){g.beginPath();g.arc(x+ox,y+oy,r,0,6.3);g.fill();}}
+  const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(18/TILE,18/TILE);t.encoding=T.sRGBEncoding;t.anisotropy=4;return t;})();
+const groundM=new T.MeshStandardMaterial({color:0x161a21,roughness:0.6,metalness:0,transparent:true,envMapIntensity:0.06,map:asphalt});
+// the disc fades out well before its edge, so no horizon line shows against the card (done in the shader: the texture scrolls, the fade must not)
+groundM.onBeforeCompile=sh=>{
+  sh.vertexShader='varying vec2 vGp;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGp=position.xy;');
+  sh.fragmentShader='varying vec2 vGp;\n'+sh.fragmentShader.replace('#include <alphamap_fragment>','diffuseColor.a*=1.0-smoothstep(2.3,6.5,length(vGp));');
+};
 const ground=new T.Mesh(new T.CircleGeometry(9,64),groundM); ground.rotation.x=-Math.PI/2; scene.add(ground);
 const shadow=new T.Mesh(new T.PlaneGeometry(5.6,2.9),new T.MeshBasicMaterial({map:radial([[0,'rgba(0,0,0,0.92)'],[0.55,'rgba(0,0,0,0.75)'],[1,'rgba(0,0,0,0)']]),transparent:true,depthWrite:false}));
 shadow.rotation.x=-Math.PI/2; shadow.position.y=0.004; scene.add(shadow);
@@ -383,13 +395,14 @@ const windM=new T.ShaderMaterial({transparent:true,depthWrite:false,side:T.Doubl
 const reduce=false;
 const S={speed:0,rain:0,vs:0,rs:0,az:0.72,el:0.24,dist:7.6,auto:false,drag:false,manual:false};
 // What the app last told us. v km/h, lluvia 0..1; the rest are on/off.
-const E={v:0,lluvia:0,freno:false,embrague:false,pos:false,baja:false,alta:false,gi:false,gd:false};
-let awake=3, calidad=0; const PR=[1.5,1,0.7];
+// hora 0..24 (below 0 = no ambience: the plain card colour), nubes, niebla and nieve 0..1.
+const E={v:0,lluvia:0,freno:false,embrague:false,pos:false,baja:false,alta:false,gi:false,gd:false,hora:-1,nubes:0,niebla:0,nieve:0};
+let awake=3, calidad=0, recibido=false, tModelo=0, anchoV=0, altoV=0; const PR=[1.5,1,0.7];
 const host=window.Android||null, say=(f,a)=>{try{if(host&&host[f])host[f](a===undefined?'':String(a));}catch(e){}};
 window.auto3d={
-  set(o){let ch=false;for(const k in o)if(k in E&&E[k]!==o[k]){E[k]=o[k];ch=true;} if(ch){S.speed=+E.v||0;S.rain=clamp(+E.lluvia||0,0,1);awake=3;}},
+  set(o){recibido=true;let ch=false;for(const k in o)if(k in E&&E[k]!==o[k]){E[k]=o[k];ch=true;} if(ch){S.speed=+E.v||0;S.rain=clamp(+E.lluvia||0,0,1);awake=3;}},
   girar(dx,dy){S.manual=true;S.az-=dx*0.008;S.el=clamp(S.el+dy*0.005,0.04,1.2);awake=3;},
-  fondo(hex){FONDO.set(hex);renderer.setClearColor(FONDO,1);scene.fog.color.copy(FONDO);awake=3;},
+  fondo(hex){FONDO.set(hex);renderer.setClearColor(FONDO,1);if(!A.on)scene.fog.color.copy(FONDO);awake=3;},
   // Body colour: hex plus how metallic the paint is (solid white wants little, a dark metallic a lot).
   color(hex,metal){PINT.hex=hex;PINT.metal=metal===undefined?0.62:+metal;pintar();awake=3;},
   estado:S
@@ -397,7 +410,7 @@ window.auto3d={
 function pintar(){for(const m of [paint,paintRef.m]){if(!m)continue;m.color.set(PINT.hex);m.metalness=PINT.metal;}}
 
 function resize(){
-  const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return;
+  const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return; anchoV=w; altoV=h;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,PR[calidad])); renderer.setSize(w,h,false);
   camera.aspect=w/h; camera.fov=w/h<1?46:30; camera.updateProjectionMatrix();
   const px=renderer.domElement.height/(2*Math.tan(camera.fov*Math.PI/360)); splash.m.uniforms.px.value=px; spray.m.uniforms.px.value=px;
@@ -408,8 +421,7 @@ if(window.ResizeObserver)new ResizeObserver(()=>{resize();awake=3;}).observe(sta
 /* ---------- The real car: "hyundai accent 2013" by L95XP (CC BY 4.0), simplified and repainted ---------- */
 const stopMats=[];
 (function(){
-  const gpu=()=>{try{const g=renderer.getContext(),x=g.getExtension('WEBGL_debug_renderer_info');return x?g.getParameter(x.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER);}catch(e){return '?';}};
-  const done=ok=>{awake=3;say('listo',(ok?'modelo':'boceto')+' · '+gpu());};
+  const done=ok=>{awake=3; if(ok)modelo=1; else say('lento','no se pudo cargar el modelo 3D');};
   if(!T.GLTFLoader){done(false);return;}
   const fail=()=>done(false);
   fetch('accent.glb').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(buf=>new T.GLTFLoader().parse(buf,'',onModel,fail)).catch(fail);
@@ -429,7 +441,7 @@ const stopMats=[];
     const seen=new Set();
     fit.traverse(o=>{
       if(!o.isMesh)return; const m=o.material; if(!m||seen.has(m))return; seen.add(m);
-      m.envMapIntensity=1; if('transmission' in m)m.transmission=0;
+      m.envMapIntensity=1.3; if('transmission' in m)m.transmission=0;
       if(m.name==='body'){m.roughness=0.22;m.clearcoat=1;m.clearcoatRoughness=0.06;paintRef.m=m;pintar();}
       else if(m.name==='vehicle_vehglass'){m.color.setRGB(0.42,0.01,0.02);m.transparent=true;m.opacity=0.9;m.roughness=0.15;m.emissive=new T.Color(1,0,0);m.emissiveIntensity=0;stopMats.push(m);}
       else if(m.name==='Material_41'||m.name==='Material_43'){m.emissive=new T.Color(1,0.96,0.88);m.emissiveIntensity=0;headMats.push(m);}
@@ -458,6 +470,62 @@ const stopMats=[];
   }
 })();
 
+/* ---------- Ambience: the sky, the light and the weather follow the time of day ---------- */
+const skyU={top:{value:new T.Color()},hor:{value:new T.Color()}};
+const sky=new T.Mesh(new T.SphereGeometry(40,24,12),new T.ShaderMaterial({uniforms:skyU,side:T.BackSide,depthWrite:false,fog:false,
+  vertexShader:'varying float h;void main(){h=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 top;uniform vec3 hor;varying float h;void main(){float t=pow(clamp((h+0.30)*2.1,0.,1.),.8);gl_FragColor=vec4(mix(hor,top,t),1.);}'}));
+sky.renderOrder=-10; sky.visible=false; scene.add(sky);
+// [hour, zenith, horizon, sun colour, sun strength, sky fill, exposure, stars, daylight]
+const HORAS=[
+  [0,   0x04060c,0x0b1220,0x8fa6d8,0.40,0.22,1.00,1,0],
+  [5,   0x04060c,0x0b1220,0x8fa6d8,0.40,0.22,1.00,1,0],
+  [6.2, 0x2a3d63,0xb98c6c,0xffc79a,0.85,0.26,1.10,0,0.45],
+  [8,   0x2f5f9c,0x9dbfdd,0xfff6e6,1.20,0.34,1.20,0,1],
+  [17,  0x2f5f9c,0x9dbfdd,0xfff6e6,1.20,0.34,1.20,0,1],
+  [18.6,0x2b2a4e,0xb0684c,0xffb07a,0.85,0.26,1.10,0,0.45],
+  [20,  0x04060c,0x0b1220,0x8fa6d8,0.40,0.22,1.00,1,0],
+  [24,  0x04060c,0x0b1220,0x8fa6d8,0.40,0.22,1.00,1,0]];
+const cA=new T.Color(), cB=new T.Color(), cTop=new T.Color(), cHor=new T.Color(), cSun=new T.Color(), cGrey=new T.Color(), cGround=new T.Color();
+const GROUND0=new T.Color(0x161a21), GROUND_DAY=new T.Color(0x33373d), SNOW=new T.Color(0xc4ccd8);
+const stars=(function(){const n=260,p=new Float32Array(n*3);for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,e=-0.22+Math.random()*0.75;p[i*3]=Math.cos(a)*Math.cos(e)*38;p[i*3+1]=Math.sin(e)*38;p[i*3+2]=Math.sin(a)*Math.cos(e)*38;}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(p,3));
+  const m=new T.Points(g,new T.PointsMaterial({color:0xdfe8ff,size:1.6,sizeAttenuation:false,transparent:true,opacity:0,depthWrite:false,fog:false}));m.renderOrder=-9;m.visible=false;scene.add(m);return m;})();
+const NS=520, sp3=new Float32Array(NS*3), sph=new Float32Array(NS);
+for(let i=0;i<NS;i++){sp3[i*3]=(Math.random()*2-1)*BX;sp3[i*3+1]=Math.random()*BY;sp3[i*3+2]=(Math.random()*2-1)*BZ;sph[i]=Math.random()*6.28;}
+const snowG=new T.BufferGeometry(); snowG.setAttribute('position',new T.BufferAttribute(sp3,3));
+const snow=new T.Points(snowG,new T.PointsMaterial({map:whiteTex,color:0xffffff,size:0.11,transparent:true,opacity:0.9,depthWrite:false})); snow.visible=false; snow.frustumCulled=false; scene.add(snow);
+const A={on:false,hora:12,nubes:0,niebla:0,nieve:0,flash:0};
+function ambience(dt,r,v,now){
+  if(E.hora<0){ if(A.on){A.on=false;sky.visible=stars.visible=snow.visible=false;hemi.intensity=0.32;sun.intensity=1.15;sun.color.set(0xffffff);sun.position.set(3,6,4);renderer.toneMappingExposure=1.18;scene.fog.color.copy(FONDO);scene.fog.near=11;scene.fog.far=22;groundM.color.copy(GROUND0);} return; }
+  const f=A.on?Math.min(1,dt*1.5):1; A.on=true;
+  A.hora+=(E.hora-A.hora)*f; A.nubes+=(clamp(Math.max(E.nubes,r*0.9),0,1)-A.nubes)*f; A.niebla+=(E.niebla-A.niebla)*f; A.nieve+=(E.nieve-A.nieve)*f;
+  let i=0; while(i<HORAS.length-2&&A.hora>=HORAS[i+1][0])i++;
+  const a=HORAS[i], b=HORAS[i+1], t=sstep(a[0],b[0],A.hora), mx=(k)=>lerp(a[k],b[k],t);
+  cTop.copy(cA.set(a[1])).lerp(cB.set(b[1]),t); cHor.copy(cA.set(a[2])).lerp(cB.set(b[2]),t); cSun.copy(cA.set(a[3])).lerp(cB.set(b[3]),t);
+  const day=mx(8), c=A.nubes, n=A.niebla;
+  // clouds take the colour out of the sky and the punch out of the sun; fog pulls everything to the horizon colour
+  let l=(cHor.r+cHor.g+cHor.b)/3; cGrey.setRGB(l*0.74,l*0.78,l*0.84); cHor.lerp(cGrey,c*0.85);
+  l=(cTop.r+cTop.g+cTop.b)/3+0.03*day; cGrey.setRGB(l*0.9,l*0.95,l*1.02); cTop.lerp(cGrey,c*0.85); cTop.lerp(cHor,n*0.85);
+  // lightning in a storm: a short white flash now and then
+  if(r>0.9&&Math.random()<dt*0.14)A.flash=1; A.flash*=Math.exp(-dt*9); if(A.flash>0.02)awake=3;
+  cHor.lerp(cA.set(0xcfd8ff),A.flash*0.6); cTop.lerp(cA.set(0x9fb0e0),A.flash*0.5);
+  skyU.top.value.copy(cTop); skyU.hor.value.copy(cHor); sky.visible=true;
+  scene.fog.color.copy(cHor).convertSRGBToLinear(); scene.fog.near=lerp(11,5.5,n); scene.fog.far=lerp(22,14,n);
+  const ang=(A.hora-6)/12*Math.PI; sun.position.set(Math.cos(ang)*6,Math.max(1.6,Math.sin(ang)*7),4);
+  sun.color.copy(cSun); sun.intensity=mx(4)*(1-0.6*c)*(1-0.4*n); hemi.intensity=mx(5)*(1+0.5*c)+A.flash*0.8;
+  renderer.toneMappingExposure=mx(6)*(1-0.12*c)+A.flash*0.7;
+  const st=mx(7)*(1-c)*(1-n); stars.visible=st>0.02; stars.material.opacity=st*0.9;
+  cGround.copy(GROUND0).lerp(GROUND_DAY,day*(1-0.3*c)).lerp(cHor,0.16*day); cA.copy(SNOW).multiplyScalar(0.3+0.7*day); cGround.lerp(cA,sstep(0,0.5,A.nieve)); groundM.color.copy(cGround);
+  // snow drifts down slowly and is swept back by the car's speed
+  const ns=Math.floor(NS*clamp(A.nieve,0,1)); snow.visible=ns>0; snowG.setDrawRange(0,ns);
+  if(ns>0){ awake=3; const vx=-Math.min(v,30)*0.45;
+    for(let j=0;j<ns;j++){const o=j*3; sph[j]+=dt*1.7; let x=sp3[o]+(vx+Math.sin(sph[j])*0.25)*dt, y=sp3[o+1]-(0.9+(j%7)*0.06)*dt, z=sp3[o+2]+Math.cos(sph[j]*0.8)*0.2*dt;
+      if(x<-BX)x+=2*BX; if(y<0||y<carH(x,z)){x=(Math.random()*2-1)*BX;y=BY*(0.8+Math.random()*0.2);z=(Math.random()*2-1)*BZ;}
+      sp3[o]=x;sp3[o+1]=y;sp3[o+2]=z;}
+    snowG.attributes.position.needsUpdate=true; }
+}
+
 /* ---------- Turn signals and hazards: amber at the four corners, 1.5 Hz like the car's relay ---------- */
 const amberTex=radialTex([[0,'rgba(255,190,70,1)'],[0.25,'rgba(255,150,20,0.55)'],[1,'rgba(255,130,0,0)']]);
 const blink=[]; // [front left, front right, rear left, rear right]; the car's left is -z
@@ -477,9 +545,12 @@ const tgt={sx:1,px:0,pitch:0,py:0}, spr={sx:{x:1,v:0},px:{x:0,v:0},pitch:{x:0,v:
 function frame(now){
   requestAnimationFrame(frame);
   if(S.speed>0.3||S.vs>0.3||S.rain>0||S.rs>0.01||E.gi||E.gd||E.freno||camRear||camBack)awake=3;
+  if(!modelo){last=now;tModelo=now;return;}
+  if(modelo===1&&!recibido&&now-tModelo<3000){last=now;return;} // wait a moment for the app's first state, so the first frame already has its sky             // the car is still loading: draw nothing rather than a stand-in
   if(awake<=0){last=now;return;}            // parked, dry and dark: nothing to draw, let the GPU rest
   if(now-lastDraw<30)return; lastDraw=now;  // about 30 frames a second is plenty for a head unit
   const dt=Math.min(0.1,(now-last)/1000); last=now; awake-=dt;
+  if(stage.clientWidth!==anchoV||stage.clientHeight!==altoV)resize(); // moved to another screen's box: fit before drawing, not a frame later
   // measure the real rate; step the resolution down if the GPU cannot keep up, and tell the app if even that fails
   fpsN++; fpsT+=dt; if(fpsT>=3){const fps=fpsN/fpsT; fpsN=0; fpsT=0;
     if(fps<17){ if(calidad<PR.length-1){calidad++; resize();} else if(++slow>=2&&fps<9)say('lento','lento: '+fps.toFixed(1)+' cuadros por segundo'); } else slow=0; }
@@ -521,7 +592,7 @@ function frame(now){
   if(!brk&&!camBack)S.manual=false;
 
   const d=S.dist*(camera.aspect<1?1.15:1);
-  camera.position.set(Math.sin(S.az)*Math.cos(S.el)*d,0.75+Math.sin(S.el)*d,Math.cos(S.az)*Math.cos(S.el)*d); camera.lookAt(0,0.62,0);
+  camera.position.set(Math.sin(S.az)*Math.cos(S.el)*d,0.75+Math.sin(S.el)*d,Math.cos(S.az)*Math.cos(S.el)*d); camera.lookAt(0,0.62,0); fill.position.set(camera.position.x,camera.position.y+1.5,camera.position.z);
 
   // wheels turn with speed and squash a touch under load; the body rides on its springs above them
   const sx=1+(spr.sx.x-1)*SUBTLE, sy=1/Math.pow(sx,0.7);
@@ -536,6 +607,7 @@ function frame(now){
   // wind
   wt+=dt*(0.25+v*0.085); windU.t.value=wt; windU.k.value=k;
 
+  asphalt.offset.x=(asphalt.offset.x+v*dt/TILE)%1; // the road runs backwards
   // road streaks
   for(let i=0;i<NSTK;i++){
     stk.x[i]-=v*dt; if(stk.x[i]<-8){stk.x[i]=8+Math.random()*2;stk.z[i]=(Math.random()*2-1)*4.2;}
@@ -569,7 +641,9 @@ function frame(now){
   groundM.roughness=lerp(0.6,0.16,r); groundM.envMapIntensity=lerp(0.06,0.2,r);
   paint.clearcoatRoughness=lerp(0.07,0.02,r); if(paintRef.m)paintRef.m.clearcoatRoughness=lerp(0.06,0.02,r);
 
+  ambience(dt,r,v,now);
   renderer.render(scene,camera);
+  if(modelo===1){modelo=2; let g='?'; try{const c=renderer.getContext(),x=c.getExtension('WEBGL_debug_renderer_info');g=x?c.getParameter(x.UNMASKED_RENDERER_WEBGL):c.getParameter(c.RENDERER);}catch(e){} say('listo','modelo · '+g);}
 }
 requestAnimationFrame(frame);
 })();
