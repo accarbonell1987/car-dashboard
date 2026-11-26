@@ -44,3 +44,24 @@ jobs:
           path: |
             screen/build/outputs/apk/debug/*.apk
             mobile/build/outputs/apk/debug/*.apk
+
+  capturas:
+    name: Capturas de pantallas (Robolectric)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      # Dibuja pantallas en JVM, sin emulador, y las sube como artifact para mirarlas.
+      - name: Dibujar capturas
+        run: ./gradlew :screen:testDebugUnitTest --tests '*AsistenteCapturasTest*'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capturas
+          path: |
+            screen/build/capturas/
+            screen/build/reports/tests/
