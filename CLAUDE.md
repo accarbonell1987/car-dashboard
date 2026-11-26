@@ -22,7 +22,7 @@ The head unit updates itself from GitHub releases, so a release IS the deploy. P
 8. **Signing.** Builds are debug builds signed with this Mac's debug keystore. An update only installs over an APK with the same signature, so build releases on this Mac.
 9. **On the car.** The app shows an update banner, or Ajustes → Acerca → Buscar actualización. Android asks for one confirmation tap (and the first time, to allow installs from CAROBD).
 
-Only one session publishes at a time: two sessions releasing from the same `main` would clash on version numbers.
+**Only the release thread publishes.** One dedicated thread of the project owns every release; no other thread pushes to `main` or creates releases. A development thread that has something ready sends the release thread its branch or PR, what changes and what to verify. The release thread merges it into `main` if it fits, publishes requests one at a time (consecutive `versionCode` and `apk-prueba-<N>`), and reports the result back to the requesting thread. Two sessions releasing from the same `main` would clash on version numbers.
 
 ## Rules that are easy to break
 
