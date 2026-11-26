@@ -2,6 +2,7 @@ package com.carobd.screen.ui.auto
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.MutableContextWrapper
 import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
@@ -11,17 +12,17 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -73,7 +74,12 @@ object Preferencia3D {
 
     fun cambiar(c: Context, v: Boolean) {
         activo.value = v
-        if (v) lento.value = false
+        if (v) {
+            lento.value = false
+            informe.value = null
+            Motor3D.reiniciar()
+        }
+        if (!v) Motor3D.reiniciar()
         prefs(c).edit().putBoolean("activo", v).apply()
     }
 }
@@ -130,17 +136,102 @@ internal fun jsEstado(e: EstadoVisualAuto, embrague: Boolean, ambiente: Ambiente
 }
 
 /**
+ * The one WebView that runs the scene, kept for the whole life of the app. The model is loaded once, at the first
+ * screen that shows the car; moving between Inicio and Vehículo only re-parents the view, so the car is there at once.
+ */
+@SuppressLint("StaticFieldLeak") // holds the application context only (through a MutableContextWrapper)
+internal object Motor3D {
+    /** The page's script has run: calls to window.auto3d land. */
+    val cargada = MutableStateFlow(false)
+    /** The model is in and has drawn its first frame. */
+    val listo = MutableStateFlow(false)
+    private var web: WebView? = null
+    private val principal = Handler(Looper.getMainLooper())
+
+    private fun fallar(motivo: String) {
+        Preferencia3D.informe.value = "No se pudo mostrar: $motivo"
+        Preferencia3D.lento.value = true
+        reiniciar() // the caller goes back to the photo; no reason to keep a scene running behind it
+    }
+
+    /** Throws the view away, so the next [obtener] starts clean (used when the user switches 3D back on). */
+    fun reiniciar() {
+        principal.removeCallbacksAndMessages(null)
+        web?.let { (it.parent as? ViewGroup)?.removeView(it); it.destroy() }
+        web = null
+        cargada.value = false
+        listo.value = false
+    }
+
+    fun js(codigo: String) { web?.evaluateJavascript(codigo, null) }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    fun obtener(ctx: Context, fondo: Int): WebView? {
+        web?.let { return it }
+        // Some head units ship without a working system WebView: building one throws.
+        val w = try { WebView(MutableContextWrapper(ctx.applicationContext)) } catch (t: Throwable) { null }
+        if (w == null) {
+            principal.post { fallar("esta pantalla no tiene WebView del sistema") }
+            return null
+        }
+        // Without this the WebView wraps its content and the page gets a viewport 0 px tall: nothing is drawn.
+        w.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        w.settings.javaScriptEnabled = true
+        w.settings.allowFileAccess = false
+        w.settings.allowContentAccess = false
+        w.setBackgroundColor(fondo)
+        w.isVerticalScrollBarEnabled = false
+        w.isHorizontalScrollBarEnabled = false
+        w.overScrollMode = WebView.OVER_SCROLL_NEVER
+        val navegador = Regex("Chrome/[0-9.]+").find(w.settings.userAgentString.orEmpty())?.value ?: "WebView desconocido"
+        w.addJavascriptInterface(
+            Puente(
+                alListo = { que -> listo.value = true; Preferencia3D.informe.value = "Funcionando: $que · $navegador" },
+                alLento = { motivo -> fallar("$motivo · $navegador") },
+            ),
+            "Android",
+        )
+        w.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
+                val vacio = { WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0))) }
+                val url = request.url
+                val ruta = url.path?.trimStart('/').orEmpty().ifEmpty { "index.html" }
+                if (url.host != HOST || ".." in ruta) return vacio()
+                return try {
+                    WebResourceResponse(tipo(ruta), if (ruta.endsWith(".glb")) null else "utf-8", view.context.assets.open("auto3d/$ruta"))
+                } catch (e: IOException) {
+                    vacio()
+                }
+            }
+
+            // The page never leaves its own host.
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = request.url.host != HOST
+
+            override fun onPageFinished(view: WebView, url: String?) { cargada.value = true }
+
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                fallar("el WebView se cerró solo")
+                return true
+            }
+        }
+        w.loadUrl("https://$HOST/index.html")
+        // The model can take a while on a slow screen, but a page that never reports back must not leave the card waiting forever.
+        principal.postDelayed({ if (!listo.value) fallar("no terminó de cargar en 4 minutos") }, 240_000)
+        web = w
+        return w
+    }
+}
+
+/**
  * The 3D Accent: a WebView running the three.js scene bundled in assets/auto3d, fed with the car's state.
  * - Speed turns the wheels and moves the wind and the road; its changes lean the body a little.
  * - The brake lights the stop lamps and swings the camera to the rear; releasing the clutch gives the gear tug.
  * - Rain, lights and turn signals come from [estado] like in the photo version.
  * [ambiente] sets the sky and the light behind the car; null keeps the plain card colour.
  * Dragging turns the camera. Nothing is loaded from the network: any request outside the assets gets an empty answer.
- *
- * @param alListo called once the scene is drawing, so the caller can take the photo away.
- * @param alFallar called when there is no WebView, no WebGL or the GPU is too slow: the caller shows the photo instead.
+ * The view itself lives in [Motor3D]; [Motor3D.listo] says when the car is on screen, and a failure (no WebView,
+ * no WebGL, a GPU too slow) sets [Preferencia3D.lento] so the caller shows the photo instead.
  */
-@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun Auto3D(
     estado: EstadoVisualAuto,
@@ -151,73 +242,26 @@ fun Auto3D(
     ambiente: AmbienteAuto? = null,
     alTocar: () -> Unit = {},
     alMantener: () -> Unit = {},
-    alListo: () -> Unit = {},
-    alFallar: (String) -> Unit = {},
 ) {
-    val listoActual by rememberUpdatedState(alListo)
-    val fallarActual by rememberUpdatedState(alFallar)
     val tocar by rememberUpdatedState(alTocar)
     val mantener by rememberUpdatedState(alMantener)
-    var listo by remember { mutableStateOf(false) }
-    var web by remember { mutableStateOf<WebView?>(null) }
+    val cargada by Motor3D.cargada.collectAsState()
     val densidad = LocalDensity.current.density
 
     Box(modifier) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
-                // Some head units ship without a working system WebView: building one throws.
-                val w = try { WebView(ctx) } catch (t: Throwable) { null }
-                if (w == null) {
-                    Handler(Looper.getMainLooper()).post { fallarActual("esta pantalla no tiene WebView del sistema") }
-                    return@AndroidView android.view.View(ctx)
-                }
-                // Without this the WebView wraps its content and the page gets a viewport 0 px tall: nothing is drawn.
-                w.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                w.settings.javaScriptEnabled = true
-                w.settings.allowFileAccess = false
-                w.settings.allowContentAccess = false
-                w.setBackgroundColor(fondo.toArgb())
-                w.isVerticalScrollBarEnabled = false
-                w.isHorizontalScrollBarEnabled = false
-                w.overScrollMode = WebView.OVER_SCROLL_NEVER
-                val navegador = Regex("Chrome/[0-9.]+").find(w.settings.userAgentString.orEmpty())?.value ?: "WebView desconocido"
-                w.addJavascriptInterface(
-                    Puente(
-                        alListo = { que -> listo = true; Preferencia3D.informe.value = "Funcionando: $que · $navegador"; listoActual() },
-                        alLento = { motivo -> fallarActual("$motivo · $navegador") },
-                    ),
-                    "Android",
-                )
-                w.webViewClient = object : WebViewClient() {
-                    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
-                        val vacio = { WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0))) }
-                        val url = request.url
-                        val ruta = url.path?.trimStart('/').orEmpty().ifEmpty { "index.html" }
-                        if (url.host != HOST || ".." in ruta) return vacio()
-                        return try {
-                            WebResourceResponse(tipo(ruta), if (ruta.endsWith(".glb")) null else "utf-8", view.context.assets.open("auto3d/$ruta"))
-                        } catch (e: IOException) {
-                            vacio()
-                        }
-                    }
-
-                    // The page never leaves its own host.
-                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = request.url.host != HOST
-
-                    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-                        fallarActual("el WebView se cerró solo")
-                        return true
+                FrameLayout(ctx).also { marco ->
+                    Motor3D.obtener(ctx, fondo.toArgb())?.let { w ->
+                        (w.context as? MutableContextWrapper)?.baseContext = ctx
+                        (w.parent as? ViewGroup)?.removeView(w)
+                        marco.addView(w)
                     }
                 }
-                w.loadUrl("https://$HOST/index.html")
-                web = w
-                w
             },
-            onRelease = { v ->
-                web = null
-                (v as? WebView)?.destroy()
-            },
+            // The WebView is only taken out, never destroyed: the next screen puts it back with the car already loaded.
+            onRelease = { marco -> marco.removeAllViews() },
         )
         // Touches stay in Compose: a tap and a long press go to the caller, a drag turns the camera.
         Box(
@@ -226,26 +270,19 @@ fun Auto3D(
                 .pointerInput(Unit) {
                     detectDragGestures { cambio, d ->
                         cambio.consume()
-                        web?.evaluateJavascript(String.format(Locale.US, "window.auto3d&&auto3d.girar(%.1f,%.1f)", d.x / densidad, d.y / densidad), null)
+                        Motor3D.js(String.format(Locale.US, "window.auto3d&&auto3d.girar(%.1f,%.1f)", d.x / densidad, d.y / densidad))
                     }
                 },
         )
     }
 
+    // Everything is sent as soon as the page's script is up, before the model arrives, so the car's first frame
+    // already has its colour, its sky and its state.
     val js = remember(estado, embrague, ambiente) { jsEstado(estado, embrague, ambiente) }
     val colorFondo = remember(fondo) { String.format("#%06x", fondo.toArgb() and 0xFFFFFF) }
-    LaunchedEffect(web, listo, colorFondo) {
-        if (listo) web?.evaluateJavascript("window.auto3d&&auto3d.fondo('$colorFondo')", null)
+    LaunchedEffect(cargada, colorFondo) { if (cargada) Motor3D.js("window.auto3d&&auto3d.fondo('$colorFondo')") }
+    LaunchedEffect(cargada, pintura) {
+        if (cargada) Motor3D.js(String.format(Locale.US, "window.auto3d&&auto3d.color('#%06x',%.2f)", pintura.rgb, pintura.metal))
     }
-    LaunchedEffect(web, listo, pintura) {
-        if (listo) web?.evaluateJavascript(String.format(Locale.US, "window.auto3d&&auto3d.color('#%06x',%.2f)", pintura.rgb, pintura.metal), null)
-    }
-    // The model can take a while on a slow screen. A page that never reports back (a WebView too old to parse it, a stuck load) must not hide behind the photo forever.
-    LaunchedEffect(web) {
-        if (web == null) return@LaunchedEffect
-        kotlinx.coroutines.delay(240_000)
-        if (!listo) fallarActual("no terminó de cargar en 4 minutos")
-    }
-    // Before the page is up the call is a no-op; once it reports ready, the current state goes in.
-    LaunchedEffect(web, listo, js) { web?.evaluateJavascript(js, null) }
+    LaunchedEffect(cargada, js) { if (cargada) Motor3D.js(js) }
 }

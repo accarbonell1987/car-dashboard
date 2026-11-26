@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -128,8 +129,7 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
     val en3D = activo3D && !lento
     val pintura by Preferencia3D.color.collectAsState()
     val ambiente = rememberAmbiente()
-    // The photo stays on top until the 3D scene has drawn its first frame, and for good if it cannot run.
-    var listo3D by remember(en3D) { mutableStateOf(false) }
+    val listo3D by Motor3D.listo.collectAsState()
     val tocar = { if (panel) panel = false }
     val mantener = { panel = !panel }
     Box(modifier.clip(RoundedCornerShape(12.dp)).pointerInput(Unit) { detectTapGestures(onLongPress = { mantener() }, onTap = { tocar() }) }) {
@@ -138,21 +138,26 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
                 estado = estado,
                 embrague = e.valores[MotorExtendido.EMBRAGUE] == 1.0,
                 fondo = p.celda,
+                modifier = Modifier.fillMaxSize(),
                 pintura = pintura,
                 ambiente = ambiente,
-                modifier = Modifier.fillMaxSize(),
                 alTocar = tocar,
                 alMantener = mantener,
-                alListo = { listo3D = true },
-                alFallar = { motivo ->
-                    Preferencia3D.informe.value = "No se pudo mostrar: $motivo"
-                    Preferencia3D.lento.value = true
-                },
             )
-        }
-        // The photo fades away over the scene instead of popping out.
-        AnimatedVisibility(!en3D || !listo3D, Modifier.fillMaxSize(), enter = EnterTransition.None, exit = fadeOut(tween(700))) {
-            AutoAnimado(estado, Modifier.fillMaxSize().background(p.celda)) { FotoAuto(Modifier.fillMaxSize()) }
+            // While the model loads (only the first time after opening the app) the card says so; it fades away over the car.
+            AnimatedVisibility(!listo3D, Modifier.fillMaxSize(), enter = EnterTransition.None, exit = fadeOut(tween(500))) {
+                Column(
+                    Modifier.fillMaxSize().background(p.celda),
+                    verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator(color = p.normal, trackColor = p.pista)
+                    Text("Cargando el auto…", color = p.tenue, fontSize = 16.sp)
+                }
+            }
+        } else {
+            // 3D switched off, or this screen cannot run it: the photo with its drawn lights.
+            AutoAnimado(estado, Modifier.fillMaxSize()) { FotoAuto(Modifier.fillMaxSize()) }
         }
         if (panel) {
             PanelLucesCompacto(e, Modifier.align(Alignment.BottomCenter).fillMaxWidth())
