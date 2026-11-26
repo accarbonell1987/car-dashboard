@@ -95,6 +95,7 @@ private enum class SeccionAjustes(val nombre: String, val corto: String, val ico
     ADAPTADOR("Adaptador", "Adaptador", Icono.ADAPTADOR),
     LUCES("Luces del auto", "Luces", Icono.VEHICULO),
     CUENTA("Cuenta y sync", "Sync", Icono.NUBE),
+    ASISTENTE("Asistente de voz", "Asistente", Icono.MICROFONO),
     ACERCA("Acerca de", "Acerca", Icono.INFO),
 }
 
@@ -119,6 +120,7 @@ fun AjustesScreen(e: EstadoTablero, acciones: AccionesTablero) {
                     }
                 }
                 SeccionAjustes.CUENTA -> AjustesCuenta(e, acciones)
+                SeccionAjustes.ASISTENTE -> AjustesVoz(acciones.voz)
                 SeccionAjustes.ACERCA -> AjustesAcerca(e)
             }
         }
@@ -326,7 +328,7 @@ private fun AjustesAdaptador(e: EstadoTablero, acciones: AccionesTablero) {
 }
 
 @Composable
-private fun coloresCampo() = LocalPaleta.current.let { p ->
+internal fun coloresCampo() = LocalPaleta.current.let { p ->
     OutlinedTextFieldDefaults.colors(
         focusedTextColor = p.texto,
         unfocusedTextColor = p.texto,
