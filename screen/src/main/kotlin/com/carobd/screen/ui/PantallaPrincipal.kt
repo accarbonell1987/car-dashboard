@@ -75,6 +75,7 @@ fun PantallaPrincipal(e: EstadoTablero, acciones: AccionesTablero) {
                         Seccion.AJUSTES -> AjustesScreen(e, acciones)
                     }
                 }
+                PanelVoz(acciones.voz, Modifier.align(Alignment.BottomCenter))
             }
         }
         BarraPestanas(e.seccion, acciones)
@@ -107,6 +108,7 @@ private fun BarraEstado(e: EstadoTablero, acciones: AccionesTablero) {
             }
             // Derecha: OBD, nube y temperatura exterior
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                BotonHablar(acciones.voz)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     val conectado = e.conexion?.fase == FaseConexion.CONECTADO
                     Box(Modifier.size(8.dp).clip(CircleShape).background(if (!e.esDemo && conectado) p.ok else p.atencion))
