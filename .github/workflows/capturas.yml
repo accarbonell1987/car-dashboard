@@ -1,0 +1,26 @@
+name: Capturas de pantalla
+
+# Manual: dibuja pantallas de la app en JVM (Robolectric + Roborazzi), sin emulador, y las sube como artifact.
+on:
+  workflow_dispatch:
+
+jobs:
+  capturas:
+    name: Capturas del asistente de mantenimiento
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Dibujar capturas
+        run: ./gradlew :screen:testDebugUnitTest --tests '*AsistenteCapturasTest*'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capturas
+          path: |
+            screen/build/capturas/
+            screen/build/reports/tests/

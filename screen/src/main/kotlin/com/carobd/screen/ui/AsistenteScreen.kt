@@ -58,7 +58,7 @@ interface AccionesAsistente {
 }
 
 /** Una pantalla del asistente: una sola pregunta (RNF-05). */
-private sealed interface Pregunta {
+internal sealed interface Pregunta {
     val paso: PasoAsistente
     data object Motor : Pregunta { override val paso = PasoAsistente.AUTO }
     data object Caja : Pregunta { override val paso = PasoAsistente.AUTO }
@@ -74,7 +74,7 @@ private sealed interface Pregunta {
 }
 
 /** La lista de preguntas depende de lo ya respondido: el atajo del último service saca ítems, sin DPF no se pregunta su testigo. */
-private fun preguntas(r: RespuestasAsistente, items: List<ItemMantenimiento>, odometroDelTablero: Boolean): List<Pregunta> = buildList {
+internal fun preguntas(r: RespuestasAsistente, items: List<ItemMantenimiento>, odometroDelTablero: Boolean): List<Pregunta> = buildList {
     add(Pregunta.Motor)
     add(Pregunta.Caja)
     add(Pregunta.MesAlta)

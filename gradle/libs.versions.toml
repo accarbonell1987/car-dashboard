@@ -66,6 +66,12 @@ compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview"
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 # Animaciones Lottie de la pantalla del auto (asistente de mantenimiento).
+# Capturas de pantalla en JVM (screen/src/test), sin emulador.
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+junit4 = { module = "junit:junit", version = "4.13.2" }
+robolectric = { module = "org.robolectric:robolectric", version = "4.14.1" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version = "1.39.0" }
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version = "6.6.2" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }
 
