@@ -30,8 +30,8 @@ object Carroceria {
 
     /**
      * IDs de la escucha número [n] (una cada 10 s): puertas y A/C siempre, y cada 3 escuchas uno de los lentos por
-     * turno, empezando por el odómetro. Cada ID pausa los PIDs unos 400 ms por BLE: escuchar todos juntos
-     * frenaría las agujas. Así cada dato lento se refresca cada ~2 min.
+     * turno, empezando por el odómetro. Se escuchan juntos en una ventana (ver [filtro]); con pocos IDs la máscara
+     * deja pasar poco tráfico y el buffer del clon no se llena. Así cada dato lento se refresca cada ~2 min.
      */
     fun idsEscucha(n: Int): List<String> =
         if (n % 3 == 0) ids.take(2) + ids[2 + (n / 3) % (ids.size - 2)] else ids.take(2)
@@ -46,11 +46,24 @@ object Carroceria {
         else -> emptyMap()
     }
 
-    /** Bytes de la última trama de una salida de ATMA con ATH0 (una trama por línea, sin la ID). */
-    fun ultimaTrama(salida: String): List<Int>? = salida.split('\r', '\n')
+    /**
+     * ATCF/ATCM (filtro y máscara, 3 dígitos hex) que dejan pasar todos los [ids]: la máscara conserva solo los bits
+     * en que coinciden. Puede colar algún otro ID del bus (con 690+350+4F1 pasa también 4F0), por eso se escucha
+     * con ATH1 y se separa por ID.
+     */
+    fun filtro(ids: List<String>): Pair<String, String> {
+        val valores = ids.map { it.toInt(16) }
+        val mascara = valores.fold(0x7FF) { m, v -> m and (v xor valores.first()).inv() and 0x7FF }
+        return hex3(valores.first() and mascara) to hex3(mascara)
+    }
+
+    /** La última trama de cada ID en una salida de ATMA con ATH1 y ATS0 ("690" + hasta 8 bytes por línea). */
+    fun ultimasTramas(salida: String): Map<String, List<Int>> = salida.split('\r', '\n')
         .map { it.replace(" ", "").uppercase() }
-        .lastOrNull { it.length in 2..16 && it.length % 2 == 0 && it.all { c -> c in HEX } }
-        ?.chunked(2)?.map { it.toInt(16) }
+        .filter { it.length in 5..19 && it.length % 2 == 1 && it.all { c -> c in HEX } && it[0] in '0'..'7' }
+        .associate { it.take(3) to it.drop(3).chunked(2).map { b -> b.toInt(16) } }
+
+    private fun hex3(valor: Int) = valor.toString(16).uppercase().padStart(3, '0')
 
     private fun bit(valor: Int, mascara: Int) = if (valor and mascara != 0) 1.0 else 0.0
 }

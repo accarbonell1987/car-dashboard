@@ -49,7 +49,7 @@ class AdaptadorSinRespuesta(mensaje: String) : Exception(mensaje)
 /**
  * Protocolo ELM327 sobre cualquier [TransporteElm]. Arranca el adaptador, lee qué PIDs soporta el motor
  * y los pide por turnos según su [Ritmo] (ver [leerCiclo]): críticas en cada turno y un solo dato secundario por turno.
- * Cada [periodoCarroceriaMs] escucha el bus unos ms por ID, de a uno por turno, para los testigos de [Carroceria]. Si el adaptador se cuelga, cierra
+ * Cada [periodoCarroceriaMs] escucha el bus unos ms, todos los IDs de la ronda juntos, para los testigos de [Carroceria]. Si el adaptador se cuelga, cierra
  * y reconecta con espera creciente; el flujo nunca termina por un error del adaptador.
  */
 class Elm327(
@@ -57,10 +57,10 @@ class Elm327(
     private val excluir: Set<String> = emptySet(),
     private val timeoutMs: Long = 1500,
     private val intentos: Int = 3,
-    // Each listen pauses the PIDs (~0.6 s over BLE): every 10 s, with short windows, keeps the needles live.
-    // 690 sends at 10 Hz and 350 at 48 Hz, so 150 ms still catches a frame of each.
+    // Each listen pauses the PIDs (~0.7 s over BLE): every 10 s, with short windows, keeps the needles live.
+    // All the IDs of a round share one window; 690 sends at 10 Hz and 350 at 48 Hz, so 200 ms catches a frame of each.
     private val periodoCarroceriaMs: Long = 10_000,
-    private val ventanaEscuchaMs: Long = 150,
+    private val ventanaEscuchaMs: Long = 200,
 ) {
     private val _estado = MutableStateFlow(EstadoConexion(FaseConexion.DESCONECTADO))
     val estado: StateFlow<EstadoConexion> = _estado.asStateFlow()
@@ -76,8 +76,9 @@ class Elm327(
     private var escuchas = 0
     private var extendidoActivo = true
     private val proxima = mutableMapOf<String, TimeMark>() // next due time of each secondary task
-    private val colaEscucha = ArrayDeque<String>()
     private var cuenta = ""
+    /** The clone counts CAN frames: "2" brings a two-frame reply whole, without waiting out the timeout. */
+    private var cuentaMultitrama = false
     private var grupoCritico: List<Senal> = emptyList()
 
     /** Testigos de carrocería (escucha ATMA). Se puede apagar en caliente si molestan en algún adaptador. */
@@ -191,11 +192,15 @@ class Elm327(
         cuenta = if ("410D" in limpio(enviar("010D1", valida = responde("410D")))) "1" else ""
         // Critical PIDs in one request when the engine accepts several at once (one round trip instead of three).
         val criticas = senales.filter { it.ritmo == Ritmo.CRITICO }
+        cuentaMultitrama = false
         grupoCritico = criticas.takeIf { it.size > 1 && leerGrupo(it) != null }.orEmpty()
-        anotar("pedidos: ${if (grupoCritico.isEmpty()) "de a un PID" else "agrupados"}, ${if (cuenta.isEmpty()) "sin" else "con"} cuenta de respuestas")
+        if (cuenta.isNotEmpty() && bytesGrupo(grupoCritico) > 7) cuentaMultitrama = probarCuentaMultitrama()
+        anotar(
+            "pedidos: ${if (grupoCritico.isEmpty()) "de a un PID" else "agrupados"}, ${if (cuenta.isEmpty()) "sin" else "con"} cuenta de respuestas" +
+                if (cuentaMultitrama) ", también en las de varias tramas" else "",
+        )
         valores.clear()
         proxima.clear()
-        colaEscucha.clear()
         ciclo = 0
         extendidoActivo = true
         carroceriaActiva = testigos
@@ -217,28 +222,56 @@ class Elm327(
         return soportados
     }
 
-    private suspend fun leerGrupo(grupo: List<Senal>): Map<String, Double>? =
-        Decodificador.variosPids(
-            enviar("01" + grupo.joinToString("") { it.pid.orEmpty() } + cuentaPara(1 + grupo.sumOf { 1 + it.bytes }), valida = responde("41")),
-            grupo,
-        )
+    private suspend fun leerGrupo(grupo: List<Senal>): Map<String, Double>? {
+        val r = enviar("01" + grupo.joinToString("") { it.pid.orEmpty() } + cuentaPara(bytesGrupo(grupo)), valida = responde("41"))
+        return Decodificador.variosPids(r, grupo).also { if (it == null) cortada(r) }
+    }
+
+    private fun bytesGrupo(grupo: List<Senal>) = 1 + grupo.sumOf { 1 + it.bytes }
 
     /**
-     * The response count only for replies that fit one CAN frame (7 bytes): with "1" the adapter returns after the
-     * FIRST frame, which truncated the multi-frame ones (brake/clutch block, grouped PIDs) and they were discarded.
+     * The response count: "1" for replies that fit one CAN frame (7 bytes), and the number of ISO-TP frames for longer
+     * ones when [cuentaMultitrama] holds. Without a count the adapter waits its timeout for more ECUs after the reply
+     * (~55 ms over BLE, measured in the car); with a smaller count it returns early and the reply comes cut.
      */
-    private fun cuentaPara(bytesRespuesta: Int) = if (bytesRespuesta <= 7) cuenta else ""
+    private fun cuentaPara(bytesRespuesta: Int): String = when {
+        bytesRespuesta <= 7 -> cuenta
+        cuentaMultitrama -> tramasIsoTp(bytesRespuesta).takeIf { it <= 0xF }?.toString(16)?.uppercase().orEmpty()
+        else -> ""
+    }
+
+    /**
+     * Whether the adapter counts CAN frames: the critical group asked with its frame count has to come back whole,
+     * and not slower than without the count (an adapter that counts whole replies would wait its timeout).
+     */
+    private suspend fun probarCuentaMultitrama(): Boolean {
+        val pedido = "01" + grupoCritico.joinToString("") { it.pid.orEmpty() }
+        val sin = reloj.markNow()
+        enviar(pedido, valida = responde("41"))
+        val msSin = sin.elapsedNow()
+        val con = reloj.markNow()
+        val completa = Decodificador.variosPids(enviar(pedido + tramasIsoTp(bytesGrupo(grupoCritico)).toString(16), valida = responde("41")), grupoCritico) != null
+        // An adapter that waited its timeout would be ~50 ms slower; 25 ms of slack absorbs the BLE jitter.
+        return completa && con.elapsedNow() < msSin + 25.milliseconds
+    }
+
+    /** A multi-frame reply asked with a frame count came back cut: stop counting them instead of losing readings. */
+    private fun cortada(respuesta: String) {
+        if (!cuentaMultitrama || esError(respuesta) || respuesta.isBlank()) return
+        cuentaMultitrama = false
+        anotar("respuesta de varias tramas incompleta: se piden sin cuenta")
+    }
 
     /**
      * One turn on the single ELM327 channel: the critical PIDs first (the screen updates right after), then at most
-     * ONE secondary task by priority: brake/clutch block, fast PIDs, one body-listen ID, medium, slow.
+     * ONE secondary task: the brake/clutch block whenever it is due, else the most overdue of fast PIDs, the body listen,
+     * medium and slow.
      * Nothing secondary ever delays the needles by more than one request.
      */
     private suspend fun leerCiclo(): Map<String, Double> {
         leerCriticas()
         if (!testigos && _estado.value.carroceria) {
             Carroceria.senales.forEach { valores.remove(it) }
-            colaEscucha.clear()
             _estado.value = _estado.value.copy(carroceria = false)
         }
         if (testigos && !_estado.value.carroceria && fallosCarroceria < MAX_FALLOS_CARROCERIA) {
@@ -257,8 +290,13 @@ class Elm327(
     }
 
     private suspend fun secundaria() {
+        // Brake, clutch and neutral are as critical as the needles: when due, they go before anything else.
+        if (extendidoActivo && proxima[MotorExtendido.COMANDO]?.hasPassedNow() != false) {
+            proxima[MotorExtendido.COMANDO] = reloj.markNow() + PERIODO_EXTENDIDO_MS.milliseconds
+            leerExtendido()
+            return
+        }
         val tareas = buildList {
-            if (extendidoActivo) add(MotorExtendido.COMANDO to PERIODO_EXTENDIDO_MS)
             senales.filter { it.ritmo != Ritmo.CRITICO }.forEach { add(it.id to PERIODOS_MS.getValue(it.ritmo)) }
             if (testigos && carroceriaActiva) add(ESCUCHA to periodoCarroceriaMs)
         }
@@ -268,14 +306,13 @@ class Elm327(
             .maxByOrNull { proxima[it.first]?.elapsedNow() ?: Duration.INFINITE } ?: return
         when (id) {
             ESCUCHA -> {
-                // One ID per turn; the task stays overdue until the whole round is listened.
-                if (colaEscucha.isEmpty()) colaEscucha += Carroceria.idsEscucha(escuchas++)
-                escucharId(colaEscucha.removeFirst())
-                if (colaEscucha.isEmpty()) proxima[id] = reloj.markNow() + periodo.milliseconds
+                // The whole round in one window: each listen costs ~8 AT round trips, whatever the number of IDs.
+                proxima[id] = reloj.markNow() + periodo.milliseconds
+                escuchar(Carroceria.idsEscucha(escuchas++))
             }
             else -> {
                 proxima[id] = reloj.markNow() + periodo.milliseconds
-                if (id == MotorExtendido.COMANDO) leerExtendido() else leerPid(senales.first { it.id == id })
+                leerPid(senales.first { it.id == id })
             }
         }
     }
@@ -287,23 +324,28 @@ class Elm327(
 
     private suspend fun leerExtendido() {
         // A negative answer (7F 22) counts as the reply, or enviar would wait it out as a late one.
-        val r = enviar(MotorExtendido.COMANDO) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
+        val r = enviar(MotorExtendido.COMANDO + cuentaPara(MotorExtendido.BYTES_RESPUESTA)) { "62ED01" in limpio(it) || "7F22" in limpio(it) }
         val leidos = MotorExtendido.decodificar(r)
         if (leidos != null) valores += leidos
+        else if ("7F22" !in limpio(r)) cortada(r)
         // An engine without the block refuses it: stop asking. NO DATA or a truncated reply is just skipped.
         else if ("7F22" in limpio(r)) extendidoActivo = false
     }
 
     /**
-     * Escucha pasiva de un ID: ATCAF0 (tramas crudas), ATCRA<id> + ATMA unos ms; se detiene con un byte, se drena
-     * hasta el prompt y se tiran los restos tardíos. Al final vuelve el filtro al motor (ATCRA7E8) y ATCAF1 esperando OK, para volver a
-     * pedir PIDs. Tras 3 escuchas seguidas sin tramas o con error se desactiva sola; los PIDs siguen igual.
+     * Escucha pasiva de los [ids] de una ronda en una sola ventana: ATCAF0 (tramas crudas), ATH1 (cada línea con su
+     * ID), ATAR + ATCF/ATCM con la máscara que deja pasar esos IDs, y ATMA unos ms; se detiene con un byte, se drena
+     * hasta el prompt y se tiran los restos tardíos. Al final vuelve ATH0, el filtro al motor (ATCRA7E8) y ATCAF1
+     * esperando OK, para volver a pedir PIDs. Antes era una escucha por ID con todo ese ida y vuelta cada vez (~0,6 s
+     * por ID sin PIDs). Tras 3 escuchas seguidas sin tramas o con error se desactiva sola; los PIDs siguen igual.
      */
-    private suspend fun escucharId(id: String) {
+    private suspend fun escuchar(ids: List<String>) {
         var conTramas = false
         try {
-            enviar("ATCAF0", valida = ::esOk)
-            enviar("ATCRA$id", valida = ::esOk)
+            val (filtro, mascara) = Carroceria.filtro(ids)
+            for (c in listOf("ATCAF0", "ATH1", "ATAR", "ATCF$filtro", "ATCM$mascara")) {
+                if (!esOk(enviar(c, valida = ::esOk))) throw IllegalStateException("$c sin OK")
+            }
             transporte.descartar()
             transporte.escribir("ATMA\r")
             var r = transporte.leer(ventanaEscuchaMs)
@@ -314,18 +356,19 @@ class Elm327(
                     transporte.escribir(" ")
                     cierre = transporte.leer(timeoutMs / INTENTOS_PARADA)
                     if (cierre.completa) break
-                    anotar("ATMA $id: no se detuvo, reintento $intento")
+                    anotar("ATMA: no se detuvo, reintento $intento")
                 }
                 if (!cierre.completa) throw AdaptadorSinRespuesta("ATMA no se detuvo")
                 r = Respuesta(r.texto + "\r" + cierre.texto, true)
             }
-            anotar("ATMA $id → ${legible(r.texto).takeLast(60)}")
+            anotar("ATMA ${ids.joinToString(",")} → ${legible(r.texto).takeLast(90)}")
             // El clon por BLE sigue mandando restos (y a veces otro '>') un rato después de detenerse.
             delay(RESTOS_ATMA_MS)
             transporte.descartar()
-            Carroceria.ultimaTrama(r.texto)?.let {
-                valores += Carroceria.decodificar(id, it)
-                conTramas = true
+            for ((id, trama) in Carroceria.ultimasTramas(r.texto)) {
+                val leidos = Carroceria.decodificar(id, trama)
+                valores += leidos
+                if (id in ids && leidos.isNotEmpty()) conTramas = true
             }
         } catch (e: CancellationException) {
             throw e
@@ -336,19 +379,21 @@ class Elm327(
         // If the filters can't be restored, the telltales switch off; the PIDs alone decide a reconnect.
         // The BLE clone answers "?" to a bare ATCRA (reset), which left the 690 filter on: every later PID reply
         // was 690 traffic and the app reconnected. Point the filter back at the engine (7E8) instead; ATAR as backup.
+        // ATCRA also overrides the ATCF/ATCM of the listen.
         val restaurado = runCatching {
-            (esOk(enviar("ATCRA7E8", valida = ::esOk)) || esOk(enviar("ATAR", valida = ::esOk))) && esOk(enviar("ATCAF1", valida = ::esOk))
+            esOk(enviar("ATH0", valida = ::esOk)) &&
+                (esOk(enviar("ATCRA7E8", valida = ::esOk)) || esOk(enviar("ATAR", valida = ::esOk))) &&
+                esOk(enviar("ATCAF1", valida = ::esOk))
         }.getOrDefault(false)
         fallosSeguidos = 0
         if (!restaurado) {
-            anotar("testigos: el adaptador no confirmó ATCRA/ATCAF1")
+            anotar("testigos: el adaptador no confirmó ATH0/ATCRA/ATCAF1")
             conTramas = false
             fallosCarroceria = MAX_FALLOS_CARROCERIA - 1
         }
         fallosCarroceria = if (conTramas) 0 else fallosCarroceria + 1
         if (fallosCarroceria >= MAX_FALLOS_CARROCERIA) {
             carroceriaActiva = false
-            colaEscucha.clear()
             Carroceria.senales.forEach { valores.remove(it) }
             _estado.value = _estado.value.copy(carroceria = false)
             anotar("testigos desactivados: 3 escuchas sin tramas")
@@ -363,10 +408,14 @@ class Elm327(
         val kmh = valores["velocidad"]
         if (rpm != null && kmh != null) {
             val embrague = valores[MotorExtendido.EMBRAGUE] == 1.0
-            val neutro = valores[MotorExtendido.PUNTO_MUERTO] == 1.0
+            // The gearbox switch (22ED01): null when the engine doesn't give it, and then 0 keeps meaning N.
+            val neutro = valores[MotorExtendido.PUNTO_MUERTO]?.let { it == 1.0 }
             // With the clutch down the ratio slips: learning from it would skew the gear table.
             if (!embrague) marchas.aprender(rpm, kmh)
-            valores["marcha"] = marchas.mostrar(if (neutro) 0 else marchas.marcha(rpm, kmh), kmh).toDouble()
+            val m = marchas.mostrar(if (neutro == true) 0 else marchas.marcha(rpm, kmh), kmh)
+            // Stopped (or the ratio fits no gear) with the switch saying a gear is in: which one can't be known
+            // until the car rolls, but it is NOT neutral. It used to show a green N with first gear in.
+            valores["marcha"] = (if (m == 0 && neutro == false) Marchas.PUESTA else m).toDouble()
         }
         val lh = valores["consumo_lh"]
         if (lh != null && kmh != null && kmh > 5) valores["consumo_l100"] = lh / kmh * 100
@@ -384,3 +433,6 @@ private val PERIODOS_MS = mapOf(Ritmo.RAPIDO to 500L, Ritmo.MEDIO to 3_000L, Rit
 private const val MAX_FALLOS_CARROCERIA = 3
 
 internal fun hex2(valor: Int): String = valor.toString(16).uppercase().padStart(2, '0')
+
+/** ISO-TP frames of a [bytes]-long reply: one up to 7 bytes, then a first frame of 6 and consecutive ones of 7. */
+internal fun tramasIsoTp(bytes: Int): Int = if (bytes <= 7) 1 else 1 + bytes / 7 // 1 + ceil((bytes - 6) / 7)

@@ -7,7 +7,8 @@ fed by the real captures in ../capturas. Python 3 stdlib only. See README.md.
   python3 obd/emulador/elm327_emulador.py --pty                # pseudo-terminal for the serial scripts
   python3 obd/emulador/elm327_emulador.py --escenario carroceria --velocidad 2
 
-Console on stdin: puerta|cinturon|ac on|off|auto, rpm N|auto, vel N|auto, cuelgue, reset, corte, estado.
+Console on stdin: puerta|cinturon|ac|freno|embrague|neutro on|off|auto, rpm N|auto, vel N|auto, cuelgue, reset,
+corte, estado.
 """
 import argparse, bisect, csv, heapq, os, re, select, socket, sys, threading, time, tty
 
@@ -19,6 +20,14 @@ OBD_REQUEST_IDS = {0x7DF, 0x7E0}
 DEFAULT_RATE_HZ = 10.0
 # console name -> (CAN ID, byte index, bit mask)
 BIT_OVERRIDES = {"puerta": (0x690, 0, 0x40), "cinturon": (0x690, 2, 0x01), "ac": (0x350, 1, 0x40)}
+# Engine block 22ED01 (bytes counted after 62 ED 01): console name -> (byte index, bit mask). See obd/codigos-can.md.
+ED01_OVERRIDES = {"freno": (12, 0x01), "embrague": (13, 0x01), "neutro": (13, 0x08)}
+# 22ED01 at rest, ignition on (capturas/elm327-motor22-pedales-2.csv): no pedal pressed, gearbox in neutral.
+ED01_REPOSO = bytes.fromhex("FFFF7EF8000112007F48656380082513CB0F009900FF000000469B64FF0001000019")
+# --tiempos-ble: timings of the BLE clone measured in a car log (0.1.80, 2026-11-21), p50 of ~1 700 commands.
+BLE_IDA_Y_VUELTA = 0.047  # any command that returns at once: AT commands and single-frame PIDs with a reply count
+BLE_ESPERA_SIN_CUENTA = 0.055  # without a reply count the adapter waits for more ECUs (ATAT1 adaptive timeout)
+BLE_POR_TRAMA = 0.002  # each extra ISO-TP frame of a multi-frame reply
 
 
 class BufferFull(Exception):
@@ -120,8 +129,8 @@ def load_can_rows(scenario, dump_rows):
 class Vehicle:
     """Scenario data plus console overrides, shared by the client session and the console."""
 
-    def __init__(self, scenario, speed, ble_clone=False):
-        self.scenario, self.speed, self.ble_clone = scenario, speed, ble_clone
+    def __init__(self, scenario, speed, ble_clone=False, ble_times=False):
+        self.scenario, self.speed, self.ble_clone, self.ble_times = scenario, speed, ble_clone, ble_times
         self.mode01, self.mode09 = load_exploration()
         self.supported = supported_pids(self.mode01)
         self.pid_series, self.pid_duration = build_series(load_pid_rows(scenario))
@@ -152,6 +161,16 @@ class Vehicle:
         if mode == 0x01 and pid is not None and (pid in self.supported or pid % 0x20 == 0):
             value = self.pid_value(pid)
             return bytes([0x41, pid]) + value if value else None
+        if mode == 0x22:
+            if request[1:3] != b"\xed\x01":
+                return b"\x7f\x22\x31"  # request out of range, as the ECU answers unknown identifiers
+            data = bytearray(ED01_REPOSO)
+            for name, (index, mask) in ED01_OVERRIDES.items():
+                if name in self.overrides:
+                    data[index] = data[index] | mask if self.overrides[name] else data[index] & ~mask
+            if self.overrides.get("freno"):
+                data[13] |= 0x40  # the second brake switch closes with the first one
+            return b"\x62\xed\x01" + bytes(data)
         if mode == 0x09 and pid in self.mode09:
             return self.mode09[pid]
         if len(request) == 1:
@@ -176,10 +195,10 @@ class Vehicle:
 
     def command(self, words):
         name, value = words[0].lower(), words[1].lower() if len(words) > 1 else ""
-        if name in BIT_OVERRIDES or name in ("rpm", "vel"):
+        if name in BIT_OVERRIDES or name in ED01_OVERRIDES or name in ("rpm", "vel"):
             if value == "auto":
                 self.overrides.pop(name, None)
-            elif name in BIT_OVERRIDES:
+            elif name in BIT_OVERRIDES or name in ED01_OVERRIDES:
                 self.overrides[name] = {"on": True, "off": False}[value]
             else:
                 number = int(value)
@@ -277,6 +296,8 @@ class Session:
             return self.send(b">")
         self.last = command
         if command.startswith("AT"):
+            if self.vehicle.ble_times:
+                time.sleep(BLE_IDA_Y_VUELTA)
             lines = self.at_command(command[2:])
         elif re.fullmatch(r"[0-9A-F]+", command):
             lines = self.obd_request(command)
@@ -346,8 +367,9 @@ class Session:
         return (" " if self.spaces else "").join(f"{byte:02X}" for byte in data)
 
     def obd_request(self, command):
+        count = None
         if len(command) % 2:
-            command = command[:-1]  # trailing response-count digit, e.g. "010C1"
+            command, count = command[:-1], int(command[-1], 16)  # trailing response-count digit, e.g. "010C1"
         request = bytes.fromhex(command)
         if not self.auto_format and request:  # CAF0: the client sends the PCI byte itself
             request = request[1:1 + request[0]]
@@ -359,9 +381,20 @@ class Session:
             self.protocol, self.detected = "6", True
         elif self.protocol != "6":
             return [b"UNABLE TO CONNECT"]
-        time.sleep(self.latency)
         payload = self.vehicle.answer(request) if self.header in OBD_REQUEST_IDS and self.accepts(ECU_RESPONSE_ID) else None
-        return lines + (self.format_response(payload) if payload else [b"NO DATA"])
+        frames = self.format_response(payload) if payload else [b"NO DATA"]
+        data_lines = [line for line in frames if not re.fullmatch(rb"[0-9A-F]{3}", line)]  # the length line is no frame
+        if self.vehicle.ble_times:
+            # With a count the clone returns after that many CAN frames; otherwise it waits out the timeout.
+            waits = count is None or payload is None or count > len(data_lines)
+            received = len(data_lines) if count is None else min(count, len(data_lines))
+            time.sleep(BLE_IDA_Y_VUELTA + (BLE_ESPERA_SIN_CUENTA if waits else 0) + BLE_POR_TRAMA * (received - 1))
+        else:
+            time.sleep(self.latency)
+        if count is not None and payload is not None and count < len(data_lines):
+            # The clone stops after `count` frames: a multi-frame reply comes back cut (CLAUDE.md, "The BLE clone").
+            frames = frames[:len(frames) - len(data_lines) + count]
+        return lines + frames
 
     def format_response(self, payload):
         """ISO-TP framing as the ELM prints it, honouring H, S and CAF."""
@@ -417,7 +450,7 @@ def console(vehicle):
         try:
             print(vehicle.command(words), flush=True)
         except (ValueError, KeyError):
-            print("? comandos: puerta|cinturon|ac on|off|auto, rpm N|auto, vel N|auto, cuelgue, reset, corte, estado", flush=True)
+            print("? comandos: puerta|cinturon|ac|freno|embrague|neutro on|off|auto, rpm N|auto, vel N|auto, cuelgue, reset, corte, estado", flush=True)
 
 
 def serve_tcp(vehicle, host, port, latency):
@@ -453,8 +486,11 @@ def main():
     parser.add_argument("--latencia", type=float, default=60, help="ms por petición OBD (60 ≈ 16 lecturas/s)")
     parser.add_argument("--pty", action="store_true", help="pseudo-terminal serie en vez de TCP")
     parser.add_argument("--clon-ble", action="store_true", help="imita al clon por BLE: prompt tardío tras detener ATMA")
+    parser.add_argument("--tiempos-ble", action="store_true",
+                        help="tiempos medidos del clon por BLE en el auto (reemplaza --latencia): ~47 ms por comando, "
+                             "~55 ms más si el pedido no lleva cuenta de respuestas")
     arguments = parser.parse_args()
-    vehicle = Vehicle(arguments.escenario, arguments.velocidad, arguments.clon_ble)
+    vehicle = Vehicle(arguments.escenario, arguments.velocidad, arguments.clon_ble, arguments.tiempos_ble)
     threading.Thread(target=console, args=(vehicle,), daemon=True).start()
     try:
         if arguments.pty:

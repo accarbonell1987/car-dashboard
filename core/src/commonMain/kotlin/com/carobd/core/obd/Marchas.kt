@@ -14,7 +14,7 @@ class Marchas(relaciones: List<Double> = listOf(120.0, 66.0, 42.0, 31.0, 25.0, 2
     private var previa = 0.0
     private var estables = 0
 
-    /** 0 = neutro o embrague pisado (no se puede saber), 1..n = marcha. */
+    /** 0 = neutro o embrague pisado (no se puede saber), 1..n = marcha. [Elm327] distingue N de [PUESTA] con el sensor de la caja. */
     fun marcha(rpm: Double, kmh: Double): Int {
         if (kmh < 5 || rpm < 600) return 0
         val r = rpm / kmh
@@ -73,8 +73,28 @@ class Marchas(relaciones: List<Double> = listOf(120.0, 66.0, 42.0, 31.0, 25.0, 2
         return mostrada
     }
 
-    private companion object {
-        const val MUESTRAS_ESTABLES = 8
-        const val LECTURAS_PARA_CAMBIAR = 3
+    companion object {
+        /** A gear is in but the car is too slow (or the clutch slips too much) to tell which. */
+        const val PUESTA = -1
+
+        /** What every gear display shows for a "marcha" reading: the number, N, a dot for [PUESTA], or "--". */
+        fun texto(marcha: Int?): String = when (marcha) {
+            null -> "--"
+            0 -> "N"
+            PUESTA -> "●"
+            else -> marcha.toString()
+        }
+
+        /** For screen readers. */
+        fun descripcion(marcha: Int?): String = when (marcha) {
+            null -> "sin dato"
+            0 -> "neutro"
+            PUESTA -> "marcha puesta"
+            else -> marcha.toString()
+        }
+
+        private const val MUESTRAS_ESTABLES = 8
+        // Two readings: ~250 ms at the current polling rate, and one noisy sample still can't flip the display.
+        private const val LECTURAS_PARA_CAMBIAR = 2
     }
 }

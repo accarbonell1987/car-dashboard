@@ -9,6 +9,7 @@ import com.carobd.screen.R
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.carobd.core.obd.FaseConexion
+import com.carobd.core.obd.Marchas
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.Image
@@ -208,7 +209,7 @@ private fun TarjetaAuto(e: EstadoTablero, acciones: AccionesTablero, modifier: M
             val vs = e.valores
             Stat("Velocidad", vs["velocidad"]?.let { dec(it, 0) } ?: "--", "km/h", p.texto, Modifier.weight(1f))
             val marcha = vs["marcha"]?.toInt()
-            Stat("Marcha", when (marcha) { null -> "--"; 0 -> "N"; else -> marcha.toString() }, "", if (marcha == 0) p.ok else p.texto, Modifier.weight(1f))
+            Stat("Marcha", Marchas.texto(marcha), "", if (marcha == 0) p.ok else p.texto, Modifier.weight(1f))
             Stat("Refrigerante", vs["temp_refrigerante"]?.let { dec(it, 0) } ?: "--", "°C", colorNivel(nivelDe("temp_refrigerante")), Modifier.weight(1f))
             Stat("Batería", vs["voltaje"]?.let { dec(it, 1) } ?: "--", "V", colorNivel(nivelDe("voltaje")), Modifier.weight(1f))
         }
