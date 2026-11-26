@@ -22,6 +22,7 @@ python3 obd/emulador/elm327_emulador.py
 | `--latencia` | `60` | Milisegundos por petición OBD. 60 ms da unas 16 lecturas/s, como el clon. |
 | `--pty` | — | Crea un pseudo-terminal serie en vez de escuchar por TCP. |
 | `--clon-ble` | — | Imita al clon por BLE: manda un prompt tardío después de detener `ATMA`. Sirve para probar que el cliente se resincroniza. |
+| `--tiempos-ble` | — | Tiempos medidos del clon por BLE en el auto (reemplaza `--latencia`): ~47 ms por comando, ~55 ms más cuando el pedido no lleva cuenta de respuestas, 2 ms por trama extra. Es la base de `MedicionLatenciaTest`. |
 
 Atiende un cliente por vez. Cuando uno se desconecta, acepta al siguiente.
 
@@ -139,6 +140,9 @@ Mientras corre, el emulador lee comandos por su entrada estándar (la terminal d
 | `puerta on\|off` | Bit 6 de b0 en la ID 690 (puerta del conductor). |
 | `cinturon on\|off` | Bit 0 de b2 en la ID 690. `on` = cinturón del conductor **sin abrochar** (polaridad de las capturas). |
 | `ac on\|off` | Bit 0x40 de b1 en la ID 350. |
+| `freno on\|off` | Los dos interruptores de freno de `22ED01` (b12 bit 0, b13 bit 6). |
+| `embrague on\|off` | Embrague pisado en `22ED01` (b13 bit 0). |
+| `neutro on\|off` | Punto muerto en `22ED01` (b13 bit 3). En reposo vale `on`, como en la captura; `off` es una marcha puesta. |
 | `rpm N` | Fija `010C` y los bytes 2-3 de la ID 316 (little-endian, /4). |
 | `vel N` | Fija `010D` y el byte 6 de la ID 316. |
 | `<nombre> auto` | Quita ese override y vuelve a la captura, por ejemplo `rpm auto`. |
@@ -149,6 +153,21 @@ Mientras corre, el emulador lee comandos por su entrada estándar (la terminal d
 
 Los overrides afectan tanto a las respuestas de PID como a las tramas de `ATMA`.
 
+## Medir la latencia
+
+```bash
+MEDIR_LATENCIA=60 ./gradlew :core:jvmTest --tests '*MedicionLatencia*'
+```
+
+Arranca el emulador con `--clon-ble --tiempos-ble`, cambia rpm y freno por la consola en momentos al azar y mide
+cuánto tarda la app en mostrarlo, con los testigos de carrocería apagados y prendidos. El informe queda en
+`core/build/medicion-latencia.txt`.
+
+**Cuenta de respuestas:** con un dígito al final del pedido (`010D1`, `22ED016`) el clon vuelve después de esa
+cantidad de tramas CAN, sin esperar el timeout. El emulador lo imita: con menos tramas que la respuesta, la devuelve
+cortada. Que el clon cuente tramas (y no respuestas) está comprobado para "1"; para respuestas de varias tramas la
+app lo prueba al conectar y, si no sale completa y rápida, pide sin cuenta.
+
 ## Tests
 
 ```bash
@@ -157,9 +176,8 @@ python3 -m unittest obd/emulador/test_emulador.py -v
 
 ## Lo que NO emula
 
-- Otros módulos (71A, 7B3, 7C6, 7D2, 7D4) ni los servicios 21/22. Solo existe el motor en `7E8` con los modos 01,
-  03, 07 y 09.
-- Varios PIDs en una sola petición (`010C0D`). Solo responde al primero.
+- Otros módulos (71A, 7B3, 7C6, 7D2, 7D4) ni el servicio 21. Solo existe el motor en `7E8` con los modos 01, 03, 07
+  y 09, y del 22 solo `22ED01` (el resto contesta `7F 22 31`).
 - El enlace BLE: no hay pérdidas ni BUFFER FULL espontáneos. `ATMA` sin filtro entrega todo el bus (~1000 tramas/s);
   el clon real se satura enseguida.
 - Correlación entre IDs. Cada ID se capturó en ventanas separadas, así que cada una repite su propia serie.

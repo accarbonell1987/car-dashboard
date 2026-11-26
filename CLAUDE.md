@@ -26,6 +26,6 @@ The head unit updates itself from GitHub releases, so a release IS the deploy. P
 
 ## Rules that are easy to break
 
-- **Engine only.** Never query modules other than the engine (7E0, all requests go there via `ATSH7E0`). Body data is read by passive listening only (`ATMA` + `ATCRA<id>`). Querying other modules once froze the instrument cluster until a power cycle.
-- **The BLE clone** sends late prompts after `ATMA`, rejects a bare `ATCRA` (restore with `ATCRA7E8`), and with a response-count suffix returns after the first CAN frame (never use it on multi-frame replies). Test ELM changes against `python3 obd/emulador/elm327_emulador.py --clon-ble`.
+- **Engine only.** Never query modules other than the engine (7E0, all requests go there via `ATSH7E0`). Body data is read by passive listening only (`ATMA` with `ATCF`/`ATCM` filters, one window per round). Querying other modules once froze the instrument cluster until a power cycle.
+- **The BLE clone** sends late prompts after `ATMA`, rejects a bare `ATCRA` (restore with `ATCRA7E8`), and with a response-count suffix returns after that many CAN frames: "1" cuts a multi-frame reply, so multi-frame requests carry their frame count only when the connect-time probe in `Elm327` confirmed it. Test ELM changes against `python3 obd/emulador/elm327_emulador.py --clon-ble`, and timing changes with `MEDIR_LATENCIA=60 ./gradlew :core:jvmTest --tests '*MedicionLatencia*'` (emulator with `--tiempos-ble`, the clone's timings measured in the car).
 - **Diagnosing in the car:** Ajustes → Adaptador → Registro de comandos → "Compartir registro completo" exports a timestamped log the user can attach to the thread.

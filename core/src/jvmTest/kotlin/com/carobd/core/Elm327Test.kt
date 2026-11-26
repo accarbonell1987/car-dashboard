@@ -5,6 +5,7 @@ import com.carobd.core.obd.Catalogo
 import com.carobd.core.obd.Decodificador
 import com.carobd.core.obd.Elm327
 import com.carobd.core.obd.FaseConexion
+import com.carobd.core.obd.Marchas
 import com.carobd.core.obd.MotorExtendido
 import com.carobd.core.obd.Respuesta
 import com.carobd.core.obd.TransporteElm
@@ -54,8 +55,10 @@ private class TransporteFalso(
     var paradasPerdidas: Int = 0,
     /** Ignition on, engine and bus asleep: every PID answers NO DATA and ATMA hears nothing. */
     val autoApagado: Boolean = false,
-    /** Honours a trailing response count like the real ELM327: it returns after the first CAN frame. */
+    /** Honours a trailing response count like the BLE clone: it returns after that many CAN frames. */
     val conCuenta: Boolean = false,
+    /** Stopped with a gear in: the gearbox switch of 22ED01 says "not neutral". */
+    val enMarcha: Boolean = false,
 ) : TransporteElm {
     val enviados = mutableListOf<String>()
     var aperturas = 0
@@ -89,17 +92,20 @@ private class TransporteFalso(
         if (autoApagado && !ultimo.startsWith("AT") && ultimo.isNotEmpty()) return Respuesta("NO DATA\r\r", true)
         if (conCuenta && !ultimo.startsWith("AT") && ultimo.length % 2 == 1) {
             val pedido = ultimo.dropLast(1)
+            val tramas = ultimo.last().digitToInt(16)
             val completa = RESPUESTAS[pedido] ?: multiplesPids(pedido) ?: return Respuesta("NO DATA\r\r", true)
-            // Count 1: only the first frame of a multi-frame reply comes back.
-            return Respuesta(completa.substringBefore("\r1:") + "\r\r", true)
+            // Count n: only the first n frames of a multi-frame reply come back.
+            return Respuesta(completa.substringBefore("\r$tramas:") + "\r\r", true)
         }
         if (conCuenta && ultimo.startsWith("01") && ultimo.length > 4) multiplesPids(ultimo)?.let { return Respuesta(it, true) }
         return when {
-            ultimo == "ATMA" -> Respuesta(if (enviados.last { it.startsWith("ATCRA") } == "ATCRA690") "0000410000002C00\r4000400000000800\r" else "0050C592990000DE\r", false)
+            // ATH1: each frame with its ID, the round's IDs together (690 door open, 350 A/C on).
+            ultimo == "ATMA" -> Respuesta("6900000410000002C00\r3500050C592990000DE\r6904000400000000800\r", false)
             ultimo.isEmpty() -> Respuesta("\rSTOPPED\r\r", true) // el espacio que detiene ATMA
             // Like the BLE clone in the car: a bare ATCRA (filter reset) is not supported.
             ultimo == "ATCRA" -> Respuesta("?\r\r", true)
             ultimo.startsWith("AT") && ultimo != "ATZ" -> Respuesta("OK\r\r", true)
+            enMarcha && ultimo == "22ED01" -> Respuesta(RESPUESTAS.getValue(ultimo).replace("656380082513CB", "656380002513CB"), true)
             else -> Respuesta(RESPUESTAS[ultimo] ?: "NO DATA\r\r", true)
         }
     }
@@ -138,8 +144,21 @@ class Elm327Test {
         assertEquals(mapOf(Carroceria.PUERTA to 1.0, Carroceria.CINTURON to 0.0), abierta)
         assertEquals(0.0, Carroceria.decodificar("350", "0010C592990000DE".chunked(2).map { it.toInt(16) })[Carroceria.AIRE])
         assertEquals(1.0, Carroceria.decodificar("350", "0050C592990000DE".chunked(2).map { it.toInt(16) })[Carroceria.AIRE])
-        assertEquals(listOf(0x40, 0, 0x40, 0, 0, 0, 8, 0), Carroceria.ultimaTrama("0000410000002C00\r40 00 40 00 00 00 08 00\rSTOPPED\r"))
-        assertNull(Carroceria.ultimaTrama("BUFFER FULL\r?\r"))
+        val tramas = Carroceria.ultimasTramas("6900000410000002C00\r690 40 00 40 00 00 00 08 00\r5E4040000\rSTOPPED\r")
+        assertEquals(mapOf("690" to listOf(0x40, 0, 0x40, 0, 0, 0, 8, 0), "5E4" to listOf(4, 0, 0)), tramas)
+        assertEquals(emptyMap<String, List<Int>>(), Carroceria.ultimasTramas("BUFFER FULL\r?\r"))
+    }
+
+    @Test
+    fun unaMascaraParaTodaLaRonda() {
+        // Only the IDs of the round (and 4F0, harmless) out of the 13 the engine bus carries.
+        val bus = listOf(0x316, 0x329, 0x350, 0x382, 0x4F0, 0x4F1, 0x543, 0x545, 0x5A0, 0x5A1, 0x5A2, 0x5E4, 0x690)
+        for (ronda in (0 until 12).map { Carroceria.idsEscucha(it) }) {
+            val (f, m) = Carroceria.filtro(ronda).let { (f, m) -> f.toInt(16) to m.toInt(16) }
+            val pasan = bus.filter { it and m == f }.map { "%03X".format(it) }
+            assertTrue(pasan.containsAll(ronda), "$ronda: $pasan")
+            assertTrue(pasan.none { it in listOf("316", "329") }, "$ronda deja pasar tramas de 100 Hz: $pasan")
+        }
     }
 
     @Test
@@ -188,6 +207,8 @@ class Elm327Test {
         assertFalse("012F" in transporte.enviados, "pidió combustible, que no está en los bitmaps")
         assertFalse("015C" in transporte.enviados, "pidió aceite, excluido en el Accent")
         assertTrue(transporte.enviados.lastIndexOf("ATCAF1") > transporte.enviados.lastIndexOf("ATMA"), "no restauró los filtros tras ATMA")
+        assertTrue(transporte.enviados.lastIndexOf("ATH0") > transporte.enviados.lastIndexOf("ATMA"), "dejó las cabeceras prendidas tras ATMA")
+        assertEquals(1, transporte.enviados.count { it == "ATMA" }, "una escucha por ID en vez de una por ronda")
         assertTrue(elm.estado.value.carroceria, "apagó los testigos porque el clon no acepta ATCRA solo")
         val e = elm.estado.value
         assertEquals(FaseConexion.CONECTADO, e.fase)
@@ -253,10 +274,22 @@ class Elm327Test {
         val transporte = TransporteFalso(conCuenta = true)
         val elm = Elm327(transporte, excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = Long.MAX_VALUE)
         val l = elm.lecturas().take(6).toList().last()
-        assertTrue(elm.registro.value.any { "agrupados, con cuenta" in it }, elm.registro.value.joinToString("\n"))
-        assertTrue("010D1" in transporte.enviados && "22ED01" in transporte.enviados, "la cuenta se aplicó donde no debía")
+        assertTrue(elm.registro.value.any { "agrupados, con cuenta de respuestas, también en las de varias tramas" in it }, elm.registro.value.joinToString("\n"))
+        // The clone counts CAN frames: two for the critical group, six for the brake/clutch block.
+        assertTrue("010D1" in transporte.enviados && "010C0D112" in transporte.enviados && "22ED016" in transporte.enviados, transporte.enviados.toString())
         assertEquals(1.0, l.valores[MotorExtendido.PUNTO_MUERTO], "el bloque de freno y embrague llegó cortado")
         assertEquals(780.5, l.valores["rpm"])
+    }
+
+    @Test
+    fun detenidoConUnaMarchaPuestaNoMuestraNeutro() = runTest {
+        // The reported bug: stopped, engine idling, first gear in, and the display showed a green N.
+        fun marcha(enMarcha: Boolean) = Elm327(TransporteFalso(enMarcha = enMarcha), excluir = Catalogo.noSoportadasAccent, periodoCarroceriaMs = Long.MAX_VALUE)
+        val puesta = marcha(true).lecturas().take(4).toList().last().valores
+        assertEquals(0.0, puesta["velocidad"])
+        assertEquals(Marchas.PUESTA.toDouble(), puesta["marcha"])
+        assertEquals("●", Marchas.texto(puesta["marcha"]?.toInt()))
+        assertEquals(0.0, marcha(false).lecturas().take(4).toList().last().valores["marcha"], "en punto muerto tiene que decir N")
     }
 
     @Test

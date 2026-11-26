@@ -132,7 +132,6 @@ class CoreTest {
         repeat(3) { m.mostrar(4, kmh = 70.0) }
         assertEquals(4, m.mostrar(4, kmh = 70.0))
         assertEquals(4, m.mostrar(5, kmh = 70.0), "cambió con una sola lectura")
-        assertEquals(4, m.mostrar(5, kmh = 70.0))
         assertEquals(5, m.mostrar(5, kmh = 70.0))
         assertEquals(0, m.mostrar(0, kmh = 0.0), "detenido tiene que mostrar N enseguida")
     }

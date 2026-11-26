@@ -15,6 +15,8 @@ object MotorExtendido {
     const val PUNTO_MUERTO = "punto_muerto"
     val senales = listOf(FRENO, EMBRAGUE, PUNTO_MUERTO)
     private const val LARGO = 34
+    /** 62 ED 01 + 34 bytes: six ISO-TP frames. */
+    const val BYTES_RESPUESTA = 3 + LARGO
 
     fun decodificar(respuesta: String): Map<String, Double>? {
         val bytes = Decodificador.unirMultitrama(respuesta) ?: return null

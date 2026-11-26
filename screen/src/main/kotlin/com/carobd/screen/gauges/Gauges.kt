@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.text.style.TextAlign
+import com.carobd.core.obd.Marchas
 import com.carobd.core.obd.MotorExtendido
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
@@ -262,11 +263,11 @@ internal fun CuadroInstrumentos(valores: Map<String, Double>, alertas: List<Aler
                 .clip(CircleShape)
                 .background(fondo)
                 .border(3.dp, if (pisado) p.atencion else if (m == 0) p.ok else p.pista, CircleShape)
-                .semantics { contentDescription = "Marcha ${if (m == 0) "neutro" else m ?: "sin dato"}${if (pisado) ", embrague pisado" else ""}" },
+                .semantics { contentDescription = "Marcha ${Marchas.descripcion(m)}${if (pisado) ", embrague pisado" else ""}" },
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                when (m) { null -> "--"; 0 -> "N"; else -> m.toString() },
+                Marchas.texto(m),
                 color = tinta,
                 fontSize = (marcha.value * 0.55f).sp,
                 fontWeight = FontWeight.Black,
@@ -387,7 +388,7 @@ private fun GaugeMarcha(valor: Double?) {
         val lado = min(maxWidth.value, maxHeight.value)
         val m = valor?.roundToInt()
         Text(
-            when (m) { null -> "--"; 0 -> "N"; else -> m.toString() },
+            Marchas.texto(m),
             color = if (m == 0) p.ok else p.texto,
             fontSize = (lado * 0.6f).sp,
             fontWeight = FontWeight.Black,
