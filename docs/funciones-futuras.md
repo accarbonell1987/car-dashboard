@@ -73,6 +73,12 @@ al launcher de fábrica) y cuánto tarda la app en estar visible al dar contacto
 
 ## 2. Asistente de IA por voz (modelo de OpenAI)
 
+> **Primera versión (2026-11-26):** opción A por WebSocket. Botón de micrófono en la barra de arriba;
+> cada usuario carga su propia clave de OpenAI en Ajustes → Asistente (queda en la pantalla, sin
+> servidor). Funciones: `leer_datos_auto`, `consultar_mantenimiento`, `navegar_a` y
+> `terminar_conversacion` (`core/.../voz/`). No escucha mientras habla, y se cierra tras 20 s de
+> silencio. Falta: palabra de activación, llamadas e historial en la nube.
+
 Dos formas de armarlo:
 
 | Opción | Cómo funciona | A favor | En contra |

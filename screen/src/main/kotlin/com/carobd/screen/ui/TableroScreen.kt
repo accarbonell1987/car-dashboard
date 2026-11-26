@@ -90,6 +90,8 @@ interface AccionesTablero : AccionesAsistente {
     fun fijarTestigos(activos: Boolean)
     /** Últimos comandos y respuestas del adaptador, para la sección Registro de Ajustes. */
     val registro: StateFlow<List<String>>
+    /** Asistente de voz (botón de hablar y su sección en Ajustes). */
+    val voz: com.carobd.screen.voz.ControlVoz
 }
 
 /**

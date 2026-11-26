@@ -45,6 +45,11 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.builtins.ListSerializer
 import java.time.LocalTime
 import java.util.UUID
+import com.carobd.core.model.EstadoMantenimiento
+import com.carobd.core.voz.ContextoAuto
+import com.carobd.screen.voz.AsistenteVoz
+import com.carobd.screen.voz.ControlVoz
+import kotlinx.datetime.TimeZone
 
 /** Qué fuente de datos eligió el usuario en Ajustes. */
 enum class TipoFuente { DEMO, EMULADOR, BLE }
@@ -133,6 +138,35 @@ class TableroViewModel(app: Application) : AndroidViewModel(app), AccionesTabler
     private var registrador: RegistradorViaje? = null
     private var odometroLeido = false
     private val historial = Historial(SENALES_GRAFICA)
+
+    /** Asistente de voz: lee el estado actual del tablero cada vez que el modelo pide datos. */
+    override val voz: ControlVoz = AsistenteVoz(app, viewModelScope) { contextoVoz(_estado.value) }
+
+    private fun contextoVoz(e: EstadoTablero): ContextoAuto {
+        val odometro = maxOf(e.garaje?.odometroKm?.toDouble() ?: 0.0, e.odometroKm)
+        return ContextoAuto(
+            fuente = when {
+                e.esDemo -> "demo"
+                e.conexion?.fase == FaseConexion.CONECTADO && e.valores.isNotEmpty() -> "auto"
+                else -> "sin conexión"
+            },
+            valores = e.valores,
+            alertas = e.alertas,
+            odometroKm = odometro,
+            viajeKm = e.viajeEnCursoKm,
+            viajeSeg = e.viajeEnCursoSeg,
+            viajeL100 = e.viajeEnCursoL100,
+            mantenimiento = e.garaje?.let { g ->
+                EstadoMantenimiento.calcular(g.items, g.servicios, g.vehiculo, odometro.toInt(), Clock.System.now(), TimeZone.currentSystemDefault())
+            }.orEmpty(),
+            avisos = e.avisos,
+        )
+    }
+
+    override fun onCleared() {
+        voz.detener()
+        super.onCleared()
+    }
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
