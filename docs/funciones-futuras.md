@@ -103,6 +103,13 @@ Piezas necesarias, cualquiera sea la opción:
 
 ## 3. Modelo 3D del auto con animaciones
 
+> **Hecho (primera versión):** el auto de Inicio y de Vehículo ya es 3D. Va en un WebView con
+> three.js (`screen/src/main/assets/auto3d/`, todo local, sin red) y la app le pasa el estado con
+> `auto3d.set(...)` desde `ui/auto/Auto3D.kt`: velocidad, freno, embrague, lluvia y luces. Si la
+> pantalla no tiene WebGL o no llega a ~9 cuadros por segundo, vuelve sola a la foto.
+> Modelo: "hyundai accent 2013" de L95XP (Sketchfab, CC BY 4.0), simplificado a ~138 000 triángulos.
+> Lo que sigue es el análisis original.
+
 **Motor:** SceneView (usa Filament, de Google) se integra directo en Compose y carga modelos
 glTF/GLB. Es la opción natural para `screen/`. Requiere OpenGL ES 3.0.
 

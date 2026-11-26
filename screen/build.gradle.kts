@@ -37,6 +37,10 @@ android {
     buildFeatures {
         compose = true
     }
+    // The 3D model is read by the WebView in one go; stored uncompressed it loads much faster on a slow head unit.
+    androidResources {
+        noCompress += "glb"
+    }
 }
 
 dependencies {
