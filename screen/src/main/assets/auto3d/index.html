@@ -397,10 +397,10 @@ const S={speed:0,rain:0,vs:0,rs:0,az:0.72,el:0.24,dist:7.6,auto:false,drag:false
 // What the app last told us. v km/h, lluvia 0..1; the rest are on/off.
 // hora 0..24 (below 0 = no ambience: the plain card colour), nubes, niebla and nieve 0..1.
 const E={v:0,lluvia:0,freno:false,embrague:false,pos:false,baja:false,alta:false,gi:false,gd:false,hora:-1,nubes:0,niebla:0,nieve:0};
-let awake=3, calidad=0; const PR=[1.5,1,0.7];
+let awake=3, calidad=0, recibido=false, tModelo=0, anchoV=0, altoV=0; const PR=[1.5,1,0.7];
 const host=window.Android||null, say=(f,a)=>{try{if(host&&host[f])host[f](a===undefined?'':String(a));}catch(e){}};
 window.auto3d={
-  set(o){let ch=false;for(const k in o)if(k in E&&E[k]!==o[k]){E[k]=o[k];ch=true;} if(ch){S.speed=+E.v||0;S.rain=clamp(+E.lluvia||0,0,1);awake=3;}},
+  set(o){recibido=true;let ch=false;for(const k in o)if(k in E&&E[k]!==o[k]){E[k]=o[k];ch=true;} if(ch){S.speed=+E.v||0;S.rain=clamp(+E.lluvia||0,0,1);awake=3;}},
   girar(dx,dy){S.manual=true;S.az-=dx*0.008;S.el=clamp(S.el+dy*0.005,0.04,1.2);awake=3;},
   fondo(hex){FONDO.set(hex);renderer.setClearColor(FONDO,1);if(!A.on)scene.fog.color.copy(FONDO);awake=3;},
   // Body colour: hex plus how metallic the paint is (solid white wants little, a dark metallic a lot).
@@ -410,7 +410,7 @@ window.auto3d={
 function pintar(){for(const m of [paint,paintRef.m]){if(!m)continue;m.color.set(PINT.hex);m.metalness=PINT.metal;}}
 
 function resize(){
-  const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return;
+  const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return; anchoV=w; altoV=h;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,PR[calidad])); renderer.setSize(w,h,false);
   camera.aspect=w/h; camera.fov=w/h<1?46:30; camera.updateProjectionMatrix();
   const px=renderer.domElement.height/(2*Math.tan(camera.fov*Math.PI/360)); splash.m.uniforms.px.value=px; spray.m.uniforms.px.value=px;
@@ -545,10 +545,12 @@ const tgt={sx:1,px:0,pitch:0,py:0}, spr={sx:{x:1,v:0},px:{x:0,v:0},pitch:{x:0,v:
 function frame(now){
   requestAnimationFrame(frame);
   if(S.speed>0.3||S.vs>0.3||S.rain>0||S.rs>0.01||E.gi||E.gd||E.freno||camRear||camBack)awake=3;
-  if(!modelo){last=now;return;}             // the car is still loading: draw nothing rather than a stand-in
+  if(!modelo){last=now;tModelo=now;return;}
+  if(modelo===1&&!recibido&&now-tModelo<3000){last=now;return;} // wait a moment for the app's first state, so the first frame already has its sky             // the car is still loading: draw nothing rather than a stand-in
   if(awake<=0){last=now;return;}            // parked, dry and dark: nothing to draw, let the GPU rest
   if(now-lastDraw<30)return; lastDraw=now;  // about 30 frames a second is plenty for a head unit
   const dt=Math.min(0.1,(now-last)/1000); last=now; awake-=dt;
+  if(stage.clientWidth!==anchoV||stage.clientHeight!==altoV)resize(); // moved to another screen's box: fit before drawing, not a frame later
   // measure the real rate; step the resolution down if the GPU cannot keep up, and tell the app if even that fails
   fpsN++; fpsT+=dt; if(fpsT>=3){const fps=fpsN/fpsT; fpsN=0; fpsT=0;
     if(fps<17){ if(calidad<PR.length-1){calidad++; resize();} else if(++slow>=2&&fps<9)say('lento','lento: '+fps.toFixed(1)+' cuadros por segundo'); } else slow=0; }
