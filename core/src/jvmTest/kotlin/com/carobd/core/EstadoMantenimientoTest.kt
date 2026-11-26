@@ -94,6 +94,7 @@ class EstadoMantenimientoTest {
         assertEquals(120, e.intervaloMeses)
         assertEquals(Estado.VENCIDO, e.estado)
         assertTrue(e.faltanDias!! < 0)
+        assertEquals("vencido hace ${-e.faltanDias!!} días", e.texto(), "no mezcla lo que falta en km con lo vencido por tiempo")
     }
 
     @Test

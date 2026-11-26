@@ -150,9 +150,10 @@ object EstadoMantenimiento {
 /** Texto corto del estado: "faltan 3.706 km · faltan 112 días", "vencido por 1.294 km", "sin datos". */
 fun EstadoItem.texto(): String {
     if (estado == Estado.DESCONOCIDO) return if (probablementeVencido) "sin datos, probablemente vencido" else "sin datos"
-    return buildList {
-        faltanKm?.let { add(if (it <= 0) "vencido por ${com.carobd.core.miles(-it)} km" else "faltan ${com.carobd.core.miles(it)} km") }
-        faltanDias?.let { add(if (it <= 0) "vencido hace ${-it} días" else "faltan $it días") }
-        if (base?.aproximado == true) add("aprox.")
-    }.joinToString(" · ")
+    val km = faltanKm?.let { Pair(it <= 0, if (it <= 0) "vencido por ${com.carobd.core.miles(-it)} km" else "faltan ${com.carobd.core.miles(it)} km") }
+    val dias = faltanDias?.let { Pair(it <= 0, if (it <= 0) "vencido hace ${-it} días" else "faltan $it días") }
+    val partes = listOfNotNull(km, dias)
+    // Si venció por una de las dos medidas, lo que falta por la otra confunde: se muestra solo lo vencido.
+    val mostrar = partes.filter { it.first }.ifEmpty { partes }
+    return (mostrar.map { it.second } + listOfNotNull("aprox.".takeIf { base?.aproximado == true })).joinToString(" · ")
 }
