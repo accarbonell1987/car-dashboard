@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,8 +15,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -30,11 +33,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.carobd.core.auto.AmbienteAuto
@@ -165,16 +176,33 @@ fun AutoTablero(e: EstadoTablero, modifier: Modifier) {
     }
 }
 
-private class Toggle(val corto: String, val nombre: String, val id: String?, val activo: (LucesAuto) -> Boolean, val cambiar: (LucesAuto, Boolean) -> LucesAuto)
+private val AMBAR = Color(0xFFF5A524)
+private val ROJO = Color(0xFFFF4D4F)
+private val BLANCO = Color(0xFFFFF6D8)
+private val AZULADO = Color(0xFFCFE4FF)
 
+/** One light: its hand toggle, the reading that overrides it, and how its tile is drawn (24x24 stroke icon, real colour). */
+private class Toggle(
+    val corto: String,
+    val nombre: String,
+    val id: String?,
+    val color: Color,
+    val trazo: String,
+    val activo: (LucesAuto) -> Boolean,
+    val cambiar: (LucesAuto, Boolean) -> LucesAuto,
+)
+
+private const val FARO = "M13 6 C17 6 20 8.7 20 12 C20 15.3 17 18 13 18 Z"
+
+// In the order of the Ajustes mosaic: signals and hazards on top, brake and lamps below, high beam last.
 private val TOGGLES = listOf(
-    Toggle("◀", "Intermitente izquierdo", SenalesLuces.GIRO_IZQ, { it.giroIzq }) { l, v -> l.copy(giroIzq = v, giroDer = if (v) false else l.giroDer) },
-    Toggle("▶", "Intermitente derecho", SenalesLuces.GIRO_DER, { it.giroDer }) { l, v -> l.copy(giroDer = v, giroIzq = if (v) false else l.giroIzq) },
-    Toggle("Balizas", "Balizas", SenalesLuces.BALIZAS, { it.balizas }) { l, v -> l.copy(balizas = v) },
-    Toggle("Stop", "Luz de freno (stop)", MotorExtendido.FRENO, { it.stop }) { l, v -> l.copy(stop = v) },
-    Toggle("Posición", "Luces de posición", SenalesLuces.POSICION, { it.posicion }) { l, v -> l.copy(posicion = v) },
-    Toggle("Baja", "Luz baja", SenalesLuces.BAJA, { it.baja }) { l, v -> l.copy(baja = v) },
-    Toggle("Alta", "Luz alta", SenalesLuces.ALTA, { it.alta }) { l, v -> l.copy(alta = v) },
+    Toggle("◀", "Giro izquierdo", SenalesLuces.GIRO_IZQ, AMBAR, "M14 6 L8 12 L14 18", { it.giroIzq }) { l, v -> l.copy(giroIzq = v, giroDer = if (v) false else l.giroDer) },
+    Toggle("Balizas", "Balizas", SenalesLuces.BALIZAS, AMBAR, "M12 4 L21 20 L3 20 Z", { it.balizas }) { l, v -> l.copy(balizas = v) },
+    Toggle("▶", "Giro derecho", SenalesLuces.GIRO_DER, AMBAR, "M10 6 L16 12 L10 18", { it.giroDer }) { l, v -> l.copy(giroDer = v, giroIzq = if (v) false else l.giroIzq) },
+    Toggle("Stop", "Freno", MotorExtendido.FRENO, ROJO, "M7 9 L17 9 A3 3 0 0 1 17 15 L7 15 A3 3 0 0 1 7 9 Z", { it.stop }) { l, v -> l.copy(stop = v) },
+    Toggle("Posición", "Posición", SenalesLuces.POSICION, BLANCO, "M15 12 A3 3 0 1 1 9 12 A3 3 0 1 1 15 12 M12 3 L12 6 M12 18 L12 21 M3 12 L6 12 M18 12 L21 12", { it.posicion }) { l, v -> l.copy(posicion = v) },
+    Toggle("Baja", "Luz baja", SenalesLuces.BAJA, BLANCO, "$FARO M3 10 L9 11.5 M3 13 L9 14.5 M3 16 L9 17.5", { it.baja }) { l, v -> l.copy(baja = v) },
+    Toggle("Alta", "Luz alta", SenalesLuces.ALTA, AZULADO, "$FARO M3 7.5 L9 7.5 M3 10.5 L9 10.5 M3 13.5 L9 13.5 M3 16.5 L9 16.5", { it.alta }) { l, v -> l.copy(alta = v) },
 )
 
 /** Two rows of small toggles over the bottom of the car. */
@@ -221,24 +249,87 @@ private fun Chip(texto: String, encendido: Boolean, habilitado: Boolean, modifie
     }
 }
 
-/** Ajustes > Luces del auto: every toggle with where its value comes from. */
+/** The light's icon; lit, it takes the light's colour over a soft halo. */
+@Composable
+private fun IconoLuz(t: Toggle, encendida: Boolean, tam: Dp) {
+    val apagado = LocalPaleta.current.tenue
+    val path = remember(t) { PathParser().parsePathString(t.trazo).toPath() }
+    Canvas(Modifier.size(tam)) {
+        if (encendida) drawCircle(Brush.radialGradient(listOf(t.color.copy(alpha = 0.38f), Color.Transparent)), radius = size.minDimension * 0.75f)
+        val k = size.minDimension / 24f
+        scale(k, k, pivot = Offset.Zero) {
+            drawPath(path, if (encendida) t.color else apagado, style = Stroke(width = 1.7f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+    }
+}
+
+/**
+ * One tile of the lights mosaic. It shows what the car is showing (a real reading, the demo or the hand toggle) and
+ * says where that comes from; a light the car does report is not toggled, the real value wins.
+ */
+@Composable
+private fun BaldosaLuz(t: Toggle, e: EstadoTablero, manual: LucesAuto, visibles: LucesAuto, modifier: Modifier, ancha: Boolean = false) {
+    val p = LocalPaleta.current
+    val real = t.id != null && e.valores.containsKey(t.id)
+    val encendida = t.activo(visibles)
+    val forma = RoundedCornerShape(16.dp)
+    val estado = if (t.nombre == "Balizas") "encendidas" else "encendida"
+    val origen = when {
+        real -> "Del auto"
+        t.activo(manual) -> "A mano · $estado"
+        encendida -> "Demo · $estado"
+        else -> "A mano"
+    }
+    val caja = modifier
+        .clip(forma)
+        .background(p.pista)
+        .background(if (encendida) t.color.copy(alpha = 0.10f) else Color.Transparent)
+        .border(2.dp, if (encendida) t.color else Color.Transparent, forma)
+        .clickable(enabled = !real, role = Role.Switch) { ControlesAuto.cambiar { l -> t.cambiar(l, !t.activo(l)) } }
+        .padding(12.dp)
+    val chip: @Composable () -> Unit = {
+        Text(
+            origen,
+            color = if (real) p.ok else p.tenue,
+            fontSize = 14.sp,
+            maxLines = 1,
+            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (real) p.ok.copy(alpha = 0.14f) else p.celda).padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    }
+    if (ancha) {
+        Row(caja, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            IconoLuz(t, encendida, 40.dp)
+            Text(t.nombre, color = p.texto, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            chip()
+        }
+    } else {
+        Column(caja, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
+            IconoLuz(t, encendida, 52.dp)
+            Text(t.nombre, color = p.texto, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            chip()
+        }
+    }
+}
+
+/** Ajustes > Luces del auto: the lights as a mosaic, then rain, the 3D car, its colour and the ambience. */
 @Composable
 fun AjustesLucesAuto(e: EstadoTablero) {
     val p = LocalPaleta.current
     val manual by ControlesAuto.luces.collectAsState()
     val lluvia by ControlesAuto.lluvia.collectAsState()
     val demo by ControlesAuto.demo.collectAsState()
+    val visibles = rememberEstadoVisualAuto(e).luces
     Text(
-        "El auto de Inicio muestra sus luces, la lluvia y el viento. Por OBD llegan el freno, la velocidad y la puerta; " +
-            "intermitentes, balizas y faros no, así que se prenden a mano aquí (o manteniendo apretado el auto en Inicio).",
+        "Por OBD llegan el freno, la velocidad y la puerta. El resto se prende a mano, aquí o manteniendo apretado el auto en Inicio.",
         color = p.tenue,
         fontSize = 16.sp,
     )
-    for (t in TOGGLES) {
-        val real = t.id != null && e.valores.containsKey(t.id)
-        val detalle = if (real) "Dato real del auto: el interruptor no manda" else if (t.id == MotorExtendido.FRENO) "Sin dato del pedal: a mano" else "A mano (no llega por OBD)"
-        Interruptor(t.nombre, t.activo(manual), detalle) { v -> ControlesAuto.cambiar { l -> t.cambiar(l, v) } }
+    for (fila in TOGGLES.take(6).chunked(3)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            for (t in fila) BaldosaLuz(t, e, manual, visibles, Modifier.weight(1f).height(150.dp))
+        }
     }
+    BaldosaLuz(TOGGLES[6], e, manual, visibles, Modifier.fillMaxWidth().heightIn(min = 64.dp), ancha = true)
     Text("Lluvia", color = p.texto, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Opcion("Según el clima", lluvia == null, Modifier.weight(1f)) { ControlesAuto.lluvia.value = null }
