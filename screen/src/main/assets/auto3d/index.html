@@ -476,14 +476,14 @@ const HORAS=[
   [20,  0x04060c,0x0b1220,0x8fa6d8,0.25,0.10,0.85,1,0],
   [24,  0x04060c,0x0b1220,0x8fa6d8,0.25,0.10,0.85,1,0]];
 const cA=new T.Color(), cB=new T.Color(), cTop=new T.Color(), cHor=new T.Color(), cSun=new T.Color(), cGrey=new T.Color(), cGround=new T.Color();
-const GROUND0=new T.Color(0x0a0d12), GROUND_DAY=new T.Color(0x555a62), SNOW=new T.Color(0xc4ccd8);
+const GROUND0=new T.Color(0x0a0d12), GROUND_DAY=new T.Color(0x3c4149), SNOW=new T.Color(0xc4ccd8);
 const stars=(function(){const n=260,p=new Float32Array(n*3);for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,e=-0.22+Math.random()*0.75;p[i*3]=Math.cos(a)*Math.cos(e)*38;p[i*3+1]=Math.sin(e)*38;p[i*3+2]=Math.sin(a)*Math.cos(e)*38;}
   const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(p,3));
   const m=new T.Points(g,new T.PointsMaterial({color:0xdfe8ff,size:1.6,sizeAttenuation:false,transparent:true,opacity:0,depthWrite:false,fog:false}));m.renderOrder=-9;m.visible=false;scene.add(m);return m;})();
 const NS=520, sp3=new Float32Array(NS*3), sph=new Float32Array(NS);
 for(let i=0;i<NS;i++){sp3[i*3]=(Math.random()*2-1)*BX;sp3[i*3+1]=Math.random()*BY;sp3[i*3+2]=(Math.random()*2-1)*BZ;sph[i]=Math.random()*6.28;}
 const snowG=new T.BufferGeometry(); snowG.setAttribute('position',new T.BufferAttribute(sp3,3));
-const snow=new T.Points(snowG,new T.PointsMaterial({map:whiteTex,color:0xffffff,size:0.075,transparent:true,opacity:0.9,depthWrite:false})); snow.visible=false; snow.frustumCulled=false; scene.add(snow);
+const snow=new T.Points(snowG,new T.PointsMaterial({map:whiteTex,color:0xffffff,size:0.11,transparent:true,opacity:0.9,depthWrite:false})); snow.visible=false; snow.frustumCulled=false; scene.add(snow);
 const A={on:false,hora:12,nubes:0,niebla:0,nieve:0,flash:0};
 function ambience(dt,r,v,now){
   if(E.hora<0){ if(A.on){A.on=false;sky.visible=stars.visible=snow.visible=false;hemi.intensity=0.18;sun.intensity=0.9;sun.color.set(0xffffff);sun.position.set(3,6,4);renderer.toneMappingExposure=1.05;scene.fog.color.copy(FONDO);scene.fog.near=11;scene.fog.far=22;groundM.color.copy(GROUND0);} return; }
@@ -505,7 +505,7 @@ function ambience(dt,r,v,now){
   sun.color.copy(cSun); sun.intensity=mx(4)*(1-0.6*c)*(1-0.4*n); hemi.intensity=mx(5)*(1+0.5*c)+A.flash*0.8;
   renderer.toneMappingExposure=mx(6)*(1-0.12*c)+A.flash*0.7;
   const st=mx(7)*(1-c)*(1-n); stars.visible=st>0.02; stars.material.opacity=st*0.9;
-  cGround.copy(GROUND0).lerp(GROUND_DAY,day*(1-0.3*c)).lerp(cHor,0.3*day); cA.copy(SNOW).multiplyScalar(0.3+0.7*day); cGround.lerp(cA,sstep(0,0.5,A.nieve)); groundM.color.copy(cGround);
+  cGround.copy(GROUND0).lerp(GROUND_DAY,day*(1-0.3*c)).lerp(cHor,0.16*day); cA.copy(SNOW).multiplyScalar(0.3+0.7*day); cGround.lerp(cA,sstep(0,0.5,A.nieve)); groundM.color.copy(cGround);
   // snow drifts down slowly and is swept back by the car's speed
   const ns=Math.floor(NS*clamp(A.nieve,0,1)); snow.visible=ns>0; snowG.setDrawRange(0,ns);
   if(ns>0){ awake=3; const vx=-Math.min(v,30)*0.45;
