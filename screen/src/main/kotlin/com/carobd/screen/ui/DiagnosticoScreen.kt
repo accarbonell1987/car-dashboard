@@ -1,5 +1,6 @@
 package com.carobd.screen.ui
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.height
 import com.carobd.screen.ui.comun.TarjetaIcono
 import androidx.compose.ui.draw.clip
@@ -200,8 +201,11 @@ private fun AlertasYMantenimiento(e: EstadoTablero, acciones: AccionesTablero, m
                             else -> Icono.LLAVE
                         }
                         IconoTrazo(icono, color, 20.dp)
-                        Text(pe.item.nombre, color = p.texto, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Text(pe.texto(), color = color, fontSize = 16.sp)
+                        // La columna es angosta: el estado va debajo del nombre para que ninguno de los dos se corte.
+                        Column(Modifier.weight(1f)) {
+                            Text(pe.item.nombre, color = p.texto, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(pe.texto(), color = color, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
             }
