@@ -73,10 +73,6 @@ al launcher de fábrica) y cuánto tarda la app en estar visible al dar contacto
 
 ## 2. Asistente de IA por voz (modelo de OpenAI)
 
-> **En curso (2026-11-26):** se eligió la opción A (Realtime API, `gpt-realtime-mini`). Hecho: el
-> servidor entrega el token efímero en `POST /asistente/token` (`server/.../Asistente.kt`), con un
-> tope de conversaciones por día. Falta: la pantalla (micrófono, WebRTC y las funciones).
-
 Dos formas de armarlo:
 
 | Opción | Cómo funciona | A favor | En contra |
