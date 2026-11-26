@@ -2,6 +2,7 @@ package com.carobd.core
 
 import com.carobd.core.model.ItemMantenimiento
 import com.carobd.core.model.LecturaOdometro
+import com.carobd.core.model.CatalogoMantenimiento
 import com.carobd.core.model.Mantenimiento
 import com.carobd.core.model.OrigenOdometro
 import com.carobd.core.model.Viaje
@@ -74,13 +75,12 @@ class CoreTest {
 
     @Test
     fun `plantilla del Accent y pendientes`() {
-        var n = 0
-        val items = Mantenimiento.plantillaAccentCrdi("veh", t0) { "id${n++}" }
-            .map { if (it.nombre.startsWith("Aceite")) it.copy(ultimoKm = 85_000) else it }
+        val items = CatalogoMantenimiento.plan("veh", CatalogoMantenimiento.DIESEL_D4FB_MANUAL, t0)
+            .map { if (it.codigo == CatalogoMantenimiento.ACEITE_MOTOR) it.copy(ultimoKm = 85_000) else it }
         val pendientes = Mantenimiento.pendientes(items, odometroKm = 90_600, hoy = t0)
-        val aceite = pendientes.first { it.item.nombre.startsWith("Aceite") }
+        val aceite = pendientes.first { it.item.codigo == CatalogoMantenimiento.ACEITE_MOTOR }
         assertEquals(4_400, aceite.faltanKm)
-        assertEquals(8, items.size)
+        assertEquals(19, items.size)
     }
 
     @Test

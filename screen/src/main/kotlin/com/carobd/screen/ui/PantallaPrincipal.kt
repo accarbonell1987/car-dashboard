@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,13 +61,20 @@ fun PantallaPrincipal(e: EstadoTablero, acciones: AccionesTablero) {
     Column(Modifier.fillMaxSize().background(p.fondo)) {
         BarraEstado(e, acciones)
         AvisoActualizacion()
-        Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp)) {
-            when (e.seccion) {
-                Seccion.INICIO -> InicioScreen(e, acciones)
-                Seccion.TABLERO -> TableroScreen(e, acciones)
-                Seccion.DIAGNOSTICO -> DiagnosticoScreen(e)
-                Seccion.VEHICULO -> VehiculoScreen(e, acciones)
-                Seccion.AJUSTES -> AjustesScreen(e, acciones)
+        CompositionLocalProvider(LocalEnMarcha provides ((e.valores["velocidad"] ?: 0.0) > 0.0)) {
+            Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp)) {
+                val asistente = e.asistente
+                if (asistente != null) {
+                    AsistenteScreen(e, asistente, acciones)
+                } else {
+                    when (e.seccion) {
+                        Seccion.INICIO -> InicioScreen(e, acciones)
+                        Seccion.TABLERO -> TableroScreen(e, acciones)
+                        Seccion.DIAGNOSTICO -> DiagnosticoScreen(e, acciones)
+                        Seccion.VEHICULO -> VehiculoScreen(e, acciones)
+                        Seccion.AJUSTES -> AjustesScreen(e, acciones)
+                    }
+                }
             }
         }
         BarraPestanas(e.seccion, acciones)
