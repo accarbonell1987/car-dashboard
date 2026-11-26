@@ -24,16 +24,21 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 
 /**
- * Servidor CAROBD: un solo endpoint de sincronización más /health.
+ * Servidor CAROBD: sincronización, token del asistente de voz y /health.
  * Configuración por variables de entorno (ver deploy/vps/compose.vps.yml).
  */
 fun main() {
     val puerto = System.getenv("PORT")?.toIntOrNull() ?: 8080
     val db = BaseDeDatos.desdeEntorno()
-    embeddedServer(Netty, port = puerto) { modulo(Almacen(db), Tokens.desdeEntorno()) }.start(wait = true)
+    embeddedServer(Netty, port = puerto) { modulo(Almacen(db), Tokens.desdeEntorno(), OpenAiRealtime.desdeEntorno(), TopeDiario.desdeEntorno()) }.start(wait = true)
 }
 
-fun Application.modulo(almacen: Almacen, tokens: Tokens) {
+fun Application.modulo(
+    almacen: Almacen,
+    tokens: Tokens,
+    asistente: ProveedorTokens? = null,
+    tope: TopeDiario = TopeDiario(30),
+) {
     install(CallLogging)
     install(ContentNegotiation) { json(SyncJson.json) }
     install(StatusPages) {
@@ -55,6 +60,22 @@ fun Application.modulo(almacen: Almacen, tokens: Tokens) {
                 val usuario = call.principal<UserIdPrincipal>()!!.name
                 val req = call.receive<SyncRequest>()
                 call.respond(almacen.sincronizar(usuario, req))
+            }
+            // Token efímero para la Realtime API. 503 si el servidor no tiene clave, 429 si se pasó el tope del día.
+            post("/asistente/token") {
+                val usuario = call.principal<UserIdPrincipal>()!!.name
+                when {
+                    asistente == null ->
+                        call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "asistente no configurado"))
+                    !tope.tomar(usuario) ->
+                        call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "tope diario del asistente"))
+                    else -> try {
+                        call.respond(asistente.crear(usuario))
+                    } catch (e: Exception) {
+                        call.application.environment.log.warn("No se pudo crear el token del asistente: ${e.message}")
+                        call.respond(HttpStatusCode.BadGateway, mapOf("error" to "no se pudo crear el token"))
+                    }
+                }
             }
         }
     }

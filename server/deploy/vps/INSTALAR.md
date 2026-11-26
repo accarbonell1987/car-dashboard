@@ -95,3 +95,18 @@ Solo correr `/opt/carobd/deploy-vps.sh`: sin shell, sin reenvío de puertos, sin
 `prod-<sha de 40>`, una imagen de `ghcr.io/accarbonell1987/car-dashboard/server`, puertos solo en
 127.0.0.1 y montajes solo dentro de `/opt/carobd/prod`, y rechaza `privileged`, `docker.sock`,
 `network_mode: host`, `cap_add` y `devices`.
+
+## Asistente de voz (opcional)
+
+El endpoint `POST /asistente/token` entrega a la pantalla un token efímero de la Realtime API de
+OpenAI (vence a los 10 minutos). La clave queda solo en el VPS. Para encenderlo, como `carobd`:
+
+```bash
+cat >> /opt/carobd/prod/env/api.env <<'FIN'
+OPENAI_API_KEY=<clave de un proyecto de OpenAI solo para CAROBD>
+CAROBD_ASISTENTE_TOKENS_DIA=30
+FIN
+```
+
+y volver a desplegar. Además, poner un presupuesto mensual en ese proyecto de OpenAI: el servidor
+cuenta conversaciones, no minutos, porque el audio va directo de la pantalla a OpenAI.
